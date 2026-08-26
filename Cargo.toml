@@ -1,0 +1,16 @@
+[package]
+name = "nixdiag"
+version = "0.1.0"
+edition = "2021"
+description = "Static infrastructure docs from any Nix flake"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+indexmap = { version = "2", features = ["serde"] }
+rayon = "1"
+regex = "1"
+rnix = "0.14.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

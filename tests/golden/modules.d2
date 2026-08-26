@@ -1,0 +1,40 @@
+# Auto-generated from the Nix config by nixdiag. Do not edit.
+# Regenerate: nixdiag gen
+direction: right
+
+diddy: "diddy" { shape: cloud; style.fill: "#fff3cd"; style.bold: true }
+epstein: "epstein" { shape: cloud; style.fill: "#fff3cd"; style.bold: true }
+
+hosts: "hosts" {
+  diddy: "diddy" {
+    default_nix: "default.nix" { shape: page
+      svc_tailscale: "tailscale" { shape: oval; style.fill: "#e6f0ff" }
+    }
+  }
+  epstein: "epstein" {
+    default_nix: "default.nix" { shape: page }
+  }
+}
+modules: "modules" {
+  common_nix: "common.nix" { shape: page }
+  mesh_nix: "mesh.nix" { shape: page
+    svc_headscale: "headscale" { shape: oval; style.fill: "#e6f0ff" }
+  }
+  monitoring_nix: "monitoring.nix" { shape: page
+    svc_grafana: "grafana" { shape: oval; style.fill: "#e6f0ff" }
+  }
+  web_nix: "web.nix" { shape: page
+    svc_nginx: "nginx" { shape: oval; style.fill: "#e6f0ff" }
+  }
+}
+
+# host -> entry module
+diddy -> hosts.diddy.default_nix
+epstein -> hosts.epstein.default_nix
+
+# module imports
+hosts.diddy.default_nix -> modules.common_nix
+hosts.diddy.default_nix -> modules.monitoring_nix
+hosts.epstein.default_nix -> modules.common_nix
+hosts.epstein.default_nix -> modules.mesh_nix
+hosts.epstein.default_nix -> modules.web_nix

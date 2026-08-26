@@ -1,0 +1,16 @@
+pre-commit:
+  commands:
+    format-nix:
+      glob: "*.nix"
+      run: nixfmt {staged_files}
+      stage_fixed: true
+    rustfmt:
+      glob: "*.rs"
+      run: rustfmt {staged_files}
+      stage_fixed: true
+pre-push:
+  commands:
+    test:
+      run: cargo test
+    flake-check:
+      run: nix flake check

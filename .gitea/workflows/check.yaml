@@ -1,0 +1,19 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  HOME: /var/lib/gitea-runner
+
+jobs:
+  check:
+    runs-on: native
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: nix flake check
+        run: nix --extra-experimental-features "nix-command flakes" flake check

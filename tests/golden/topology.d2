@@ -1,0 +1,31 @@
+# Auto-generated from the Nix config by nixdiag. Do not edit.
+# Regenerate: nixdiag gen
+direction: right
+classes: {
+  app: { style: { fill: "#e6f0ff"; stroke: "#4a76c4" } }
+  infra: { style: { fill: "#ffe9cc"; stroke: "#c47a29" } }
+  base: { style: { fill: "#f0f0f0"; stroke: "#999"; font-size: 13 } }
+}
+
+internet: "🌐 Internet" { shape: cloud; style.fill: "#fdecea" }
+lan: "🏠 LAN" { shape: cloud; style.fill: "#eafaf1" }
+
+diddy: "🖥️ diddy" {
+  style: { fill: "#fbfbfe"; stroke: "#333"; bold: true }
+  grafana: "grafana" { class: infra }
+  subnet_router: "subnet router" { class: infra }
+  base: "+ 11 system services" { class: base }
+}
+epstein: "🖥️ epstein" {
+  style: { fill: "#fbfbfe"; stroke: "#333"; bold: true }
+  headscale: "headscale\n(mesh control)" { class: infra }
+  nginx: "nginx\n(reverse proxy)" { class: infra }
+  base: "+ 11 system services" { class: base }
+}
+
+# data-flow edges
+epstein.nginx -> diddy.grafana: "grafana :3000" { style.stroke: "#4a76c4" }
+epstein.nginx -> epstein.headscale: "hs :8080" { style.stroke: "#4a76c4" }
+internet -> epstein.nginx: "hs" { style.stroke: "#c0392b" }
+diddy -> epstein.headscale: "tailnet" { style.stroke: "#7a4fb5" }
+diddy.subnet_router -> lan: "advertise 192.168.1.0/24" { style.stroke: "#27893f" }

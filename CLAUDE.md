@@ -68,8 +68,10 @@ tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
 
 ## Rules
 
-- Package with `rustPlatform.buildRustPackage` + `cargoHash` (nixpkgs-friendly; goal is
-  an eventual `pkgs/by-name` PR). Wrap `d2` and `nix` onto PATH with `makeWrapper`.
+- Package with `rustPlatform.buildRustPackage`; the in-repo flake uses
+  `cargoLock.lockFile` (no hash churn during dev), the eventual `pkgs/by-name`
+  PR uses `cargoHash` against a release tarball. Wrap `d2` and `nix` onto PATH
+  with `makeWrapper` (`--suffix`, so the user's own binaries win).
 - The renderer **refuses to overwrite an existing file that lacks the AUTO marker**
   (`<!-- Auto-generated … -->` / `# Auto-generated …`). Safer than the Python.
 - Golden tests: render the fixture flake, snapshot d2 + Markdown, compare in
@@ -77,23 +79,47 @@ tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
 - Plain `nix eval` errors on one host degrade gracefully (warn + skip), like the Python.
 - Darwin hosts must eval from Linux (eval only, no builds) — CI is a Linux Gitea runner.
 
+## Decisions made during the port
+
+- Projections wrap null-able option values (`str'` helper): NixOS options can be
+  *defined* with a null default, which `or` does not cover.
+- Canonical host order (nixos sorted, then darwin sorted) is enforced by
+  `Facts::normalize()` in the renderer, so mode A (discovery order) and mode B
+  (alphabetical `builtins.toJSON`) produce identical documents.
+- `--extra-page TITLE=FILE` copies a hand-written page in; `--extra-link
+  TITLE=NAME.md` only adds the SUMMARY entry (for pages another tool writes into
+  wiki/src, e.g. termux artifacts). mkDocs mirrors both as `extraPages` /
+  `extraLinks` attrsets.
+- `check` compares only deterministic outputs (`.d2` + auto `.md`); SVG varies
+  with the d2 version and write-once files (index.md, book.toml) are user-owned.
+- Mode A defaults can be declared in the documented flake as a `nixdiag = {
+  out, title, extraPages, extraLinks }` output (evaluated silently, absent is
+  fine); CLI flags override, `out` resolves relative to the flake root.
+- vhosts are projected regardless of `nginx.enable` — parity with the Python
+  (the committed os docs list the module's default `localhost` vhost too).
+  Candidate cleanup for later, post-parity.
+
 ## To do
 
-- [ ] Scaffold: `flake.nix`, `Cargo.toml`, hello-world binary building via
-      `buildRustPackage`, devShell, CI workflow (`.gitea/workflows/`, actions syntax).
-- [ ] `facts.rs` model + `nix/projections/*.nix` (port HOST_FACTS, NIXOS_PROJECT,
-      DARWIN_FACTS, ENABLED_WITH_FILES, COUNT_SERVICES from the Python).
-- [ ] `eval.rs` (mode A) + `nixdiag facts`.
-- [ ] `topology.rs`, `modules.rs`, `wiki.rs`, `d2.rs` + `nixdiag render` / `gen`.
-- [ ] `nixdiag check` drift gate.
-- [ ] `nix/lib.nix` `mkDocs` (mode B) + fixture flake + golden tests in `checks`.
-- [ ] `doccomment.rs` (`/** */` via rnix) wired into wiki output.
-- [ ] `nix/module.nix` serve (+ optional timer), `templates/default/`.
-- [ ] Migrate `~/os`: add input, `packages.docs` with `extraPages.termux`, delete the four
-      Python files, replace `diagrams.yaml` commit-back with `nix build .#docs` + rsync,
-      re-point the deploy workflow trigger, optionally enable serve on nas.
-- [ ] README with the zero-touch one-liner + prior-art note (differs from oddlama's
-      nix-topology: zero-touch, data-flow-level, wiki-producing; `nixdoc` is unrelated).
+- [x] Scaffold: `flake.nix`, `Cargo.toml`, binary via `buildRustPackage`,
+      devShell, CI workflow (`.gitea/workflows/check.yaml`).
+- [x] `facts.rs` model + `nix/projections/{nixos,darwin}.nix` (one merged
+      projection per host kind).
+- [x] `eval.rs` (mode A) + `nixdiag facts`.
+- [x] `topology.rs`, `modules.rs`, `wiki.rs`, `d2.rs` + `nixdiag render` / `gen`.
+      Verified byte-for-byte against the committed os docs (modulo marker lines).
+- [x] `nixdiag check` drift gate.
+- [x] `nix/lib.nix` `mkFacts`/`mkDocs` (mode B) + `tests/fixture/` + golden
+      tests in `checks` (`nix build .#fixture-docs` refreshes; copy with
+      `cp --no-preserve=mode`, store files are read-only).
+- [x] `doccomment.rs` (`/** */` via rnix) — host entry-module doc under the
+      host heading, service file docs as sections on the services page.
+- [x] `nix/module.nix` serve (+ optional timer), `templates/default/`.
+- [ ] Migrate `~/os`: add input, `packages.docs` with `extraPages`/`extraLinks`
+      for termux, delete the four Python files, replace `diagrams.yaml`
+      commit-back with `nix build .#docs` + rsync, re-point the deploy workflow
+      trigger, optionally enable serve on nas.
+- [x] README with the zero-touch one-liner + prior-art note.
 - [ ] Later: nixpkgs PR; roadmap projections one at a time — flake inputs graph
       (`nix flake metadata --json`, follows edges), sops-nix secrets map, systemd timer
       calendar, disko/zfs storage layout, headscale ACL matrix, users×hosts access
