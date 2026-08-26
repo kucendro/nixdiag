@@ -8,8 +8,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
 
-const NIXOS_PROJ: &str = include_str!("../nix/projections/nixos.nix");
-const DARWIN_PROJ: &str = include_str!("../nix/projections/darwin.nix");
+const CORE_PROJ: &str = include_str!("../nix/projections/core.nix");
 
 /// Optional `nixdiag = { … };` output declared in the documented flake:
 /// defaults for mode A so `nixdiag gen` needs no flags. CLI flags override.
@@ -112,12 +111,13 @@ pub fn gather(flake: &Path, refs: &[HostRef]) -> Facts {
     let pairs: Vec<Option<(String, Host)>> = refs
         .par_iter()
         .map(|r| {
-            let proj = match r.kind {
-                Kind::Nixos => NIXOS_PROJ,
-                Kind::Darwin => DARWIN_PROJ,
+            let kind = match r.kind {
+                Kind::Nixos => "nixos",
+                Kind::Darwin => "darwin",
             };
+            let proj = format!("host: ({CORE_PROJ}) {{ inherit host; kind = \"{kind}\"; }}");
             let installable = format!(".#{}.{}", r.prefix, r.name);
-            let v = nix_eval_json(flake, &installable, Some(proj), true)?;
+            let v = nix_eval_json(flake, &installable, Some(&proj), true)?;
             match serde_json::from_value::<Host>(v) {
                 Ok(h) => Some((r.name.clone(), h)),
                 Err(e) => {

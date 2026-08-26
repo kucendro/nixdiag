@@ -12,20 +12,20 @@ lan: "🏠 LAN" { shape: cloud; style.fill: "#eafaf1" }
 
 diddy: "🖥️ diddy" {
   style: { fill: "#fbfbfe"; stroke: "#333"; bold: true }
-  grafana: "grafana" { class: infra }
-  subnet_router: "subnet router" { class: infra }
+  tailscale: "tailscale\n(mesh node)" { class: app }
+  grafana: "grafana\n(monitor)" { class: infra }
   base: "+ 11 system services" { class: base }
 }
 epstein: "🖥️ epstein" {
   style: { fill: "#fbfbfe"; stroke: "#333"; bold: true }
   headscale: "headscale\n(mesh control)" { class: infra }
-  nginx: "nginx\n(reverse proxy)" { class: infra }
+  nginx: "nginx\n(proxy)" { class: infra }
   base: "+ 11 system services" { class: base }
 }
 
 # data-flow edges
-epstein.nginx -> diddy.grafana: "grafana :3000" { style.stroke: "#4a76c4" }
+internet -> epstein.headscale: "hs.ts.example :443" { style.stroke: "#c0392b" }
+diddy.tailscale -> epstein.headscale: "mesh" { style.stroke: "#4a76c4" }
+diddy.tailscale -> lan: "advertise 192.168.1.0/24" { style.stroke: "#27893f" }
 epstein.nginx -> epstein.headscale: "hs :8080" { style.stroke: "#4a76c4" }
-internet -> epstein.nginx: "hs" { style.stroke: "#c0392b" }
-diddy -> epstein.headscale: "tailnet" { style.stroke: "#7a4fb5" }
-diddy.subnet_router -> lan: "advertise 192.168.1.0/24" { style.stroke: "#27893f" }
+epstein.nginx -> diddy.grafana: "grafana :3000" { style.stroke: "#4a76c4" }

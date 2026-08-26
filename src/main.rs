@@ -1,3 +1,4 @@
+mod annotations;
 mod d2;
 mod doccomment;
 mod eval;

@@ -29,14 +29,28 @@ pub fn leading_doc(text: &str) -> Option<String> {
     None
 }
 
+/// The doc comment with `#:` annotation lines stripped — those are directives
+/// for the topology (see annotations.rs), not prose.
 pub fn from_file(path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
-    let doc = leading_doc(&text)?;
+    let doc = strip_directives(&leading_doc(&text)?);
     if doc.is_empty() {
         None
     } else {
         Some(doc)
     }
+}
+
+fn strip_directives(doc: &str) -> String {
+    doc.lines()
+        .filter(|l| {
+            let t = l.trim_start();
+            !t.starts_with("#:") && !t.starts_with("nixdiag:")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
 }
 
 fn dedent(s: &str) -> String {

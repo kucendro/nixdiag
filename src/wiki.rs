@@ -1,5 +1,6 @@
 //! mdBook wiki source — port of gen-wiki.py.
 
+use crate::annotations::Model;
 use crate::facts::{DarwinHost, Facts, Host, NixosHost};
 use crate::output::{Out, MD_MARKER};
 use crate::render::DocComments;
@@ -43,6 +44,7 @@ pub fn generate(
     out: &mut Out,
     opts: &WikiOpts,
     docs: &DocComments,
+    model: &Model,
 ) -> Result<()> {
     let wiki = PathBuf::from("wiki");
     let src = wiki.join("src");
@@ -55,7 +57,7 @@ pub fn generate(
     page_architecture(out, &src)?;
     page_hosts(out, &src, facts, repo, docs)?;
     page_services(out, &src, facts, repo, docs)?;
-    page_endpoints(out, &src, facts)?;
+    page_endpoints(out, &src, facts, model)?;
     Ok(())
 }
 
@@ -303,38 +305,59 @@ fn page_services(
     out.write_auto(&src.join("services.md"), &o.join("\n"))
 }
 
-fn page_endpoints(out: &mut Out, src: &Path, facts: &Facts) -> Result<()> {
+fn page_endpoints(out: &mut Out, src: &Path, facts: &Facts, model: &Model) -> Result<()> {
     let mut o: Vec<String> = vec![
         MD_MARKER.into(),
         "".into(),
         "# Endpoints".into(),
         "".into(),
-        "nginx virtual hosts across the fleet. *tailnet* endpoints are bound to \
-         the mesh IP and only reachable over Tailscale; *public* ones listen on \
-         all interfaces."
+        "Declared service endpoints across the fleet, from `#: expose` \
+         annotations in the module files."
             .into(),
         "".into(),
-        "| Endpoint | Scope | Host |".into(),
-        "|---|---|---|".into(),
+        "| Endpoint | Port | Scope | Host | Service |".into(),
+        "|---|---|---|---|---|".into(),
     ];
-    let mut rows: Vec<(String, String, String)> = Vec::new();
-    for (host, f) in &facts.hosts {
-        let Some(n) = f.as_nixos() else { continue };
-        for v in &n.vhosts {
-            let scope = if v.listen.is_empty() {
-                "public"
-            } else {
-                "tailnet"
-            };
-            rows.push((v.name.clone(), scope.into(), host.clone()));
+    // (endpoint, port, scope, host, service)
+    let mut rows: Vec<(String, String, String, String, String)> = Vec::new();
+    let mut push = |host: &str, unit: Option<&str>, info: &crate::annotations::NodeInfo| {
+        for e in &info.exposes {
+            let endpoint = e
+                .name
+                .clone()
+                .unwrap_or_else(|| format!("{host}:{}", e.port));
+            let port = format!("{}{}", e.port, if e.udp { "/udp" } else { "" });
+            let scope = model
+                .effective_scope(host, unit, e)
+                .map(|s| s.label().to_string())
+                .unwrap_or_else(|| "—".into());
+            rows.push((
+                endpoint,
+                port,
+                scope,
+                host.to_string(),
+                unit.unwrap_or("—").to_string(),
+            ));
+        }
+    };
+    for host in facts.hosts.keys() {
+        if let Some(info) = model.hosts.get(host) {
+            push(host, None, info);
+        }
+        for ((h, unit), info) in &model.units {
+            if h == host {
+                push(host, Some(unit), info);
+            }
         }
     }
     rows.sort();
-    for (name, scope, host) in &rows {
-        o.push(format!("| `{name}` | {scope} | {host} |"));
+    for (endpoint, port, scope, host, service) in &rows {
+        o.push(format!(
+            "| `{endpoint}` | {port} | {scope} | {host} | {service} |"
+        ));
     }
     if rows.is_empty() {
-        o.push("| — | — | — |".into());
+        o.push("| — | — | — | — | — |".into());
     }
     out.write_auto(&src.join("endpoints.md"), &o.join("\n"))
 }

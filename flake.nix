@@ -107,16 +107,17 @@
 
       checks = eachSystem (pkgs: {
         build = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
-        golden =
-          pkgs.runCommand "nixdiag-golden"
+        reference =
+          pkgs.runCommand "nixdiag-reference"
             {
               docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs;
-              golden = ./tests/golden;
+              reference = ./tests/reference;
             }
             ''
-              diff -u "$golden/topology.d2" "$docs/topology.d2"
-              diff -u "$golden/modules.d2" "$docs/modules.d2"
-              diff -u "$golden/hosts.md" "$docs/wiki/src/hosts.md"
+              diff -u "$reference/topology.d2" "$docs/topology.d2"
+              diff -u "$reference/modules.d2" "$docs/modules.d2"
+              diff -u "$reference/hosts.md" "$docs/wiki/src/hosts.md"
+              diff -u "$reference/endpoints.md" "$docs/wiki/src/endpoints.md"
               touch $out
             '';
       });

@@ -4,7 +4,7 @@ use crate::facts::{Facts, Host, SCHEMA};
 use crate::output::Out;
 use crate::repo::Repo;
 use crate::wiki::WikiOpts;
-use crate::{doccomment, modules, topology, wiki};
+use crate::{annotations, doccomment, modules, topology, wiki};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -63,9 +63,25 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
     facts.normalize();
     let repo = Repo::new(opts.repo.clone());
     let mut out = Out::new(opts.out.clone());
-    topology::generate(facts, &repo, &mut out, opts.svg)?;
+
+    let (model, diags) = annotations::collect(facts, &repo);
+    if !diags.is_empty() {
+        for d in &diags {
+            eprintln!("error: {d}");
+        }
+        bail!("{} annotation error(s)", diags.len());
+    }
+    if model.total == 0 {
+        eprintln!(
+            "note: no `#:` annotations found — the topology shows hosts and \
+             firewall ports only. Annotate your modules to draw the data flow \
+             (see the Annotations section of the nixdiag README)."
+        );
+    }
+
+    topology::generate(facts, &model, &mut out, opts.svg)?;
     modules::generate(facts, &repo, &mut out, opts.svg)?;
     let docs = collect_docs(facts, &repo);
-    wiki::generate(facts, &repo, &mut out, &opts.wiki, &docs)?;
+    wiki::generate(facts, &repo, &mut out, &opts.wiki, &docs, &model)?;
     Ok(out)
 }

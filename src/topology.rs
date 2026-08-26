@@ -1,279 +1,129 @@
-//! Data-flow topology diagram — port of gen-topology.py.
+//! Data-flow topology diagram, driven entirely by `#:` annotations.
+//! With zero annotations it degrades to host boxes + firewall ports.
 
+use crate::annotations::{Endpoint, Model, Scope};
 use crate::d2::{write_and_render, D2_HEADER};
 use crate::facts::{Facts, Host};
 use crate::output::Out;
-use crate::repo::{rel_from_store, Repo};
-use crate::util::{resolve_upstream, sanitize, split_host_port};
+use crate::util::sanitize;
 use anyhow::Result;
 use indexmap::IndexMap;
-use regex::Regex;
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
 
-/// headscale base_domain names + policy.json host CIDRs -> host name.
-fn address_book(facts: &Facts, repo: &Repo) -> HashMap<String, String> {
-    let mut base = String::new();
-    let mut policy_path = String::new();
-    for f in facts.hosts.values().filter_map(Host::as_nixos) {
-        if f.headscale {
-            if !f.base_domain.is_empty() {
-                base = f.base_domain.clone();
+/// Known roles map to a d2 class and a label suffix; unknown roles render
+/// with defaults, so diagrams stay user-programmable without touching nixdiag.
+fn role_style(role: &str) -> (&'static str, String) {
+    let class = match role {
+        "mesh-control" | "proxy" | "monitor" | "dns" | "storage" | "gateway" => "infra",
+        _ => "app",
+    };
+    (class, role.replace('-', " "))
+}
+
+fn endpoint_id(e: &Endpoint) -> String {
+    match e {
+        Endpoint::Host(h) => sanitize(h),
+        Endpoint::Unit(h, u) => format!("{}.{}", sanitize(h), sanitize(u)),
+        Endpoint::Internet => "internet".into(),
+        Endpoint::Lan => "lan".into(),
+    }
+}
+
+fn edge_color(a: &Endpoint, b: &Endpoint) -> &'static str {
+    if matches!(a, Endpoint::Internet) || matches!(b, Endpoint::Internet) {
+        "#c0392b"
+    } else if matches!(a, Endpoint::Lan) || matches!(b, Endpoint::Lan) {
+        "#27893f"
+    } else {
+        "#4a76c4"
+    }
+}
+
+fn fmt_ports(tcp: &[u32], udp: &[u32]) -> String {
+    let list = |ps: &[u32]| {
+        ps.iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    match (tcp.is_empty(), udp.is_empty()) {
+        (false, false) => format!("tcp {} · udp {}", list(tcp), list(udp)),
+        (false, true) => format!("tcp {}", list(tcp)),
+        (true, false) => format!("udp {}", list(udp)),
+        (true, true) => String::new(),
+    }
+}
+
+pub fn generate(facts: &Facts, model: &Model, out: &mut Out, render_svg: bool) -> Result<()> {
+    // Nodes to draw per host: every annotated service, plus services that only
+    // appear as edge endpoints (any enabled service is a valid target).
+    let mut per_host: IndexMap<&str, IndexMap<&str, (&'static str, String)>> = facts
+        .hosts
+        .keys()
+        .map(|h| (h.as_str(), IndexMap::new()))
+        .collect();
+    for ((host, unit), info) in &model.units {
+        let (class, label) = match &info.role {
+            Some(r) => {
+                let (class, rl) = role_style(r);
+                (class, format!("{unit}\\n({rl})"))
             }
-            if !f.policy_path.is_empty() {
-                policy_path = f.policy_path.clone();
-            }
+            None => ("app", unit.clone()),
+        };
+        if let Some(m) = per_host.get_mut(host.as_str()) {
+            m.insert(unit.as_str(), (class, label));
         }
     }
-    let mut book = HashMap::new();
-    if !base.is_empty() {
-        for h in facts.hosts.keys() {
-            book.insert(format!("{h}.{base}"), h.clone());
-        }
-    }
-    if !policy_path.is_empty() {
-        // The eval-time path may not exist here (mode B sandbox); fall back to
-        // resolving it inside the repo source.
-        let candidates = [
-            Path::new(&policy_path).to_path_buf(),
-            rel_from_store(&policy_path)
-                .map(|r| repo.root.join(r))
-                .unwrap_or_default(),
-        ];
-        for p in candidates {
-            let Ok(text) = std::fs::read_to_string(&p) else {
-                continue;
-            };
-            if let Ok(serde_json::Value::Object(data)) = serde_json::from_str(&text) {
-                if let Some(serde_json::Value::Object(hosts)) = data.get("hosts") {
-                    for (name, cidr) in hosts {
-                        if let serde_json::Value::String(cidr) = cidr {
-                            let ip = cidr.split('/').next().unwrap_or(cidr);
-                            book.insert(ip.to_string(), name.clone());
-                        }
-                    }
+    for e in &model.edges {
+        for ep in [&e.from, &e.to] {
+            if let Endpoint::Unit(h, u) = ep {
+                if let Some(m) = per_host.get_mut(h.as_str()) {
+                    m.entry(u.as_str()).or_insert(("app", u.clone()));
                 }
             }
-            break;
         }
     }
-    book
-}
 
-struct Nodes {
-    present: HashSet<(String, String)>,
-    per_host: IndexMap<String, Vec<String>>,
-}
-
-impl Nodes {
-    fn node(&mut self, host: &str, nid: &str, label: &str, cls: &str) -> String {
-        let sid = sanitize(nid);
-        let refid = format!("{}.{}", sanitize(host), sid);
-        if self.present.insert((host.to_string(), sid.clone())) {
-            let safe = label.replace('"', "'").replace('\n', "\\n");
-            self.per_host
-                .get_mut(host)
-                .unwrap()
-                .push(format!("  {sid}: \"{safe}\" {{ class: {cls} }}"));
-        }
-        refid
-    }
-}
-
-pub fn generate(facts: &Facts, repo: &Repo, out: &mut Out, render_svg: bool) -> Result<()> {
-    let book = address_book(facts, repo);
-
-    let mut vhost_host: HashMap<String, String> = HashMap::new();
-    for (h, f) in &facts.hosts {
-        if let Some(n) = f.as_nixos() {
-            for vh in &n.vhosts {
-                vhost_host.insert(vh.name.clone(), h.clone());
+    // Expose edges: public ones come in from the internet, lan ones from the
+    // LAN cloud; mesh endpoints are only listed on the endpoints page.
+    let mut expose_edges: Vec<(Endpoint, Endpoint, String)> = Vec::new();
+    let mut collect =
+        |node: Endpoint, host: &str, unit: Option<&str>, info: &crate::annotations::NodeInfo| {
+            for e in &info.exposes {
+                let cloud = match model.effective_scope(host, unit, e) {
+                    Some(Scope::Public) => Endpoint::Internet,
+                    Some(Scope::Lan) => Endpoint::Lan,
+                    _ => continue,
+                };
+                let proto = if e.udp { "/udp" } else { "" };
+                let label = match &e.name {
+                    Some(n) => format!("{n} :{}{proto}", e.port),
+                    None => format!(":{}{proto}", e.port),
+                };
+                expose_edges.push((cloud, node.clone(), label));
             }
-        }
+        };
+    for (host, info) in &model.hosts {
+        collect(Endpoint::Host(host.clone()), host, None, info);
+    }
+    for ((host, unit), info) in &model.units {
+        collect(
+            Endpoint::Unit(host.clone(), unit.clone()),
+            host,
+            Some(unit),
+            info,
+        );
     }
 
-    let control_host: Option<String> = facts
-        .hosts
-        .iter()
-        .find(|(_, f)| f.as_nixos().is_some_and(|n| n.headscale))
-        .map(|(h, _)| h.clone());
-    let hub_host: Option<String> = facts
-        .hosts
-        .iter()
-        .find(|(_, f)| f.as_nixos().is_some_and(|n| n.beszel_hub))
-        .map(|(h, _)| h.clone());
-
-    // "host:port" -> (known host name or None, port); loopback means local.
-    let resolve = |hostport: &str, local: &str| -> (Option<String>, String) {
-        let (host, port) = split_host_port(hostport);
-        if matches!(host, "127.0.0.1" | "localhost" | "::1" | "") {
-            return (Some(local.to_string()), port.to_string());
-        }
-        if let Some(h) = book.get(host) {
-            return (Some(h.clone()), port.to_string());
-        }
-        if let Some(h) = vhost_host.get(host) {
-            return (Some(h.clone()), port.to_string());
-        }
-        (None, port.to_string())
-    };
-
-    let mut nodes = Nodes {
-        present: HashSet::new(),
-        per_host: facts
-            .hosts
-            .keys()
-            .map(|h| (h.clone(), Vec::new()))
-            .collect(),
-    };
-    let mut edges: Vec<(String, String, String, &str)> = Vec::new();
-    let mut internet_used = false;
-    let mut lan_used = false;
-
-    for (host, f) in &facts.hosts {
-        let Some(n) = f.as_nixos() else { continue };
-        if n.headscale {
-            nodes.node(host, "headscale", "headscale\n(mesh control)", "infra");
-        }
-        if n.vhosts
+    let internet_used = expose_edges.iter().any(|(c, ..)| *c == Endpoint::Internet)
+        || model
+            .edges
             .iter()
-            .any(|v| resolve_upstream(v.pass.as_deref(), &v.extra).is_some())
-        {
-            nodes.node(host, "nginx", "nginx\n(reverse proxy)", "infra");
-        }
-        if n.beszel_hub {
-            nodes.node(host, "beszel_hub", "beszel hub", "infra");
-        }
-        if n.prometheus {
-            nodes.node(host, "prometheus", "prometheus", "infra");
-        }
-        if n.blackbox {
-            nodes.node(host, "blackbox", "blackbox exporter", "infra");
-        }
-        if n.grafana {
-            nodes.node(host, "grafana", "grafana", "infra");
-        }
-        if n.routes.iter().any(|fl| fl.contains("--advertise-routes=")) {
-            nodes.node(host, "subnet_router", "subnet router", "infra");
-        }
-    }
-
-    for (host, f) in &facts.hosts {
-        let Some(n) = f.as_nixos() else { continue };
-        let mut local_infra: HashMap<String, &str> = HashMap::new();
-        if n.headscale {
-            local_infra.insert(n.headscale_port.to_string(), "headscale");
-        }
-        if n.beszel_hub {
-            local_infra.insert(n.beszel_hub_port.to_string(), "beszel_hub");
-        }
-        for vh in &n.vhosts {
-            let Some(up) = resolve_upstream(vh.pass.as_deref(), &vh.extra) else {
-                continue;
-            };
-            let (thost, port) = resolve(&up, host);
-            let sub = vh.name.split('.').next().unwrap_or(&vh.name).to_string();
-
-            let public = vh.listen.is_empty();
-            let app = if thost.as_deref() == Some(host) && local_infra.contains_key(&port) {
-                format!("{}.{}", sanitize(host), local_infra[&port])
-            } else if thost.as_ref().is_some_and(|t| facts.hosts.contains_key(t)) {
-                nodes.node(thost.as_ref().unwrap(), &sub, &sub, "app")
-            } else {
-                nodes.node(host, &format!("ext_{sub}"), &up, "app")
-            };
-            edges.push((
-                format!("{}.nginx", sanitize(host)),
-                app,
-                format!("{sub} :{port}"),
-                "#4a76c4",
-            ));
-            if public {
-                internet_used = true;
-                edges.push((
-                    "internet".into(),
-                    format!("{}.nginx", sanitize(host)),
-                    sub,
-                    "#c0392b",
-                ));
-            }
-        }
-    }
-
-    for (host, f) in &facts.hosts {
-        let member = match f {
-            Host::Nixos(n) => n.tailscale,
-            Host::Darwin(d) => d.casks.iter().any(|c| c.contains("tailscale")),
-        };
-        if let Some(control) = &control_host {
-            if member && host != control {
-                edges.push((
-                    sanitize(host),
-                    format!("{}.headscale", sanitize(control)),
-                    "tailnet".into(),
-                    "#7a4fb5",
-                ));
-            }
-        }
-    }
-
-    let routes_re = Regex::new(r"--advertise-routes=(\S+)").unwrap();
-    for (host, f) in &facts.hosts {
-        let Some(n) = f.as_nixos() else { continue };
-        for fl in &n.routes {
-            if let Some(m) = routes_re.captures(fl) {
-                lan_used = true;
-                for net in m[1].split(',') {
-                    edges.push((
-                        format!("{}.subnet_router", sanitize(host)),
-                        "lan".into(),
-                        format!("advertise {net}"),
-                        "#27893f",
-                    ));
-                }
-            }
-        }
-    }
-
-    for (host, f) in &facts.hosts {
-        let agent = match f {
-            Host::Nixos(n) => n.beszel_agent,
-            Host::Darwin(d) => d.daemons.iter().any(|x| x.contains("beszel")),
-        };
-        if let Some(hub) = &hub_host {
-            if agent && host != hub {
-                edges.push((
-                    sanitize(host),
-                    format!("{}.beszel_hub", sanitize(hub)),
-                    "metrics".into(),
-                    "#888",
-                ));
-            }
-        }
-    }
-
-    let scheme_re = Regex::new(r"^https?://").unwrap();
-    for (host, f) in &facts.hosts {
-        let Some(n) = f.as_nixos() else { continue };
-        if !n.prometheus {
-            continue;
-        }
-        let mut seen: HashSet<String> = HashSet::new();
-        for t in &n.prom_targets {
-            let hp = scheme_re.replace(t, "").trim_end_matches('/').to_string();
-            let (th, _) = resolve(&hp, host);
-            if let Some(th) = th {
-                if th != *host && seen.insert(th.clone()) {
-                    edges.push((
-                        format!("{}.prometheus", sanitize(host)),
-                        sanitize(&th),
-                        "scrape / probe".into(),
-                        "#888",
-                    ));
-                }
-            }
-        }
-    }
+            .any(|e| e.from == Endpoint::Internet || e.to == Endpoint::Internet);
+    let lan_used = expose_edges.iter().any(|(c, ..)| *c == Endpoint::Lan)
+        || model
+            .edges
+            .iter()
+            .any(|e| e.from == Endpoint::Lan || e.to == Endpoint::Lan);
 
     // --- emit ------------------------------------------------------------
     let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
@@ -301,25 +151,47 @@ pub fn generate(facts: &Facts, repo: &Repo, out: &mut Out, render_svg: bool) -> 
             Host::Darwin(_) => "🍏",
             Host::Nixos(_) => "🖥️",
         };
-        let mut block = nodes
-            .per_host
-            .shift_remove(host.as_str())
-            .unwrap_or_default();
-        block.push(format!(
+        o.push(format!("{}: \"{icon} {host}\" {{", sanitize(host)));
+        o.push("  style: { fill: \"#fbfbfe\"; stroke: \"#333\"; bold: true }".into());
+        for (unit, (class, label)) in per_host.get(host.as_str()).into_iter().flatten() {
+            let safe = label.replace('"', "'");
+            o.push(format!(
+                "  {}: \"{safe}\" {{ class: {class} }}",
+                sanitize(unit)
+            ));
+        }
+        if model.total == 0 {
+            if let Some(n) = f.as_nixos() {
+                let ports = fmt_ports(&n.tcp, &n.udp);
+                if !ports.is_empty() {
+                    o.push(format!("  ports: \"{ports}\" {{ class: base }}"));
+                }
+            }
+        }
+        o.push(format!(
             "  base: \"+ {} system services\" {{ class: base }}",
             f.svc_count()
         ));
-        o.push(format!("{}: \"{icon} {host}\" {{", sanitize(host)));
-        o.push("  style: { fill: \"#fbfbfe\"; stroke: \"#333\"; bold: true }".into());
-        o.extend(block);
         o.push("}".into());
     }
     o.push(String::new());
     o.push("# data-flow edges".into());
-    for (a, b, label, color) in &edges {
+    for (cloud, node, label) in &expose_edges {
         let lbl = label.replace('"', "'");
         o.push(format!(
-            "{a} -> {b}: \"{lbl}\" {{ style.stroke: \"{color}\" }}"
+            "{} -> {}: \"{lbl}\" {{ style.stroke: \"{}\" }}",
+            endpoint_id(cloud),
+            endpoint_id(node),
+            edge_color(cloud, node),
+        ));
+    }
+    for e in &model.edges {
+        let lbl = e.label.replace('"', "'");
+        o.push(format!(
+            "{} -> {}: \"{lbl}\" {{ style.stroke: \"{}\" }}",
+            endpoint_id(&e.from),
+            endpoint_id(&e.to),
+            edge_color(&e.from, &e.to),
         ));
     }
 

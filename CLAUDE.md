@@ -64,7 +64,7 @@ nix/projections/*.nix   # shared via include_str! AND exported in flake lib
 nix/lib.nix             # mkFacts / mkDocs
 nix/module.nix          # serve / timer
 templates/default/      # `nix flake init -t` consumer scaffold
-tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
+tests/fixture/          # mini flake with 2 fake hosts → reference-file tests
 ```
 
 ## Rules
@@ -75,8 +75,10 @@ tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
   with `makeWrapper` (`--suffix`, so the user's own binaries win).
 - The renderer **refuses to overwrite an existing file that lacks the AUTO marker**
   (`<!-- Auto-generated … -->` / `# Auto-generated …`). Safer than the Python.
-- Golden tests: render the fixture flake, snapshot d2 + Markdown, compare in
+- Reference tests: render the fixture flake, snapshot d2 + Markdown, compare in
   `nix flake check`. Update snapshots deliberately, never automatically.
+  The README's example diagrams are rendered from the reference files — whenever they
+  change, refresh with `d2 --layout elk tests/reference/<x>.d2 assets/<x>.svg`.
 - Plain `nix eval` errors on one host degrade gracefully (warn + skip), like the Python.
 - Darwin hosts must eval from Linux (eval only, no builds) — CI is a Linux Gitea runner.
 
@@ -140,12 +142,12 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
     monitor, agent, dns, storage, gateway) map to d2 classes + placement;
     unknown role names still render with defaults, so diagrams stay
     user-programmable without touching nixdiag.
-  - `#: expose <port>[/udp] [public|tailnet|lan] [name=<fqdn>]`
+  - `#: expose <port>[/udp] [public|mesh|lan] [name=<fqdn>]`
   - `#: -> <host[/service] | fqdn> [label]` (and `<-`) — any *enabled* service
     is a valid edge target for free (the generic core knows them all), so
     references resolve against real state, not strings.
   - `#: name <fqdn>` — address-book entry resolving that fqdn to this node
-  - `#: scope public|tailnet|lan`
+  - `#: scope public|mesh|lan`
   - Exact shorthands are frozen only after the ~/os dogfood — annotate the real
     nginx/headscale modules first and tune whatever feels repetitive.
 - **Zero annotations**: wiki, modules diagram, hosts/services/ports pages are
@@ -177,21 +179,39 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
 - [x] `topology.rs`, `modules.rs`, `wiki.rs`, `d2.rs` + `nixdiag render` / `gen`.
       Verified byte-for-byte against the committed os docs (modulo marker lines).
 - [x] `nixdiag check` drift gate.
-- [x] `nix/lib.nix` `mkFacts`/`mkDocs` (mode B) + `tests/fixture/` + golden
+- [x] `nix/lib.nix` `mkFacts`/`mkDocs` (mode B) + `tests/fixture/` + reference
       tests in `checks` (`nix build .#fixture-docs` refreshes; copy with
       `cp --no-preserve=mode`, store files are read-only).
 - [x] `doccomment.rs` (`/** */` via rnix) — host entry-module doc under the
       host heading, service file docs as sections on the services page.
 - [x] `nix/module.nix` serve (+ optional timer), `templates/default/`.
-- [ ] Migrate `~/os`: add input, `packages.docs` with `extraPages`/`extraLinks`
-      for termux, delete the four Python files, replace `diagrams.yaml`
-      commit-back with `nix build .#docs` + rsync, re-point the deploy workflow
-      trigger, optionally enable serve on nas.
+- [x] Migrate `~/os`: input added, `packages.docs` + `checks.docs`, Python
+      generators deleted, committed `docs/` dropped entirely (repo going
+      public), wiki served tailnet-only on edge via `services.nixdiag.serve`.
 - [x] README with the zero-touch one-liner + prior-art note.
-- [ ] v2 annotation engine (spec in "v2 direction" above): `#:` parser (rnix,
-      render-side), generic topology model, single generic `core.nix`
-      projection, schema 2, role→d2 class map; delete the schema-1 service
-      fields and the Rust heuristics.
+- [x] v2 annotation engine (spec in "v2 direction" above): `#:` parser (rnix,
+      render-side, `src/annotations.rs`), generic topology model, single
+      generic `core.nix` projection, schema 2, role→d2 class map; schema-1
+      service fields and the Rust heuristics deleted. First-cut decisions
+      (revisit at the dogfood, grammar not frozen yet):
+      - Attachment: an annotation binds to the nearest enclosing/following
+        `services.<x>`/`programs.<x>` attrpath; it must be on its own line
+        (trailing comments error). Sub-service enables (`services.x.hub`) are
+        invisible to the generic projection, so attachment falls back to the
+        hosts whose import graph reaches the file. File-level lines: host
+        entry module → host; else the units the file defines; else error.
+      - Malformed lines and dangling edge targets are hard render errors —
+        mode B's docs build fails, which is the intended CI gate.
+      - An expose with no scope (own, service, or host `#: scope`) makes no
+        public/lan claim: no cloud edge, `—` on the Endpoints page.
+      - Builtin edge targets `internet`/`lan`; a bare service name resolves
+        iff exactly one host enables it; fqdns resolve via `#: name` entries.
+      - Roles mesh-control/proxy/monitor/dns/storage/gateway → `infra` class,
+        everything else (incl. unknown) → `app`; label = role with `-`→space.
+      - Edge palette fixed: internet #c0392b, lan #27893f, rest #4a76c4.
+      - Scope keyword is `mesh`, not `tailnet`: the grammar stays
+        stack-agnostic (any overlay), matching the mesh-control/mesh-node
+        roles.
 - [ ] v2 dogfood: annotate ~/os modules, verify the rendered diagrams match the
       schema-1 heuristic output, freeze the grammar. (The Gitea→GitHub mirror
       of this repo happens around here — the user runs that themselves.)

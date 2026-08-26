@@ -11,19 +11,22 @@ rec {
     let
       pick = names: if hosts == null then names else builtins.filter (n: builtins.elem n hosts) names;
       project =
-        proj: cfgs:
+        kind: cfgs:
         builtins.listToAttrs (
           map (n: {
             name = n;
-            value = import proj cfgs.${n};
+            value = import ./projections/core.nix {
+              host = cfgs.${n};
+              inherit kind;
+            };
           }) (pick (builtins.attrNames cfgs))
         );
     in
     {
-      schema = 1;
+      schema = 2;
       hosts =
-        project ./projections/nixos.nix (flake.nixosConfigurations or { })
-        // project ./projections/darwin.nix (flake.darwinConfigurations or { });
+        project "nixos" (flake.nixosConfigurations or { })
+        // project "darwin" (flake.darwinConfigurations or { });
     };
 
   # flake -> docs derivation. `nix build .#docs` stays pure and cached;

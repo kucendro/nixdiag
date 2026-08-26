@@ -94,7 +94,7 @@ fn rel_str(p: &Path, repo: &Repo) -> String {
     }
 }
 
-fn build_import_graph(
+pub fn build_import_graph(
     entries: &[PathBuf],
     repo: &Repo,
 ) -> (HashSet<String>, HashSet<(String, String)>) {

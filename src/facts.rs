@@ -1,10 +1,14 @@
 //! The facts.json contract between extraction (Nix projections) and rendering.
+//!
+//! Schema 2: only quasi-frozen, stack-agnostic surfaces (module-system
+//! introspection, firewall, users). Topology semantics come from `#:`
+//! annotations in the repo source, parsed at render time.
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 /// Bump on any breaking change to this model or to nix/projections/.
-pub const SCHEMA: u32 = 1;
+pub const SCHEMA: u32 = 2;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Facts {
@@ -48,6 +52,14 @@ impl Host {
             Host::Darwin(h) => h.daemons.len() + h.user_agents.len(),
         }
     }
+
+    pub fn units(&self) -> impl Iterator<Item = &EnabledUnit> {
+        let (services, programs) = match self {
+            Host::Nixos(h) => (&h.services, &h.programs),
+            Host::Darwin(h) => (&h.services, &h.programs),
+        };
+        services.iter().chain(programs)
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -59,20 +71,6 @@ pub struct NixosHost {
     pub udp: Vec<u32>,
     pub users: Vec<String>,
     pub pkg_count: u64,
-    pub tailscale: bool,
-    pub routes: Vec<String>,
-    pub headscale: bool,
-    pub headscale_port: u32,
-    pub base_domain: String,
-    pub policy_path: String,
-    pub beszel_hub: bool,
-    pub beszel_hub_port: u32,
-    pub beszel_agent: bool,
-    pub prometheus: bool,
-    pub blackbox: bool,
-    pub grafana: bool,
-    pub prom_targets: Vec<String>,
-    pub vhosts: Vec<Vhost>,
     pub services: Vec<EnabledUnit>,
     pub programs: Vec<EnabledUnit>,
 }
@@ -85,15 +83,6 @@ pub struct DarwinHost {
     pub user_agents: Vec<String>,
     pub services: Vec<EnabledUnit>,
     pub programs: Vec<EnabledUnit>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Vhost {
-    pub name: String,
-    pub listen: Vec<String>,
-    pub pass: Option<String>,
-    pub extra: String,
 }
 
 /// A unit (service/program) that some module file enables.
