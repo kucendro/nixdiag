@@ -53,6 +53,10 @@ rec {
       theme ? null,
       background ? null,
       colors ? { },
+      # `@key` -> domain suffix for fqdn positions in annotations, e.g.
+      # { home = "home.example.com"; } lets `name=vault@home` render as
+      # vault.home.example.com without the literal appearing in the repo.
+      domains ? { },
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -63,7 +67,8 @@ rec {
       styleFlags =
         lib.optional (theme != null) "--theme ${theme}"
         ++ lib.optional (background != null) "--background ${lib.escapeShellArg background}"
-        ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors;
+        ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors
+        ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains;
     in
     pkgs.runCommand "nixdiag-docs"
       {

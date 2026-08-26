@@ -22,6 +22,8 @@ pub struct FlakeConfig {
     pub theme: Option<String>,
     pub background: Option<String>,
     pub colors: BTreeMap<String, String>,
+    /// `@key` -> domain suffix for fqdn positions in annotations.
+    pub domains: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Copy, PartialEq)]

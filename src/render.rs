@@ -52,6 +52,8 @@ pub struct RenderOpts {
     pub wiki: WikiOpts,
     pub svg: bool,
     pub style: crate::d2::D2Style,
+    /// `@key` -> domain suffix for fqdn positions in annotations.
+    pub domains: std::collections::BTreeMap<String, String>,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
@@ -65,7 +67,7 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
     let repo = Repo::new(opts.repo.clone());
     let mut out = Out::new(opts.out.clone());
 
-    let (model, diags) = annotations::collect(facts, &repo);
+    let (model, diags) = annotations::collect(facts, &repo, &opts.domains);
     if !diags.is_empty() {
         for d in &diags {
             eprintln!("error: {d}");

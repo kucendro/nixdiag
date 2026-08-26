@@ -6,10 +6,20 @@
 //! Grammar (one statement per line; a malformed line is a reported error):
 //!   #: <role>                                  role (implicit verb)
 //!   #: expose <port>[/udp] [scope] [name=<fqdn>]
-//!   #: -> <host[/service] | fqdn | internet | lan> [label]   (and `<-`)
+//!   #: -> <host[/service] | fqdn | internet | lan> [label] [name=<fqdn>[:port]]
+//!      (and `<-`; `name=` marks the fronted endpoint the annotated node
+//!      serves for that target — an Endpoints page row)
 //!   #: name <fqdn>                             address-book entry
 //!   #: scope public|mesh|lan
-//!   #: unit <name>                             declare an unprojected node
+//!   #: unit <[host/]name>                      declare an unprojected node
+//!      (the host pin is for files several hosts' import graphs reach)
+//! Any fqdn position accepts `<sub>@<key>`: the domain map (CLI `--domain`,
+//! flake `nixdiag.domains`, mkDocs `domains`) supplies the suffix at render
+//! time, so the domain literal never has to appear in the repo source.
+//! A `unit` in the file-leading doc comment is the file's default attachment:
+//! file-level lines anywhere in that file attach to it (per-binding
+//! attachment still wins), so data files feeding a service defined elsewhere
+//! can carry their annotations next to the data.
 //! `# nixdiag:` is the long alias; the same lines are recognized inside a
 //! file-leading `/** */` doc comment. A contiguous run of annotation lines
 //! forms one block; a `unit` declaration re-attaches its whole block.
@@ -65,6 +75,9 @@ enum Stmt {
         rev: bool,
         target: String,
         label: String,
+        /// `name=<fqdn>[:port]` — the endpoint the annotated node fronts.
+        name: Option<String>,
+        port: Option<u32>,
     },
     Name(String),
     Scope(Scope),
@@ -89,6 +102,8 @@ struct Raw {
     line: usize,
     attach: RawAttach,
     stmt: Stmt,
+    /// Came from the file-leading `/** */` doc comment.
+    doc: bool,
 }
 
 /// One node's annotation payload (a host box or a service inside it).
@@ -115,27 +130,40 @@ pub struct Edge {
     pub label: String,
 }
 
+/// A named endpoint from `name=` on an edge: the annotated node fronts
+/// `name` for `target` (an Endpoints page row, not a diagram element).
+#[derive(Debug)]
+pub struct NamedEndpoint {
+    pub name: String,
+    pub port: Option<u32>,
+    pub node: Endpoint,
+    pub target: Endpoint,
+}
+
 #[derive(Debug, Default)]
 pub struct Model {
     pub hosts: IndexMap<String, NodeInfo>,
     pub units: IndexMap<(String, String), NodeInfo>,
     pub edges: Vec<Edge>,
+    pub named: Vec<NamedEndpoint>,
     /// Total parsed statements — zero triggers the getting-started hint.
     pub total: usize,
 }
 
 impl Model {
+    /// A node's declared scope: its own, else its host's.
+    pub fn node_scope(&self, host: &str, unit: Option<&str>) -> Option<Scope> {
+        unit.and_then(|u| {
+            self.units
+                .get(&(host.to_string(), u.to_string()))
+                .and_then(|i| i.scope)
+        })
+        .or_else(|| self.hosts.get(host).and_then(|i| i.scope))
+    }
+
     /// Effective scope of an expose: its own, else the node's, else the host's.
     pub fn effective_scope(&self, host: &str, unit: Option<&str>, e: &Expose) -> Option<Scope> {
-        e.scope
-            .or_else(|| {
-                unit.and_then(|u| {
-                    self.units
-                        .get(&(host.to_string(), u.to_string()))
-                        .and_then(|i| i.scope)
-                })
-            })
-            .or_else(|| self.hosts.get(host).and_then(|i| i.scope))
+        e.scope.or_else(|| self.node_scope(host, unit))
     }
 }
 
@@ -157,24 +185,51 @@ fn parse_stmt(body: &str) -> Result<Stmt, String> {
     let toks: Vec<&str> = body.split_whitespace().collect();
     match toks.as_slice() {
         [] => Err("empty annotation".into()),
-        [arrow @ ("->" | "<-"), target, label @ ..] => Ok(Stmt::Edge {
-            rev: *arrow == "<-",
-            target: (*target).to_string(),
-            label: label.join(" "),
-        }),
+        [arrow @ ("->" | "<-"), target, rest @ ..] => {
+            let mut name: Option<String> = None;
+            let mut label: Vec<&str> = Vec::new();
+            for t in rest {
+                if let Some(n) = t.strip_prefix("name=") {
+                    if n.is_empty() {
+                        return Err("empty name= on edge".into());
+                    }
+                    if name.replace(n.to_string()).is_some() {
+                        return Err("duplicate name= on edge".into());
+                    }
+                } else {
+                    label.push(t);
+                }
+            }
+            let (name, port) = match name {
+                None => (None, None),
+                Some(n) => match n.rsplit_once(':') {
+                    None => (Some(n), None),
+                    Some((fqdn, p)) => {
+                        if fqdn.is_empty() {
+                            return Err("empty fqdn in name= on edge".into());
+                        }
+                        let p: u32 = p
+                            .parse()
+                            .map_err(|_| format!("`{p}` is not a port number in name="))?;
+                        (Some(fqdn.to_string()), Some(p))
+                    }
+                },
+            };
+            Ok(Stmt::Edge {
+                rev: *arrow == "<-",
+                target: (*target).to_string(),
+                label: label.join(" "),
+                name,
+                port,
+            })
+        }
         ["->" | "<-"] => Err("edge needs a target: `-> <host[/service] | fqdn> [label]`".into()),
         ["expose", port, rest @ ..] => parse_expose(port, rest),
         ["expose"] => Err("expose needs a port: `expose <port>[/udp] [scope] [name=<fqdn>]`".into()),
         ["name", fqdn] => Ok(Stmt::Name((*fqdn).to_string())),
         ["name", ..] => Err("name takes exactly one fqdn: `name <fqdn>`".into()),
-        ["unit", name]
-            if name
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') =>
-        {
-            Ok(Stmt::Unit((*name).to_string()))
-        }
-        ["unit", ..] => Err("unit takes exactly one name: `unit <name>`".into()),
+        ["unit", name] if is_unit_token(name) => Ok(Stmt::Unit((*name).to_string())),
+        ["unit", ..] => Err("unit takes exactly one name: `unit <name>` or `unit <host>/<name>`".into()),
         ["scope", s] => Scope::parse(s)
             .map(Stmt::Scope)
             .ok_or_else(|| format!("unknown scope `{s}` (public|mesh|lan)")),
@@ -225,6 +280,43 @@ fn parse_expose(port: &str, rest: &[&str]) -> Result<Stmt, String> {
         scope,
         name,
     }))
+}
+
+/// `<name>` or `<host>/<name>`: a slash pins the declared unit to one host
+/// (needed when several hosts' import graphs reach the file).
+fn is_unit_token(s: &str) -> bool {
+    let ident = |p: &str| {
+        !p.is_empty()
+            && p.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    };
+    match s.split_once('/') {
+        None => ident(s),
+        Some((h, u)) => ident(h) && ident(u),
+    }
+}
+
+/// `<sub>@<key>` in an fqdn position: the domain map supplies the suffix at
+/// render time, so domain literals stay out of the repo source. A bare
+/// `@<key>` is the domain itself; a token without `@` passes through.
+fn expand_fqdn(token: &str, domains: &BTreeMap<String, String>) -> Result<String, String> {
+    let Some((sub, key)) = token.rsplit_once('@') else {
+        return Ok(token.to_string());
+    };
+    let Some(domain) = domains.get(key) else {
+        let known: Vec<&str> = domains.keys().map(String::as_str).collect();
+        let hint = if known.is_empty() {
+            "declare one via the flake's `nixdiag.domains`, mkDocs `domains`, or `--domain KEY=DOMAIN`".into()
+        } else {
+            format!("known keys: {}", known.join(", "))
+        };
+        return Err(format!("unknown domain key `@{key}` — {hint}"));
+    };
+    Ok(if sub.is_empty() {
+        domain.clone()
+    } else {
+        format!("{sub}.{domain}")
+    })
 }
 
 // --- comment scan (rnix) --------------------------------------------------
@@ -314,20 +406,21 @@ fn scan_file(rel: &str, text: &str, raws: &mut Vec<Raw>, diags: &mut Vec<Diag>) 
     let parse = rnix::Root::parse(text);
     let mut file_raws: Vec<Raw> = Vec::new();
     let mut push =
-        |line: usize, attach: RawAttach, body: &str, diags: &mut Vec<Diag>| match parse_stmt(
-            body.trim(),
-        ) {
-            Ok(stmt) => file_raws.push(Raw {
-                file: rel.to_string(),
-                line,
-                attach,
-                stmt,
-            }),
-            Err(msg) => diags.push(Diag {
-                file: rel.to_string(),
-                line,
-                msg,
-            }),
+        |line: usize, attach: RawAttach, body: &str, doc: bool, diags: &mut Vec<Diag>| {
+            match parse_stmt(body.trim()) {
+                Ok(stmt) => file_raws.push(Raw {
+                    file: rel.to_string(),
+                    line,
+                    attach,
+                    stmt,
+                    doc,
+                }),
+                Err(msg) => diags.push(Diag {
+                    file: rel.to_string(),
+                    line,
+                    msg,
+                }),
+            }
         };
     let mut leading = true;
     for el in parse.syntax().descendants_with_tokens() {
@@ -348,7 +441,7 @@ fn scan_file(rel: &str, text: &str, raws: &mut Vec<Raw>, diags: &mut Vec<Diag>) 
                 let base = line_of(text, offset);
                 for (i, l) in s[3..s.len() - 2].lines().enumerate() {
                     if let Some(body) = doc_line_body(l) {
-                        push(base + i, RawAttach::File, body, diags);
+                        push(base + i, RawAttach::File, body, true, diags);
                     }
                 }
             }
@@ -367,8 +460,23 @@ fn scan_file(rel: &str, text: &str, raws: &mut Vec<Raw>, diags: &mut Vec<Diag>) 
             });
             continue;
         }
-        push(line, attach_of_path(&binding_path(&tok)), body, diags);
+        push(
+            line,
+            attach_of_path(&binding_path(&tok)),
+            body,
+            false,
+            diags,
+        );
     }
+
+    // A `unit` declared in the file-leading doc comment is the file's default
+    // attachment: file-level lines elsewhere in the file attach to it (e.g. a
+    // data file, imported with a plain `import`, whose entries feed a service
+    // defined somewhere else). Per-binding attachment still wins.
+    let file_default = file_raws.iter().find_map(|r| match (&r.stmt, r.doc) {
+        (Stmt::Unit(n), true) => Some(n.clone()),
+        _ => None,
+    });
 
     // Contiguous annotation lines form one block; a `unit <name>` declaration
     // re-attaches the whole block to that declared unit.
@@ -397,6 +505,13 @@ fn scan_file(rel: &str, text: &str, raws: &mut Vec<Raw>, diags: &mut Vec<Diag>) 
             }
         }
         i = j;
+    }
+    if let Some(name) = file_default {
+        for r in &mut file_raws {
+            if r.attach == RawAttach::File {
+                r.attach = RawAttach::Declared(name.clone());
+            }
+        }
     }
     raws.extend(file_raws);
 }
@@ -531,6 +646,15 @@ impl Ctx {
                     .collect())
             }
             RawAttach::Declared(name) => {
+                // `host/name` pins the host explicitly, for files shared
+                // between hosts (e.g. a data file both a proxy and a
+                // monitoring module import).
+                if let Some((host, unit)) = name.split_once('/') {
+                    if !self.host_order.iter().any(|h| h == host) {
+                        return Err(format!("unknown host `{host}` in `unit {name}`"));
+                    }
+                    return Ok(vec![Endpoint::Unit(host.to_string(), unit.to_string())]);
+                }
                 let via = self.hosts_reaching(&raw.file);
                 if via.is_empty() {
                     return Err(format!(
@@ -563,7 +687,11 @@ impl Ctx {
     }
 }
 
-pub fn collect(facts: &Facts, repo: &Repo) -> (Model, Vec<Diag>) {
+pub fn collect(
+    facts: &Facts,
+    repo: &Repo,
+    domains: &BTreeMap<String, String>,
+) -> (Model, Vec<Diag>) {
     let mut raws = Vec::new();
     let mut diags = Vec::new();
     for path in nix_files(&repo.root) {
@@ -603,6 +731,24 @@ pub fn collect(facts: &Facts, repo: &Repo) -> (Model, Vec<Diag>) {
                 continue;
             }
         };
+        // `@key` fqdn positions expand once per statement; a failed expansion
+        // reports one diagnostic and drops the statement.
+        let expanded_name = match &raw.stmt {
+            Stmt::Name(n) | Stmt::Expose(Expose { name: Some(n), .. }) => {
+                match expand_fqdn(n, domains) {
+                    Ok(v) => Some(v),
+                    Err(msg) => {
+                        diags.push(Diag {
+                            file: raw.file.clone(),
+                            line: raw.line,
+                            msg,
+                        });
+                        continue;
+                    }
+                }
+            }
+            _ => None,
+        };
         attached.push((i, targets.clone()));
         for t in &targets {
             let info = match t {
@@ -632,10 +778,18 @@ pub fn collect(facts: &Facts, repo: &Repo) -> (Model, Vec<Diag>) {
                         diags.push(dup("a scope"));
                     }
                 }
-                Stmt::Expose(e) => info.exposes.push(e.clone()),
-                Stmt::Name(n) => {
-                    info.names.push(n.clone());
-                    book.entry(n.clone()).or_default().push(t.clone());
+                Stmt::Expose(e) => {
+                    let mut e = e.clone();
+                    if e.name.is_some() {
+                        e.name = expanded_name.clone();
+                    }
+                    info.exposes.push(e);
+                }
+                Stmt::Name(_) => {
+                    if let Some(n) = &expanded_name {
+                        info.names.push(n.clone());
+                        book.entry(n.clone()).or_default().push(t.clone());
+                    }
                 }
                 // The or_default above already materialized the node.
                 Stmt::Unit(_) | Stmt::Edge { .. } => {}
@@ -646,21 +800,49 @@ pub fn collect(facts: &Facts, repo: &Repo) -> (Model, Vec<Diag>) {
     // Pass 2: edges.
     for (i, sources) in &attached {
         let raw = &raws[*i];
-        let Stmt::Edge { rev, target, label } = &raw.stmt else {
+        let Stmt::Edge {
+            rev,
+            target,
+            label,
+            name,
+            port,
+        } = &raw.stmt
+        else {
             continue;
         };
-        let to = match resolve_target(target, &ctx, &model, &book) {
+        let mut err = |msg| {
+            diags.push(Diag {
+                file: raw.file.clone(),
+                line: raw.line,
+                msg,
+            })
+        };
+        let to = match resolve_target(target, &ctx, &model, &book, domains) {
             Ok(t) => t,
             Err(msg) => {
-                diags.push(Diag {
-                    file: raw.file.clone(),
-                    line: raw.line,
-                    msg,
-                });
+                err(msg);
                 continue;
             }
         };
+        let name = match name {
+            Some(n) => match expand_fqdn(n, domains) {
+                Ok(v) => Some(v),
+                Err(msg) => {
+                    err(msg);
+                    continue;
+                }
+            },
+            None => None,
+        };
         for s in sources {
+            if let Some(n) = &name {
+                model.named.push(NamedEndpoint {
+                    name: n.clone(),
+                    port: *port,
+                    node: s.clone(),
+                    target: to.clone(),
+                });
+            }
             let (from, to) = if *rev {
                 (to.clone(), s.clone())
             } else {
@@ -682,7 +864,10 @@ fn resolve_target(
     ctx: &Ctx,
     model: &Model,
     book: &BTreeMap<String, Vec<Endpoint>>,
+    domains: &BTreeMap<String, String>,
 ) -> Result<Endpoint, String> {
+    let target = expand_fqdn(target, domains)?;
+    let target = target.as_str();
     match target {
         "internet" => return Ok(Endpoint::Internet),
         "lan" => return Ok(Endpoint::Lan),
@@ -763,7 +948,7 @@ mod tests {
         ));
         assert!(matches!(
             parse_stmt("-> nas/grafana metrics push"),
-            Ok(Stmt::Edge { rev: false, ref target, ref label }) if target == "nas/grafana" && label == "metrics push"
+            Ok(Stmt::Edge { rev: false, ref target, ref label, name: None, port: None }) if target == "nas/grafana" && label == "metrics push"
         ));
         assert!(matches!(
             parse_stmt("<- lan"),
@@ -777,6 +962,40 @@ mod tests {
         assert!(parse_stmt("expose http").is_err());
         assert!(parse_stmt("two words").is_err());
         assert!(parse_stmt("scope everywhere").is_err());
+    }
+
+    #[test]
+    fn edge_name() {
+        assert!(matches!(
+            parse_stmt("-> nas/vaultwarden vault :8222 name=vault@home:443"),
+            Ok(Stmt::Edge { ref label, name: Some(ref n), port: Some(443), .. })
+                if label == "vault :8222" && n == "vault@home"
+        ));
+        assert!(matches!(
+            parse_stmt("-> nas/gitea name=git.example.com"),
+            Ok(Stmt::Edge { name: Some(ref n), port: None, .. }) if n == "git.example.com"
+        ));
+        assert!(parse_stmt("-> nas/gitea name=").is_err());
+        assert!(parse_stmt("-> nas/gitea name=a name=b").is_err());
+        assert!(parse_stmt("-> nas/gitea name=x:http").is_err());
+        assert!(parse_stmt("-> nas/gitea name=:443").is_err());
+    }
+
+    #[test]
+    fn domain_expansion() {
+        let map: BTreeMap<String, String> =
+            [("home".to_string(), "example.com".to_string())].into();
+        assert_eq!(
+            expand_fqdn("vault@home", &map).unwrap(),
+            "vault.example.com"
+        );
+        assert_eq!(expand_fqdn("@home", &map).unwrap(), "example.com");
+        assert_eq!(expand_fqdn("plain.fqdn", &map).unwrap(), "plain.fqdn");
+        assert_eq!(expand_fqdn("nofqdn", &map).unwrap(), "nofqdn");
+        let err = expand_fqdn("vault@lan", &map).unwrap_err();
+        assert!(err.contains("@lan") && err.contains("home"), "{err}");
+        let err = expand_fqdn("vault@home", &BTreeMap::new()).unwrap_err();
+        assert!(err.contains("nixdiag.domains"), "{err}");
     }
 
     #[test]
@@ -826,8 +1045,30 @@ mod tests {
         assert!(diags[0].msg.contains("already declares"));
 
         assert!(matches!(parse_stmt("unit kubicek"), Ok(Stmt::Unit(n)) if n == "kubicek"));
+        assert!(matches!(parse_stmt("unit edge/nginx"), Ok(Stmt::Unit(n)) if n == "edge/nginx"));
         assert!(parse_stmt("unit two words").is_err());
+        assert!(parse_stmt("unit a/b/c").is_err());
+        assert!(parse_stmt("unit /x").is_err());
         assert!(parse_stmt("unit").is_err());
+    }
+
+    #[test]
+    fn doc_unit_is_file_default() {
+        let (raws, diags) = scan(
+            "/**\n  Upstream table.\n\n  #: unit nginx\n  #: scope mesh\n*/\n{\n  #: -> diddy/grafana grafana :3000\n  grafana = \"x:3000\";\n}\n",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(raws.len(), 3);
+        for r in &raws {
+            assert_eq!(r.attach, RawAttach::Declared("nginx".into()));
+        }
+
+        // A services./programs. binding below still wins over the file default.
+        let (raws, diags) = scan(
+            "/**\n  #: unit nginx\n*/\n{\n  #: monitor\n  services.grafana.enable = true;\n}\n",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(raws[1].attach, RawAttach::Unit("grafana".into()));
     }
 
     #[test]

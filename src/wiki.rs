@@ -311,8 +311,8 @@ fn page_endpoints(out: &mut Out, src: &Path, facts: &Facts, model: &Model) -> Re
         "".into(),
         "# Endpoints".into(),
         "".into(),
-        "Declared service endpoints across the fleet, from `#: expose` \
-         annotations in the module files."
+        "Declared service endpoints across the fleet, from `#: expose` and \
+         named `#: ->` annotations in the module files."
             .into(),
         "".into(),
         "| Endpoint | Port | Scope | Host | Service |".into(),
@@ -349,6 +349,33 @@ fn page_endpoints(out: &mut Out, src: &Path, facts: &Facts, model: &Model) -> Re
                 push(host, Some(unit), info);
             }
         }
+    }
+    // Named endpoints from `name=` on edges: the annotated node fronts the
+    // fqdn, the edge target is the service behind it.
+    use crate::annotations::Endpoint;
+    for ne in &model.named {
+        let (host, unit) = match &ne.node {
+            Endpoint::Host(h) => (h.clone(), None),
+            Endpoint::Unit(h, u) => (h.clone(), Some(u.clone())),
+            _ => continue,
+        };
+        let scope = model
+            .node_scope(&host, unit.as_deref())
+            .map(|s| s.label().to_string())
+            .unwrap_or_else(|| "—".into());
+        let service = match &ne.target {
+            Endpoint::Unit(_, u) => u.clone(),
+            Endpoint::Host(h) => h.clone(),
+            Endpoint::Internet => "internet".into(),
+            Endpoint::Lan => "lan".into(),
+        };
+        rows.push((
+            ne.name.clone(),
+            ne.port.map(|p| p.to_string()).unwrap_or_else(|| "—".into()),
+            scope,
+            host,
+            service,
+        ));
     }
     rows.sort();
     for (endpoint, port, scope, host, service) in &rows {

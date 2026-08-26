@@ -45,30 +45,10 @@
           inherit pkgs;
           flake = fixtureFlake;
           buildWiki = false;
+          domains.ts = "ts.example";
         };
 
-        nixdiag = pkgs.rustPlatform.buildRustPackage {
-          pname = "nixdiag";
-          version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
-          src = self;
-          cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = [ pkgs.makeWrapper ];
-          postInstall = ''
-            wrapProgram $out/bin/nixdiag \
-              --suffix PATH : ${
-                nixpkgs.lib.makeBinPath [
-                  pkgs.d2
-                  pkgs.nix
-                ]
-              }
-          '';
-
-          meta = {
-            description = "Static infrastructure docs from any Nix flake";
-            license = nixpkgs.lib.licenses.mit;
-            mainProgram = "nixdiag";
-          };
-        };
+        nixdiag = pkgs.callPackage ./nix/package.nix { };
       });
 
       overlays.default = final: prev: {

@@ -10,12 +10,11 @@
     virtualHosts."hs.ts.example" = {
       locations."/".proxyPass = "http://127.0.0.1:8080";
     };
-    #: -> diddy/grafana grafana :3000
     virtualHosts."grafana.ts.example" = {
       listenAddresses = [ "100.64.0.1" ];
       locations."/" = {
         proxyPass = "http://$grafana_upstream";
-        extraConfig = "set $grafana_upstream diddy.ts.example:3000;";
+        extraConfig = "set $grafana_upstream ${(import ./upstreams.nix).grafana};";
       };
     };
   };

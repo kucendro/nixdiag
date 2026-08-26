@@ -45,5 +45,5 @@ internet -> epstein.headscale: "hs.ts.example :443" { style.stroke: ${public} }
 diddy.tailscale -> epstein.headscale: "mesh" { style.stroke: ${mesh} }
 diddy.tailscale -> lan: "advertise 192.168.1.0/24" { style.stroke: ${lan} }
 diddy.grafana -> diddy.exporter: "scrapes" { style.stroke: ${mesh} }
-epstein.nginx -> epstein.headscale: "hs :8080" { style.stroke: ${mesh} }
 epstein.nginx -> diddy.grafana: "grafana :3000" { style.stroke: ${mesh} }
+epstein.nginx -> epstein.headscale: "hs :8080" { style.stroke: ${mesh} }

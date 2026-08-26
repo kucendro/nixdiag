@@ -145,13 +145,36 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
     unknown role names still render with defaults, so diagrams stay
     user-programmable without touching nixdiag.
   - `#: expose <port>[/udp] [public|mesh|lan] [name=<fqdn>]`
-  - `#: -> <host[/service] | fqdn> [label]` (and `<-`) — any *enabled* service
-    is a valid edge target for free (the generic core knows them all), so
-    references resolve against real state, not strings.
+  - `#: -> <host[/service] | fqdn> [label] [name=<fqdn>[:port]]` (and `<-`) —
+    any *enabled* service is a valid edge target for free (the generic core
+    knows them all), so references resolve against real state, not strings.
+    `name=` marks the fronted endpoint the annotated node serves for that
+    target: an Endpoints page row (scope from the node/host `#: scope`, port
+    user-stated, `—` without one); the diagram is unaffected.
   - `#: name <fqdn>` — address-book entry resolving that fqdn to this node
   - `#: scope public|mesh|lan`
-  - Exact shorthands are frozen only after the ~/os dogfood — annotate the real
-    nginx/headscale modules first and tune whatever feels repetitive.
+  - `#: unit <[host/]name>` — declares/targets a node; its contiguous block
+    attaches to it. In the file-leading doc comment it sets the file's
+    DEFAULT attachment: file-level annotations anywhere in that file attach
+    to it (per-binding attachment still wins), so a plain-data file (an
+    upstream table pulled in via `import ./x.nix`) carries annotations next
+    to its entries. The `host/` pin disambiguates files that several hosts'
+    import graphs reach (the os case: proxy and blackbox monitoring import
+    the same endpoints table — unpinned, everything duplicated onto nas).
+    The import graph follows both `imports = [ ... ]` lists and plain
+    `import ./path` expressions.
+  - Any fqdn position accepts `<sub>@<key>` (bare `@<key>` is the domain
+    itself): the suffix comes from a user-declared domain map (`--domain
+    KEY=DOMAIN`, flake `nixdiag.domains`, mkDocs `domains`; CLI overrides
+    flake), unknown key is a hard render error. Added at the os dogfood: the
+    proxied-vhost endpoints needed fqdns that public repo source must not
+    disclose, and comments cannot interpolate Nix values — the map injects
+    the private suffix at render time.
+  - Grammar FROZEN 2026-08-26 after the ~/os dogfood. Additive evolution only
+    (new statements/optional tokens are fine); renames or meaning changes are
+    a deliberate break with a version bump. Accepted semantics: sub-services
+    fold into the parent unit key unless split via `unit`; proxied vhosts get
+    Endpoints rows only through opt-in `name=` on their edges.
 - **Zero annotations**: wiki, modules diagram, hosts/services/ports pages are
   unaffected; the topology renders hosts + firewall ports with no edges, plus a
   stderr hint pointing at the annotation docs.
@@ -232,9 +255,9 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
       - Scope keyword is `mesh`, not `tailnet`: the grammar stays
         stack-agnostic (any overlay), matching the mesh-control/mesh-node
         roles.
-- [ ] v2 dogfood: annotate ~/os modules, verify the rendered diagrams match the
-      schema-1 heuristic output, freeze the grammar. (The Gitea→GitHub mirror
-      of this repo happens around here — the user runs that themselves.)
+- [x] v2 dogfood: ~/os modules annotated, rendered diagrams verified against
+      the schema-1 heuristic output, grammar frozen 2026-08-26. Grew `unit`,
+      edge `name=` and the `@key` domain map (see Grammar above).
 - [ ] v2.x: reference plucks (`cfg.*`) + options-tree validation in `check`.
 - [ ] Later: nixpkgs PR; extra diagrams/pages one at a time, each held to the
       v2 bar — derivable from stable generic surfaces (e.g. flake inputs graph

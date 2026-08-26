@@ -1,7 +1,7 @@
 {
   #: mesh-control
-  #: name hs.ts.example
-  #: expose 443 public name=hs.ts.example
+  #: name hs@ts
+  #: expose 443 public name=hs@ts
   services.headscale = {
     enable = true;
     port = 8080;

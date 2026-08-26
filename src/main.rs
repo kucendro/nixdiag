@@ -64,6 +64,10 @@ struct RenderArgs {
     /// output); repeatable
     #[arg(long = "color", value_name = "NAME=#HEX")]
     colors: Vec<String>,
+    /// Domain suffix for `@KEY` in annotation fqdns, as KEY=DOMAIN;
+    /// repeatable
+    #[arg(long = "domain", value_name = "KEY=DOMAIN")]
+    domains: Vec<String>,
 }
 
 #[derive(Subcommand)]
@@ -196,6 +200,15 @@ fn to_render_opts(
             .into_iter()
             .map(|(t, p)| (t, p.to_string_lossy().into_owned())),
     );
+    let mut domains = cfg.domains.clone();
+    for s in &r.domains {
+        match s.split_once('=') {
+            Some((k, v)) if !k.is_empty() && !v.is_empty() => {
+                domains.insert(k.to_string(), v.to_string());
+            }
+            _ => bail!("--domain expects KEY=DOMAIN, got: {s}"),
+        }
+    }
     Ok(RenderOpts {
         repo,
         out,
@@ -210,6 +223,7 @@ fn to_render_opts(
         },
         svg: !r.no_svg,
         style: to_style(r, cfg)?,
+        domains,
     })
 }
 

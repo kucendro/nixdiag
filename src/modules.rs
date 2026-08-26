@@ -69,7 +69,9 @@ pub fn host_entry_modules(host: &str, flake_text: &str, repo: &Repo) -> Vec<Path
     files
 }
 
-/// Relative-path tokens appearing in `imports = [ ... ];` lists.
+/// Relative-path tokens appearing in `imports = [ ... ];` lists, plus the
+/// argument of plain `import ./path` expressions (files pulled in as data,
+/// e.g. an upstream table, are part of the host's assembly too).
 fn parse_imports(nix_file: &Path) -> Vec<String> {
     let Ok(text) = std::fs::read_to_string(nix_file) else {
         return Vec::new();
@@ -83,6 +85,10 @@ fn parse_imports(nix_file: &Path) -> Vec<String> {
         for t in token_re.find_iter(seg) {
             out.push(t.as_str().to_string());
         }
+    }
+    let expr_re = Regex::new(r#"\bimport\s+(\.\.?/[^\s\])"';]+)"#).unwrap();
+    for c in expr_re.captures_iter(&text) {
+        out.push(c[1].to_string());
     }
     out
 }
