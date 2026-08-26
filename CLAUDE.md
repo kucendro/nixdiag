@@ -202,6 +202,15 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
         invisible to the generic projection, so attachment falls back to the
         hosts whose import graph reaches the file. File-level lines: host
         entry module → host; else the units the file defines; else error.
+      - `#: unit <name>` (added at the os dogfood) declares a node the
+        projection can't see — an OCI container, a raw/generated systemd
+        unit; placed on the hosts whose import graph reaches the file. A
+        contiguous run of `#:` lines is one block, and a `unit` declaration
+        re-attaches its whole block (also usable to split a sub-service from
+        its parent unit, e.g. beszel agent vs hub). The alternative — parser
+        recognition of `systemd.services.*` / `oci-containers` attrpaths —
+        was rejected as tool-side bias: the parser knows only
+        `services.`/`programs.` bindings, everything else is declared.
       - Malformed lines and dangling edge targets are hard render errors —
         mode B's docs build fails, which is the intended CI gate.
       - An expose with no scope (own, service, or host `#: scope`) makes no

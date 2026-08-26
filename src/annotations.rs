@@ -9,8 +9,10 @@
 //!   #: -> <host[/service] | fqdn | internet | lan> [label]   (and `<-`)
 //!   #: name <fqdn>                             address-book entry
 //!   #: scope public|mesh|lan
+//!   #: unit <name>                             declare an unprojected node
 //! `# nixdiag:` is the long alias; the same lines are recognized inside a
-//! file-leading `/** */` doc comment.
+//! file-leading `/** */` doc comment. A contiguous run of annotation lines
+//! forms one block; a `unit` declaration re-attaches its whole block.
 
 use crate::facts::Facts;
 use crate::modules::{build_import_graph, host_entry_modules};
@@ -66,12 +68,18 @@ enum Stmt {
     },
     Name(String),
     Scope(Scope),
+    /// Declares a node the projection can't see (a container, a raw systemd
+    /// unit); the contiguous `#:` block it sits in attaches to it.
+    Unit(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum RawAttach {
     /// `services.<x>` / `programs.<x>` binding directly below the line.
     Unit(String),
+    /// `#: unit <name>` declaration: placed on the hosts whose import graph
+    /// reaches the file, independent of any binding.
+    Declared(String),
     /// File-level: resolves to the host (entry module) or to what the file defines.
     File,
 }
@@ -159,6 +167,14 @@ fn parse_stmt(body: &str) -> Result<Stmt, String> {
         ["expose"] => Err("expose needs a port: `expose <port>[/udp] [scope] [name=<fqdn>]`".into()),
         ["name", fqdn] => Ok(Stmt::Name((*fqdn).to_string())),
         ["name", ..] => Err("name takes exactly one fqdn: `name <fqdn>`".into()),
+        ["unit", name]
+            if name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') =>
+        {
+            Ok(Stmt::Unit((*name).to_string()))
+        }
+        ["unit", ..] => Err("unit takes exactly one name: `unit <name>`".into()),
         ["scope", s] => Scope::parse(s)
             .map(Stmt::Scope)
             .ok_or_else(|| format!("unknown scope `{s}` (public|mesh|lan)")),
@@ -296,11 +312,12 @@ fn attach_of_path(mut path: &[Option<String>]) -> RawAttach {
 
 fn scan_file(rel: &str, text: &str, raws: &mut Vec<Raw>, diags: &mut Vec<Diag>) {
     let parse = rnix::Root::parse(text);
+    let mut file_raws: Vec<Raw> = Vec::new();
     let mut push =
         |line: usize, attach: RawAttach, body: &str, diags: &mut Vec<Diag>| match parse_stmt(
             body.trim(),
         ) {
-            Ok(stmt) => raws.push(Raw {
+            Ok(stmt) => file_raws.push(Raw {
                 file: rel.to_string(),
                 line,
                 attach,
@@ -352,6 +369,36 @@ fn scan_file(rel: &str, text: &str, raws: &mut Vec<Raw>, diags: &mut Vec<Diag>) 
         }
         push(line, attach_of_path(&binding_path(&tok)), body, diags);
     }
+
+    // Contiguous annotation lines form one block; a `unit <name>` declaration
+    // re-attaches the whole block to that declared unit.
+    let mut i = 0;
+    while i < file_raws.len() {
+        let mut j = i + 1;
+        while j < file_raws.len() && file_raws[j].line == file_raws[j - 1].line + 1 {
+            j += 1;
+        }
+        let mut declared: Option<String> = None;
+        for r in &file_raws[i..j] {
+            if let Stmt::Unit(n) = &r.stmt {
+                match &declared {
+                    Some(prev) => diags.push(Diag {
+                        file: rel.to_string(),
+                        line: r.line,
+                        msg: format!("this block already declares unit `{prev}`"),
+                    }),
+                    None => declared = Some(n.clone()),
+                }
+            }
+        }
+        if let Some(name) = declared {
+            for r in &mut file_raws[i..j] {
+                r.attach = RawAttach::Declared(name.clone());
+            }
+        }
+        i = j;
+    }
+    raws.extend(file_raws);
 }
 
 fn nix_files(root: &Path) -> Vec<PathBuf> {
@@ -483,6 +530,18 @@ impl Ctx {
                     .map(|h| Endpoint::Unit(h, u.clone()))
                     .collect())
             }
+            RawAttach::Declared(name) => {
+                let via = self.hosts_reaching(&raw.file);
+                if via.is_empty() {
+                    return Err(format!(
+                        "cannot place declared unit `{name}`: no host's import graph reaches this file"
+                    ));
+                }
+                Ok(via
+                    .into_iter()
+                    .map(|h| Endpoint::Unit(h, name.clone()))
+                    .collect())
+            }
             RawAttach::File => {
                 if let Some(host) = self.entry_of.get(&raw.file) {
                     return Ok(vec![Endpoint::Host(host.clone())]);
@@ -578,7 +637,8 @@ pub fn collect(facts: &Facts, repo: &Repo) -> (Model, Vec<Diag>) {
                     info.names.push(n.clone());
                     book.entry(n.clone()).or_default().push(t.clone());
                 }
-                Stmt::Edge { .. } => {}
+                // The or_default above already materialized the node.
+                Stmt::Unit(_) | Stmt::Edge { .. } => {}
             }
         }
     }
@@ -731,6 +791,43 @@ mod tests {
         assert_eq!(raws.len(), 1);
         assert_eq!(raws[0].attach, RawAttach::Unit("headscale".into()));
         assert_eq!(raws[0].line, 2);
+    }
+
+    #[test]
+    fn unit_declaration_reattaches_its_block() {
+        // A raw systemd unit is invisible to the parser; `unit` declares it
+        // and pulls the whole contiguous block onto the declared node.
+        let (raws, diags) = scan(
+            "{\n  #: unit kubicek\n  #: scope mesh\n  systemd.services.kubicek = {\n    wantedBy = [ ];\n  };\n}\n",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(raws.len(), 2);
+        assert_eq!(raws[0].attach, RawAttach::Declared("kubicek".into()));
+        assert_eq!(raws[1].attach, RawAttach::Declared("kubicek".into()));
+
+        // A `unit` in a block above a services binding overrides it (e.g. to
+        // split a sub-service from its parent unit).
+        let (raws, diags) = scan(
+            "{\n  #: unit beszel-agent\n  #: agent\n  services.beszel.agent = {\n    enable = true;\n  };\n}\n",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(raws[1].attach, RawAttach::Declared("beszel-agent".into()));
+
+        // Non-contiguous lines are separate blocks: the role keeps its own
+        // binding attachment.
+        let (raws, diags) =
+            scan("{\n  #: unit qore\n\n  #: monitor\n  services.grafana.enable = true;\n}\n");
+        assert!(diags.is_empty());
+        assert_eq!(raws[0].attach, RawAttach::Declared("qore".into()));
+        assert_eq!(raws[1].attach, RawAttach::Unit("grafana".into()));
+
+        let (_, diags) = scan("{\n  #: unit a\n  #: unit b\n  x = 1;\n}\n");
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].msg.contains("already declares"));
+
+        assert!(matches!(parse_stmt("unit kubicek"), Ok(Stmt::Unit(n)) if n == "kubicek"));
+        assert!(parse_stmt("unit two words").is_err());
+        assert!(parse_stmt("unit").is_err());
     }
 
     #[test]

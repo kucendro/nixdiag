@@ -33,6 +33,7 @@ lines attach to what the file defines, or to the host in a host entry module.
 | `#: -> nas/grafana metrics` | edge, label optional. Targets: `nas`, `nas/grafana`, `grafana`, a declared fqdn, `internet`, `lan`. `<-` reverses |
 | `#: name hs.example.com` | address book: the fqdn becomes a valid edge target |
 | `#: scope mesh` | default scope for this service's exposes |
+| `#: unit qore` | declares a node the module system can't see (an OCI container, a raw systemd unit); the adjacent `#:` lines attach to it |
 
 The annotated two-host test fixture renders as:
 
