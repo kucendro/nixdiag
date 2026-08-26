@@ -2,7 +2,7 @@
 
 # Hosts
 
-## 🖥️ diddy
+## 🖥️ luna
 
 | | |
 |---|---|
@@ -17,9 +17,9 @@
 **Services** (configured in this repo):
 
 - **grafana** — `modules/monitoring.nix`
-- **tailscale** — `hosts/diddy/default.nix`
+- **tailscale** — `hosts/luna/default.nix`
 
-## 🖥️ epstein
+## 🖥️ sol
 
 Edge node: mesh control plane and the fleet's reverse proxy.
 

@@ -65,6 +65,8 @@ nix/lib.nix             # mkFacts / mkDocs
 nix/module.nix          # serve / timer
 templates/default/      # `nix flake init -t` consumer scaffold
 tests/fixture/          # mini flake with 2 fake hosts → reference-file tests
+site/                   # hand-written mdBook, published to GitHub Pages
+.github/workflows/      # pages deploy only; CI proper lives in .gitea/
 ```
 
 ## Rules
@@ -81,6 +83,13 @@ tests/fixture/          # mini flake with 2 fake hosts → reference-file tests
   change, refresh with
   `d2 --layout elk --theme 200 tests/reference/<x>.d2 assets/<x>.svg`
   (`--theme 200` because the default palette is dark).
+- User-facing docs live in `site/` (mdBook, `nix build .#site`, `checks.site`),
+  published to <https://kucendro.github.io/nixdiag> by
+  `.github/workflows/pages.yml` as a Pages artifact — no gh-pages branch, which
+  the Gitea push mirror would prune. README stays a landing page: hero, one
+  example, links. The site nests `packages.demo-docs` (the fixture's own wiki)
+  at `/demo` and reuses `assets/*.svg`, so fixture, snapshots, README images and
+  demo cannot drift apart.
 - Plain `nix eval` errors on one host degrade gracefully (warn + skip), like the Python.
 - Darwin hosts must eval from Linux (eval only, no builds) — CI is a Linux Gitea runner.
 
@@ -214,6 +223,9 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
       generators deleted, committed `docs/` dropped entirely (repo going
       public), wiki served tailnet-only on edge via `services.nixdiag.serve`.
 - [x] README with the zero-touch one-liner + prior-art note.
+- [x] Docs site: `site/` mdBook (overview, quickstart, annotations, build and
+      serve, CLI), `packages.{site,demo-docs}` + `checks.site`, Pages workflow,
+      README trimmed to a landing page.
 - [x] v2 annotation engine (spec in "v2 direction" above): `#:` parser (rnix,
       render-side, `src/annotations.rs`), generic topology model, single
       generic `core.nix` projection, schema 2, role→d2 class map; schema-1

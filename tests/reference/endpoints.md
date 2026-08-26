@@ -6,6 +6,6 @@ Declared service endpoints across the fleet, from `#: expose` and named `#: ->` 
 
 | Endpoint | Port | Scope | Host | Service |
 |---|---|---|---|---|
-| `grafana.ts.example` | 3000 | mesh | diddy | grafana |
-| `grafana.ts.example` | 443 | mesh | epstein | grafana |
-| `hs.ts.example` | 443 | public | epstein | headscale |
+| `grafana.ts.example` | 3000 | mesh | luna | grafana |
+| `grafana.ts.example` | 443 | mesh | sol | grafana |
+| `hs.ts.example` | 443 | public | sol | headscale |

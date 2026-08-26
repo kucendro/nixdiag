@@ -1055,7 +1055,7 @@ mod tests {
     #[test]
     fn doc_unit_is_file_default() {
         let (raws, diags) = scan(
-            "/**\n  Upstream table.\n\n  #: unit nginx\n  #: scope mesh\n*/\n{\n  #: -> diddy/grafana grafana :3000\n  grafana = \"x:3000\";\n}\n",
+            "/**\n  Upstream table.\n\n  #: unit nginx\n  #: scope mesh\n*/\n{\n  #: -> luna/grafana grafana :3000\n  grafana = \"x:3000\";\n}\n",
         );
         assert!(diags.is_empty());
         assert_eq!(raws.len(), 3);

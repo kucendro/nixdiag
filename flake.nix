@@ -21,7 +21,7 @@
 
       fixtureFlake = {
         outPath = fixtureSrc;
-        nixosConfigurations = nixpkgs.lib.genAttrs [ "diddy" "epstein" ] (
+        nixosConfigurations = nixpkgs.lib.genAttrs [ "luna" "sol" ] (
           name:
           nixpkgs.lib.nixosSystem {
             modules = [
@@ -47,6 +47,30 @@
           buildWiki = false;
           domains.ts = "ts.example";
         };
+
+        # The fixture's wiki, published under /demo on the docs site.
+        demo-docs = self.lib.mkDocs {
+          inherit pkgs;
+          flake = fixtureFlake;
+          title = "Example fleet";
+          domains.ts = "ts.example";
+        };
+
+        # Hand-written book in site/, with the demo wiki nested under /demo
+        # and the README diagrams doubling as the book's images.
+        site =
+          pkgs.runCommand "nixdiag-site"
+            {
+              nativeBuildInputs = [ pkgs.mdbook ];
+            }
+            ''
+              cp -r ${./site} book
+              chmod -R u+w book
+              cp ${./assets}/topology.svg ${./assets}/modules.svg book/src/
+              # --dest-dir resolves relative paths against the cwd, not the book root
+              mdbook build book --dest-dir $out
+              cp -r --no-preserve=mode ${demo-docs}/wiki/book $out/demo
+            '';
 
         nixdiag = pkgs.callPackage ./nix/package.nix { };
       });
@@ -87,6 +111,7 @@
 
       checks = eachSystem (pkgs: {
         build = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
+        site = self.packages.${pkgs.stdenv.hostPlatform.system}.site;
         reference =
           pkgs.runCommand "nixdiag-reference"
             {

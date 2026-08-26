@@ -3,11 +3,11 @@
 # this file textually for targetModule entries.
 {
   hosts = {
-    diddy = {
-      targetModule = ./hosts/diddy;
+    luna = {
+      targetModule = ./hosts/luna;
     };
-    epstein = {
-      targetModule = ./hosts/epstein;
+    sol = {
+      targetModule = ./hosts/sol;
     };
   };
 }

@@ -18,16 +18,16 @@ vars: {
 }
 direction: right
 
-diddy: "diddy" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
-epstein: "epstein" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
+luna: "luna" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
+sol: "sol" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
 
 hosts: "hosts" {
-  diddy: "diddy" {
+  luna: "luna" {
     default_nix: "default.nix" { shape: page
       svc_tailscale: "tailscale" { shape: oval; style.fill: ${appFill} }
     }
   }
-  epstein: "epstein" {
+  sol: "sol" {
     default_nix: "default.nix" { shape: page }
   }
 }
@@ -46,13 +46,13 @@ modules: "modules" {
 }
 
 # host -> entry module
-diddy -> hosts.diddy.default_nix
-epstein -> hosts.epstein.default_nix
+luna -> hosts.luna.default_nix
+sol -> hosts.sol.default_nix
 
 # module imports
-hosts.diddy.default_nix -> modules.common_nix
-hosts.diddy.default_nix -> modules.monitoring_nix
-hosts.epstein.default_nix -> modules.common_nix
-hosts.epstein.default_nix -> modules.mesh_nix
-hosts.epstein.default_nix -> modules.web_nix
+hosts.luna.default_nix -> modules.common_nix
+hosts.luna.default_nix -> modules.monitoring_nix
+hosts.sol.default_nix -> modules.common_nix
+hosts.sol.default_nix -> modules.mesh_nix
+hosts.sol.default_nix -> modules.web_nix
 modules.web_nix -> modules.upstreams_nix

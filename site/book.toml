@@ -1,0 +1,15 @@
+[book]
+title = "nixdiag"
+description = "Static infrastructure docs from any Nix flake"
+src = "src"
+
+[build]
+# the SUMMARY links /demo, which mdbook must not try to create as a chapter
+create-missing = false
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+no-section-label = true
+git-repository-url = "https://github.com/kucendro/nixdiag"
+site-url = "/nixdiag/"
