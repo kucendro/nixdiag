@@ -37,8 +37,9 @@ on generated files.
 - **Doc comments**: leading RFC 145 `/** … */` block in a module file = file-level doc
   (Markdown body). Parse with the `rnix` crate, not regex. Attachment is automatic: file
   defining a service → that service's wiki entry; a host's entry module → host description.
-  No annotation grammar in v1. Hand-written pages come in via `mkDocs.extraPages` /
-  `--extra-page` (generalizes the old `write_once` index.md behavior).
+  No annotation grammar in v1 (v2 adds one — see "v2 direction" below). Hand-written
+  pages come in via `mkDocs.extraPages` / `--extra-page` (generalizes the old
+  `write_once` index.md behavior).
 - **NixOS module** (`nix/module.nix`): `services.nixdiag.serve` points an nginx vhost
   root at the docs derivation — no daemon, no timer; docs ship atomically with each
   deploy. Optional `services.nixdiag.timer` (oneshot + OnCalendar, pulls a ref, runs
@@ -99,6 +100,53 @@ tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
   (the committed os docs list the module's default `localhost` vhost too).
   Candidate cleanup for later, post-parity.
 
+## v2 direction: annotations, not built-in bias (decided 2026-08-26)
+
+Schema 1 hardcodes one stack (tailscale/headscale/nginx/prometheus/beszel) into
+projections, schema, and renderer. Right for parity, wrong permanently. v2 moves all
+topology *semantics* into the documented repo itself — nixdiag assumes nothing about
+any particular service unless the user asks. The visual language (d2 styles, scopes,
+wiki layout) does not change, and rendering stays text-only: no icon/image assets,
+ever (contrast nix-topology).
+
+- **Topology annotations**: comment lines in the user's own module files, sigil
+  `# nixdiag: …`; the same lines are recognized inside leading `/** */` doc comments.
+  Comments are invisible to eval, so annotations are parsed render-side with rnix
+  (the renderer owns the repo source in both modes — no new plumbing).
+  **Attachment**: a line directly above a `services.<x>` / `programs.<x>` binding
+  attaches to that service; in a file-leading doc comment it attaches to whatever
+  that file defines (reverse `definitionsWithLocations`); host entry modules take
+  host-level annotations.
+- **Grammar** (line-oriented, deliberately small; a malformed line is a reported
+  error, never silently ignored):
+  - `nixdiag: role <name> [k=v …]` — known roles (mesh-control, mesh-node, proxy,
+    monitor, agent, dns, storage, gateway) map to d2 classes + placement; unknown
+    role names still render with default styling, so diagrams stay
+    user-programmable without touching nixdiag.
+  - `nixdiag: expose <port>[/udp] [public|tailnet|lan] [name=<fqdn>]`
+  - `nixdiag: edge -> <host[/service] | fqdn> [label]` (and `<-` for reverse)
+  - `nixdiag: name <fqdn>` — address-book entry resolving that fqdn to this node
+  - `nixdiag: scope public|tailnet|lan`
+- **Adapters are summoned, never assumed.** The schema-1 heuristics survive as
+  adapters — nginx vhost + `set $var` upstream walker, headscale base_domain
+  address book, tailscale routes, prometheus scrape targets, beszel edges — but
+  each activates only when its (service, role) pair is annotated: `nixdiag: role
+  proxy` above `services.nginx` switches the vhost walker on; no annotation, no
+  assumption. `role proxy` on a service without an adapter (caddy, traefik, …)
+  still styles the node; its edges come from explicit `edge`/`expose` lines. The
+  adapter registry grows one service at a time with no schema changes.
+- **Projection split**: `nix/projections/core.nix` (generic — enabled units +
+  defining files, firewall ports, users, platform, stateVersion) plus
+  `nix/projections/adapters/<svc>.nix`. All are always evaluated and namespaced
+  under `adapters.*` in facts (**schema 2**; the schema-1 top-level service fields
+  go away). Always-evaluating keeps mode B a pure one-shot — collecting inert data
+  is not bias, interpreting it unasked was. The renderer builds a generic topology
+  model (nodes / endpoints / edges / scopes / addresses) from annotations plus
+  summoned adapters and feeds it to the unchanged d2/wiki emitters.
+- **Zero annotations**: wiki, modules diagram, hosts/services/ports pages are
+  unaffected; the topology renders hosts + firewall ports with no edges, plus a
+  stderr hint pointing at the annotation docs.
+
 ## To do
 
 - [x] Scaffold: `flake.nix`, `Cargo.toml`, binary via `buildRustPackage`,
@@ -120,7 +168,15 @@ tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
       commit-back with `nix build .#docs` + rsync, re-point the deploy workflow
       trigger, optionally enable serve on nas.
 - [x] README with the zero-touch one-liner + prior-art note.
-- [ ] Later: nixpkgs PR; roadmap projections one at a time — flake inputs graph
-      (`nix flake metadata --json`, follows edges), sops-nix secrets map, systemd timer
-      calendar, disko/zfs storage layout, headscale ACL matrix, users×hosts access
-      matrix, firewall-vs-listeners port map.
+- [ ] v2 annotation engine (spec in "v2 direction" above): `# nixdiag:` parser
+      (rnix, render-side), generic topology model, projection split
+      core/adapters, schema 2, role→d2 class map.
+- [ ] v2 dogfood: annotate ~/os modules, verify the rendered diagrams match the
+      schema-1 heuristic output byte-for-byte, then delete the schema-1 service
+      fields. (The Gitea→GitHub mirror of this repo happens around here — the
+      user runs that themselves.)
+- [ ] Later: nixpkgs PR; roadmap *adapters* one at a time, each summoned by
+      annotation — flake inputs graph (`nix flake metadata --json`, follows
+      edges), sops-nix secrets map, systemd timer calendar, disko/zfs storage
+      layout, headscale ACL matrix, users×hosts access matrix,
+      firewall-vs-listeners port map.
