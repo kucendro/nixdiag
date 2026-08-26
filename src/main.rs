@@ -54,6 +54,16 @@ struct RenderArgs {
     /// Skip SVG rendering (d2)
     #[arg(long)]
     no_svg: bool,
+    /// Color theme: dark (default) or light
+    #[arg(long, value_parser = ["light", "dark"])]
+    theme: Option<String>,
+    /// Diagram canvas fill (default transparent)
+    #[arg(long)]
+    background: Option<String>,
+    /// Palette override as NAME=#HEX (names: the vars block in the d2
+    /// output); repeatable
+    #[arg(long = "color", value_name = "NAME=#HEX")]
+    colors: Vec<String>,
 }
 
 #[derive(Subcommand)]
@@ -199,6 +209,43 @@ fn to_render_opts(
             extra_links,
         },
         svg: !r.no_svg,
+        style: to_style(r, cfg)?,
+    })
+}
+
+fn to_style(r: &RenderArgs, cfg: &eval::FlakeConfig) -> Result<d2::D2Style> {
+    let dark = match r.theme.as_deref().or(cfg.theme.as_deref()) {
+        None | Some("dark") => true,
+        Some("light") => false,
+        Some(t) => bail!("theme must be light or dark, got: {t}"),
+    };
+    let mut colors: Vec<(String, String)> = cfg
+        .colors
+        .iter()
+        .map(|(n, v)| (n.clone(), v.clone()))
+        .collect();
+    for s in &r.colors {
+        match s.split_once('=') {
+            Some((n, v)) if !n.is_empty() && !v.is_empty() => {
+                colors.push((n.to_string(), v.to_string()))
+            }
+            _ => bail!("--color expects NAME=#HEX, got: {s}"),
+        }
+    }
+    for (n, _) in &colors {
+        if !d2::PALETTE.iter().any(|(p, ..)| p == n) {
+            let known: Vec<&str> = d2::PALETTE.iter().map(|(p, ..)| *p).collect();
+            bail!("unknown color {n}; palette: {}", known.join(", "));
+        }
+    }
+    Ok(d2::D2Style {
+        dark,
+        background: r
+            .background
+            .clone()
+            .or_else(|| cfg.background.clone())
+            .or_else(|| Some("transparent".into())),
+        colors,
     })
 }
 

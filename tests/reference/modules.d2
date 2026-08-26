@@ -1,14 +1,30 @@
 # Auto-generated from the Nix config by nixdiag. Do not edit.
 # Regenerate: nixdiag gen
+style.fill: "transparent"
+vars: {
+  appFill: "#1c2e4a"
+  appStroke: "#7fa7e8"
+  infraFill: "#4a3413"
+  infraStroke: "#d9995a"
+  baseFill: "#2a2a2e"
+  baseStroke: "#666"
+  hostFill: "#181825"
+  hostStroke: "#a6adc8"
+  progFill: "#1e3a24"
+  hostCloud: "#3d3517"
+  public: "#e74c3c"
+  lan: "#2ecc71"
+  mesh: "#7fa7e8"
+}
 direction: right
 
-diddy: "diddy" { shape: cloud; style.fill: "#fff3cd"; style.bold: true }
-epstein: "epstein" { shape: cloud; style.fill: "#fff3cd"; style.bold: true }
+diddy: "diddy" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
+epstein: "epstein" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
 
 hosts: "hosts" {
   diddy: "diddy" {
     default_nix: "default.nix" { shape: page
-      svc_tailscale: "tailscale" { shape: oval; style.fill: "#e6f0ff" }
+      svc_tailscale: "tailscale" { shape: oval; style.fill: ${appFill} }
     }
   }
   epstein: "epstein" {
@@ -18,13 +34,13 @@ hosts: "hosts" {
 modules: "modules" {
   common_nix: "common.nix" { shape: page }
   mesh_nix: "mesh.nix" { shape: page
-    svc_headscale: "headscale" { shape: oval; style.fill: "#e6f0ff" }
+    svc_headscale: "headscale" { shape: oval; style.fill: ${appFill} }
   }
   monitoring_nix: "monitoring.nix" { shape: page
-    svc_grafana: "grafana" { shape: oval; style.fill: "#e6f0ff" }
+    svc_grafana: "grafana" { shape: oval; style.fill: ${appFill} }
   }
   web_nix: "web.nix" { shape: page
-    svc_nginx: "nginx" { shape: oval; style.fill: "#e6f0ff" }
+    svc_nginx: "nginx" { shape: oval; style.fill: ${appFill} }
   }
 }
 

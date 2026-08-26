@@ -51,6 +51,7 @@ pub struct RenderOpts {
     pub out: PathBuf,
     pub wiki: WikiOpts,
     pub svg: bool,
+    pub style: crate::d2::D2Style,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
@@ -79,8 +80,8 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
         );
     }
 
-    topology::generate(facts, &model, &mut out, opts.svg)?;
-    modules::generate(facts, &repo, &mut out, opts.svg)?;
+    topology::generate(facts, &model, &mut out, opts.svg, &opts.style)?;
+    modules::generate(facts, &repo, &mut out, opts.svg, &opts.style)?;
     let docs = collect_docs(facts, &repo);
     wiki::generate(facts, &repo, &mut out, &opts.wiki, &docs, &model)?;
     Ok(out)

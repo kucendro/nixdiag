@@ -1,31 +1,47 @@
 # Auto-generated from the Nix config by nixdiag. Do not edit.
 # Regenerate: nixdiag gen
+style.fill: "transparent"
+vars: {
+  appFill: "#1c2e4a"
+  appStroke: "#7fa7e8"
+  infraFill: "#4a3413"
+  infraStroke: "#d9995a"
+  baseFill: "#2a2a2e"
+  baseStroke: "#666"
+  hostFill: "#181825"
+  hostStroke: "#a6adc8"
+  progFill: "#1e3a24"
+  hostCloud: "#3d3517"
+  public: "#e74c3c"
+  lan: "#2ecc71"
+  mesh: "#7fa7e8"
+}
 direction: right
 classes: {
-  app: { style: { fill: "#e6f0ff"; stroke: "#4a76c4" } }
-  infra: { style: { fill: "#ffe9cc"; stroke: "#c47a29" } }
-  base: { style: { fill: "#f0f0f0"; stroke: "#999"; font-size: 13 } }
+  app: { style: { fill: ${appFill}; stroke: ${appStroke} } }
+  infra: { style: { fill: ${infraFill}; stroke: ${infraStroke} } }
+  base: { style: { fill: ${baseFill}; stroke: ${baseStroke}; font-size: 13 } }
 }
 
-internet: "🌐 Internet" { shape: cloud; style.fill: "#fdecea" }
-lan: "🏠 LAN" { shape: cloud; style.fill: "#eafaf1" }
+internet: "🌐 Internet" { shape: cloud; style: { fill: ${hostFill}; stroke: ${public} } }
+lan: "🏠 LAN" { shape: cloud; style: { fill: ${hostFill}; stroke: ${lan} } }
 
 diddy: "🖥️ diddy" {
-  style: { fill: "#fbfbfe"; stroke: "#333"; bold: true }
+  style: { fill: ${hostFill}; stroke: ${hostStroke}; bold: true }
   tailscale: "tailscale\n(mesh node)" { class: app }
   grafana: "grafana\n(monitor)" { class: infra }
   base: "+ 11 system services" { class: base }
 }
 epstein: "🖥️ epstein" {
-  style: { fill: "#fbfbfe"; stroke: "#333"; bold: true }
+  style: { fill: ${hostFill}; stroke: ${hostStroke}; bold: true }
   headscale: "headscale\n(mesh control)" { class: infra }
   nginx: "nginx\n(proxy)" { class: infra }
   base: "+ 11 system services" { class: base }
 }
 
 # data-flow edges
-internet -> epstein.headscale: "hs.ts.example :443" { style.stroke: "#c0392b" }
-diddy.tailscale -> epstein.headscale: "mesh" { style.stroke: "#4a76c4" }
-diddy.tailscale -> lan: "advertise 192.168.1.0/24" { style.stroke: "#27893f" }
-epstein.nginx -> epstein.headscale: "hs :8080" { style.stroke: "#4a76c4" }
-epstein.nginx -> diddy.grafana: "grafana :3000" { style.stroke: "#4a76c4" }
+internet -> epstein.headscale: "hs.ts.example :443" { style.stroke: ${public} }
+diddy.tailscale -> epstein.headscale: "mesh" { style.stroke: ${mesh} }
+diddy.tailscale -> lan: "advertise 192.168.1.0/24" { style.stroke: ${lan} }
+epstein.nginx -> epstein.headscale: "hs :8080" { style.stroke: ${mesh} }
+epstein.nginx -> diddy.grafana: "grafana :3000" { style.stroke: ${mesh} }

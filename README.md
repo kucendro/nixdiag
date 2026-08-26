@@ -50,6 +50,9 @@ packages.x86_64-linux.docs = nixdiag.lib.mkDocs {
   pkgs = nixpkgs.legacyPackages.x86_64-linux;
   flake = self;
   title = "my infrastructure wiki";
+  theme = "light";               # default: dark on a transparent canvas
+  background = "#ffffff";
+  colors.public = "#ff5555";     # any name from the vars block in the d2 files
 };
 
 # nginx vhost, the wiki ships with every deploy

@@ -78,7 +78,9 @@ tests/fixture/          # mini flake with 2 fake hosts → reference-file tests
 - Reference tests: render the fixture flake, snapshot d2 + Markdown, compare in
   `nix flake check`. Update snapshots deliberately, never automatically.
   The README's example diagrams are rendered from the reference files — whenever they
-  change, refresh with `d2 --layout elk tests/reference/<x>.d2 assets/<x>.svg`.
+  change, refresh with
+  `d2 --layout elk --theme 200 tests/reference/<x>.d2 assets/<x>.svg`
+  (`--theme 200` because the default palette is dark).
 - Plain `nix eval` errors on one host degrade gracefully (warn + skip), like the Python.
 - Darwin hosts must eval from Linux (eval only, no builds) — CI is a Linux Gitea runner.
 
@@ -208,7 +210,16 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
         iff exactly one host enables it; fqdns resolve via `#: name` entries.
       - Roles mesh-control/proxy/monitor/dns/storage/gateway → `infra` class,
         everything else (incl. unknown) → `app`; label = role with `-`→space.
-      - Edge palette fixed: internet #c0392b, lan #27893f, rest #4a76c4.
+      - Colors all live in a d2 `vars` block per diagram; built-in dark
+        (default) and light sets, user-tunable via `--theme dark|light`,
+        `--background` (default transparent) and repeatable
+        `--color name=#hex` (mkDocs: `theme`/`background`/`colors`, also
+        valid in the flake `nixdiag` attr). Semantic defaults: public red,
+        lan green, mesh blue. d2 0.8.1 has no theme-code color refs and
+        `--dark-theme` cannot switch explicit styles (d2lang/d2#831), so one
+        build = one theme; dark also passes `--theme 200` to d2 for
+        label/text colors. A d2 compile failure is now a hard render error
+        (was a silent eprintln).
       - Scope keyword is `mesh`, not `tailnet`: the grammar stays
         stack-agnostic (any overlay), matching the mesh-control/mesh-node
         roles.

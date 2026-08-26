@@ -19,6 +19,9 @@ pub struct FlakeConfig {
     pub title: Option<String>,
     pub extra_pages: BTreeMap<String, String>,
     pub extra_links: BTreeMap<String, String>,
+    pub theme: Option<String>,
+    pub background: Option<String>,
+    pub colors: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Copy, PartialEq)]

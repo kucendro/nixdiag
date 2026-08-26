@@ -169,7 +169,7 @@ impl Tree {
             svcs.sort();
             for s in svcs {
                 out.push(format!(
-                    "{pad}  svc_{}: \"{s}\" {{ shape: oval; style.fill: \"#e6f0ff\" }}",
+                    "{pad}  svc_{}: \"{s}\" {{ shape: oval; style.fill: ${{appFill}} }}",
                     sanitize(&s)
                 ));
             }
@@ -177,7 +177,7 @@ impl Tree {
             progs.sort();
             for p in progs {
                 out.push(format!(
-                    "{pad}  prog_{}: \"{p}\" {{ shape: hexagon; style.fill: \"#eaffea\" }}",
+                    "{pad}  prog_{}: \"{p}\" {{ shape: hexagon; style.fill: ${{progFill}} }}",
                     sanitize(&p)
                 ));
             }
@@ -186,7 +186,13 @@ impl Tree {
     }
 }
 
-pub fn generate(facts: &Facts, repo: &Repo, out: &mut Out, render_svg: bool) -> Result<()> {
+pub fn generate(
+    facts: &Facts,
+    repo: &Repo,
+    out: &mut Out,
+    render_svg: bool,
+    style: &crate::d2::D2Style,
+) -> Result<()> {
     let mut tree = Tree::default();
     let mut host_edges: Vec<(String, String)> = Vec::new();
     let mut import_edges: BTreeSet<(String, String)> = BTreeSet::new();
@@ -242,11 +248,12 @@ pub fn generate(facts: &Facts, repo: &Repo, out: &mut Out, render_svg: bool) -> 
     }
 
     let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
+    o.extend(crate::d2::vars_block(style));
     o.push("direction: right".into());
     o.push(String::new());
     for host in facts.hosts.keys() {
         o.push(format!(
-            "{}: \"{host}\" {{ shape: cloud; style.fill: \"#fff3cd\"; style.bold: true }}",
+            "{}: \"{host}\" {{ shape: cloud; style.fill: ${{hostCloud}}; style.bold: true }}",
             sanitize(host)
         ));
     }
@@ -263,5 +270,5 @@ pub fn generate(facts: &Facts, repo: &Repo, out: &mut Out, render_svg: bool) -> 
         o.push(format!("{a} -> {b}"));
     }
 
-    write_and_render(out, "modules", &o, render_svg)
+    write_and_render(out, "modules", &o, render_svg, style)
 }

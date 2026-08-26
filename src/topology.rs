@@ -30,11 +30,11 @@ fn endpoint_id(e: &Endpoint) -> String {
 
 fn edge_color(a: &Endpoint, b: &Endpoint) -> &'static str {
     if matches!(a, Endpoint::Internet) || matches!(b, Endpoint::Internet) {
-        "#c0392b"
+        "${public}"
     } else if matches!(a, Endpoint::Lan) || matches!(b, Endpoint::Lan) {
-        "#27893f"
+        "${lan}"
     } else {
-        "#4a76c4"
+        "${mesh}"
     }
 }
 
@@ -53,7 +53,13 @@ fn fmt_ports(tcp: &[u32], udp: &[u32]) -> String {
     }
 }
 
-pub fn generate(facts: &Facts, model: &Model, out: &mut Out, render_svg: bool) -> Result<()> {
+pub fn generate(
+    facts: &Facts,
+    model: &Model,
+    out: &mut Out,
+    render_svg: bool,
+    style: &crate::d2::D2Style,
+) -> Result<()> {
     // Nodes to draw per host: every annotated service, plus services that only
     // appear as edge endpoints (any enabled service is a valid target).
     let mut per_host: IndexMap<&str, IndexMap<&str, (&'static str, String)>> = facts
@@ -127,23 +133,29 @@ pub fn generate(facts: &Facts, model: &Model, out: &mut Out, render_svg: bool) -
 
     // --- emit ------------------------------------------------------------
     let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
+    o.extend(crate::d2::vars_block(style));
     o.extend(
         [
             "direction: right",
             "classes: {",
-            "  app: { style: { fill: \"#e6f0ff\"; stroke: \"#4a76c4\" } }",
-            "  infra: { style: { fill: \"#ffe9cc\"; stroke: \"#c47a29\" } }",
-            "  base: { style: { fill: \"#f0f0f0\"; stroke: \"#999\"; font-size: 13 } }",
+            "  app: { style: { fill: ${appFill}; stroke: ${appStroke} } }",
+            "  infra: { style: { fill: ${infraFill}; stroke: ${infraStroke} } }",
+            "  base: { style: { fill: ${baseFill}; stroke: ${baseStroke}; font-size: 13 } }",
             "}",
             "",
         ]
         .map(String::from),
     );
     if internet_used {
-        o.push("internet: \"🌐 Internet\" { shape: cloud; style.fill: \"#fdecea\" }".into());
+        o.push(
+            "internet: \"🌐 Internet\" { shape: cloud; style: { fill: ${hostFill}; stroke: ${public} } }"
+                .into(),
+        );
     }
     if lan_used {
-        o.push("lan: \"🏠 LAN\" { shape: cloud; style.fill: \"#eafaf1\" }".into());
+        o.push(
+            "lan: \"🏠 LAN\" { shape: cloud; style: { fill: ${hostFill}; stroke: ${lan} } }".into(),
+        );
     }
     o.push(String::new());
     for (host, f) in &facts.hosts {
@@ -152,7 +164,7 @@ pub fn generate(facts: &Facts, model: &Model, out: &mut Out, render_svg: bool) -
             Host::Nixos(_) => "🖥️",
         };
         o.push(format!("{}: \"{icon} {host}\" {{", sanitize(host)));
-        o.push("  style: { fill: \"#fbfbfe\"; stroke: \"#333\"; bold: true }".into());
+        o.push("  style: { fill: ${hostFill}; stroke: ${hostStroke}; bold: true }".into());
         for (unit, (class, label)) in per_host.get(host.as_str()).into_iter().flatten() {
             let safe = label.replace('"', "'");
             o.push(format!(
@@ -179,7 +191,7 @@ pub fn generate(facts: &Facts, model: &Model, out: &mut Out, render_svg: bool) -
     for (cloud, node, label) in &expose_edges {
         let lbl = label.replace('"', "'");
         o.push(format!(
-            "{} -> {}: \"{lbl}\" {{ style.stroke: \"{}\" }}",
+            "{} -> {}: \"{lbl}\" {{ style.stroke: {} }}",
             endpoint_id(cloud),
             endpoint_id(node),
             edge_color(cloud, node),
@@ -188,12 +200,12 @@ pub fn generate(facts: &Facts, model: &Model, out: &mut Out, render_svg: bool) -
     for e in &model.edges {
         let lbl = e.label.replace('"', "'");
         o.push(format!(
-            "{} -> {}: \"{lbl}\" {{ style.stroke: \"{}\" }}",
+            "{} -> {}: \"{lbl}\" {{ style.stroke: {} }}",
             endpoint_id(&e.from),
             endpoint_id(&e.to),
             edge_color(&e.from, &e.to),
         ));
     }
 
-    write_and_render(out, "topology", &o, render_svg)
+    write_and_render(out, "topology", &o, render_svg, style)
 }

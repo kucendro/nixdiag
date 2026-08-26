@@ -47,6 +47,12 @@ rec {
       extraAssets ? { },
       hosts ? null,
       buildWiki ? true,
+      # theme "dark" (default) or "light"; background any fill (default
+      # "transparent"); colors overrides palette names from the d2 vars
+      # block, e.g. { public = "#ff5555"; }.
+      theme ? null,
+      background ? null,
+      colors ? { },
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -54,6 +60,10 @@ rec {
       nixdiag = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
       pageFlags = lib.mapAttrsToList (t: p: "--extra-page ${lib.escapeShellArg "${t}=${p}"}") extraPages;
       linkFlags = lib.mapAttrsToList (t: n: "--extra-link ${lib.escapeShellArg "${t}=${n}"}") extraLinks;
+      styleFlags =
+        lib.optional (theme != null) "--theme ${theme}"
+        ++ lib.optional (background != null) "--background ${lib.escapeShellArg background}"
+        ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors;
     in
     pkgs.runCommand "nixdiag-docs"
       {
@@ -66,7 +76,7 @@ rec {
       ''
         nixdiag render --facts ${factsJson} --repo ${flake} --out $out \
           --title ${lib.escapeShellArg title} \
-          ${lib.concatStringsSep " " (pageFlags ++ linkFlags)}
+          ${lib.concatStringsSep " " (pageFlags ++ linkFlags ++ styleFlags)}
         ${lib.optionalString (indexPage != null) ''
           install -m 644 ${indexPage} $out/wiki/src/index.md
         ''}
