@@ -33,8 +33,15 @@ rec {
       pkgs,
       flake,
       title ? "Infrastructure wiki",
+      # User-owned index page; replaces the seeded wiki/src/index.md.
+      indexPage ? null,
+      # User-owned mdBook config; replaces the seeded wiki/book.toml.
+      bookToml ? null,
       extraPages ? { },
       extraLinks ? { },
+      # Static files/dirs copied into wiki/src (path under src -> source),
+      # e.g. images referenced by extra pages. Copied before mdbook runs.
+      extraAssets ? { },
       hosts ? null,
       buildWiki ? true,
     }:
@@ -57,8 +64,21 @@ rec {
         nixdiag render --facts ${factsJson} --repo ${flake} --out $out \
           --title ${lib.escapeShellArg title} \
           ${lib.concatStringsSep " " (pageFlags ++ linkFlags)}
+        ${lib.optionalString (indexPage != null) ''
+          install -m 644 ${indexPage} $out/wiki/src/index.md
+        ''}
+        ${lib.optionalString (bookToml != null) ''
+          install -m 644 ${bookToml} $out/wiki/book.toml
+        ''}
+        ${lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (dest: src: ''
+            mkdir -p "$(dirname $out/wiki/src/${dest})"
+            cp -r --no-preserve=mode ${src} "$out/wiki/src/${dest}"
+          '') extraAssets
+        )}
         ${lib.optionalString buildWiki ''
-          mdbook build $out/wiki --dest-dir book
+          # --dest-dir resolves relative paths against the cwd, not the book root
+          mdbook build $out/wiki --dest-dir $out/wiki/book
         ''}
       '';
 }

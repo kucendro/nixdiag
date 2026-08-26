@@ -99,53 +99,73 @@ tests/fixture/          # mini flake with 2 fake hosts → golden-file tests
 - vhosts are projected regardless of `nginx.enable` — parity with the Python
   (the committed os docs list the module's default `localhost` vhost too).
   Candidate cleanup for later, post-parity.
+- mkDocs grew `indexPage` / `bookToml` (user-owned files that `write_once`
+  would otherwise reseed with defaults in the fresh sandbox) and `extraAssets`
+  (files/dirs copied into wiki/src before mdbook — e.g. images referenced by
+  extra pages). Gotcha found in the os migration: mdbook resolves a relative
+  `--dest-dir` against the **cwd**, not the book root — always pass
+  `$out/wiki/book` absolute.
 
-## v2 direction: annotations, not built-in bias (decided 2026-08-26)
+## v2 direction: annotations, not built-in knowledge (decided 2026-08-26)
 
 Schema 1 hardcodes one stack (tailscale/headscale/nginx/prometheus/beszel) into
-projections, schema, and renderer. Right for parity, wrong permanently. v2 moves all
-topology *semantics* into the documented repo itself — nixdiag assumes nothing about
-any particular service unless the user asks. The visual language (d2 styles, scopes,
-wiki layout) does not change, and rendering stays text-only: no icon/image assets,
-ever (contrast nix-topology).
+projections, schema, and renderer. Right for parity, wrong permanently — and not
+only because it is *our* bias: any service-specific extraction encodes *mechanism*
+(how a module's options are shaped this month, which nixpkgs-unstable reshapes
+constantly), while docs should record *intent* ("this is my proxy; it fronts
+grafana"), which survives every upstream refactor. v2 therefore has **no adapter
+layer at all** (an earlier draft kept the heuristics as opt-in adapters —
+rejected: each adapter is a permanent promise to track nixpkgs, nix-topology's
+known pain, and its rot is silent). All topology semantics come from the user's
+own files. The visual language (d2 styles, scopes, wiki layout) does not change,
+and rendering stays text-only: no icon/image assets, ever (contrast nix-topology).
 
+- **What v2 still reads from eval** (`nix/projections/core.nix`, schema 2):
+  enabled services/programs + defining files (module-system introspection),
+  firewall ports, users, platform, stateVersion, pkgCount. Quasi-frozen NixOS
+  API — acceptable coupling. All schema-1 service-specific fields and the Rust
+  topology heuristics die.
 - **Topology annotations**: comment lines in the user's own module files, sigil
-  `# nixdiag: …`; the same lines are recognized inside leading `/** */` doc comments.
-  Comments are invisible to eval, so annotations are parsed render-side with rnix
-  (the renderer owns the repo source in both modes — no new plumbing).
+  `#:` (two chars — written often, must be cheap); `# nixdiag:` accepted as the
+  self-documenting long alias; the same lines are recognized inside leading
+  `/** */` doc comments. Comments are invisible to eval, so annotations are
+  parsed render-side with rnix (the renderer owns the repo source in both modes).
   **Attachment**: a line directly above a `services.<x>` / `programs.<x>` binding
   attaches to that service; in a file-leading doc comment it attaches to whatever
   that file defines (reverse `definitionsWithLocations`); host entry modules take
   host-level annotations.
-- **Grammar** (line-oriented, deliberately small; a malformed line is a reported
-  error, never silently ignored):
-  - `nixdiag: role <name> [k=v …]` — known roles (mesh-control, mesh-node, proxy,
-    monitor, agent, dns, storage, gateway) map to d2 classes + placement; unknown
-    role names still render with default styling, so diagrams stay
+- **Grammar** (one statement per line; a malformed line is a reported error,
+  never silently ignored; `role` is the implicit verb, `->`/`<-` are edges):
+  - `#: mesh-control` — role; known roles (mesh-control, mesh-node, proxy,
+    monitor, agent, dns, storage, gateway) map to d2 classes + placement;
+    unknown role names still render with defaults, so diagrams stay
     user-programmable without touching nixdiag.
-  - `nixdiag: expose <port>[/udp] [public|tailnet|lan] [name=<fqdn>]`
-  - `nixdiag: edge -> <host[/service] | fqdn> [label]` (and `<-` for reverse)
-  - `nixdiag: name <fqdn>` — address-book entry resolving that fqdn to this node
-  - `nixdiag: scope public|tailnet|lan`
-- **Adapters are summoned, never assumed.** The schema-1 heuristics survive as
-  adapters — nginx vhost + `set $var` upstream walker, headscale base_domain
-  address book, tailscale routes, prometheus scrape targets, beszel edges — but
-  each activates only when its (service, role) pair is annotated: `nixdiag: role
-  proxy` above `services.nginx` switches the vhost walker on; no annotation, no
-  assumption. `role proxy` on a service without an adapter (caddy, traefik, …)
-  still styles the node; its edges come from explicit `edge`/`expose` lines. The
-  adapter registry grows one service at a time with no schema changes.
-- **Projection split**: `nix/projections/core.nix` (generic — enabled units +
-  defining files, firewall ports, users, platform, stateVersion) plus
-  `nix/projections/adapters/<svc>.nix`. All are always evaluated and namespaced
-  under `adapters.*` in facts (**schema 2**; the schema-1 top-level service fields
-  go away). Always-evaluating keeps mode B a pure one-shot — collecting inert data
-  is not bias, interpreting it unasked was. The renderer builds a generic topology
-  model (nodes / endpoints / edges / scopes / addresses) from annotations plus
-  summoned adapters and feeds it to the unchanged d2/wiki emitters.
+  - `#: expose <port>[/udp] [public|tailnet|lan] [name=<fqdn>]`
+  - `#: -> <host[/service] | fqdn> [label]` (and `<-`) — any *enabled* service
+    is a valid edge target for free (the generic core knows them all), so
+    references resolve against real state, not strings.
+  - `#: name <fqdn>` — address-book entry resolving that fqdn to this node
+  - `#: scope public|tailnet|lan`
+  - Exact shorthands are frozen only after the ~/os dogfood — annotate the real
+    nginx/headscale modules first and tune whatever feels repetitive.
 - **Zero annotations**: wiki, modules diagram, hosts/services/ports pages are
   unaffected; the topology renders hosts + firewall ports with no edges, plus a
   stderr hint pointing at the annotation docs.
+- **Reference plucks (v2.x, additive — not in the first cut)**: `#: expose
+  cfg.port public` resolves `cfg.*` against the annotated service's *evaluated*
+  config — Nix supplies the value, and the option-shape coupling lives in the
+  user's repo, owned by them. Every referenced path is validated against the
+  introspectable `options` tree at generation time; a vanished path fails
+  `check` loudly with a fuzzy-matched suggestion. nixpkgs' own rename machinery
+  cushions this: `mkRenamedOptionModule` aliases keep old paths *readable*
+  through the deprecation window, and `mkRemovedOptionModule` throws naming the
+  replacement — drift surfaces as a named error, never silent rot. Eval
+  *warnings* are NOT a usable signal here: they fire when a config **sets** a
+  deprecated option, not when a reader references one, and they are free text.
+- **No LLM in the generation path.** Mode B is a sandboxed derivation and must
+  stay pure/offline (this is a feature, not a limitation). Keeping annotations
+  current is dev-time work driven by `check` diagnostics; an assistant may help
+  *there*, outside the tool.
 
 ## To do
 
@@ -168,15 +188,17 @@ ever (contrast nix-topology).
       commit-back with `nix build .#docs` + rsync, re-point the deploy workflow
       trigger, optionally enable serve on nas.
 - [x] README with the zero-touch one-liner + prior-art note.
-- [ ] v2 annotation engine (spec in "v2 direction" above): `# nixdiag:` parser
-      (rnix, render-side), generic topology model, projection split
-      core/adapters, schema 2, role→d2 class map.
+- [ ] v2 annotation engine (spec in "v2 direction" above): `#:` parser (rnix,
+      render-side), generic topology model, single generic `core.nix`
+      projection, schema 2, role→d2 class map; delete the schema-1 service
+      fields and the Rust heuristics.
 - [ ] v2 dogfood: annotate ~/os modules, verify the rendered diagrams match the
-      schema-1 heuristic output byte-for-byte, then delete the schema-1 service
-      fields. (The Gitea→GitHub mirror of this repo happens around here — the
-      user runs that themselves.)
-- [ ] Later: nixpkgs PR; roadmap *adapters* one at a time, each summoned by
-      annotation — flake inputs graph (`nix flake metadata --json`, follows
-      edges), sops-nix secrets map, systemd timer calendar, disko/zfs storage
-      layout, headscale ACL matrix, users×hosts access matrix,
-      firewall-vs-listeners port map.
+      schema-1 heuristic output, freeze the grammar. (The Gitea→GitHub mirror
+      of this repo happens around here — the user runs that themselves.)
+- [ ] v2.x: reference plucks (`cfg.*`) + options-tree validation in `check`.
+- [ ] Later: nixpkgs PR; extra diagrams/pages one at a time, each held to the
+      v2 bar — derivable from stable generic surfaces (e.g. flake inputs graph
+      via `nix flake metadata --json`, systemd timer calendar from units) or
+      driven by annotations/references, never by hardcoded option-shape
+      walkers (which rules out the old sops-nix/disko/ACL-matrix ideas unless
+      they pass that test).
