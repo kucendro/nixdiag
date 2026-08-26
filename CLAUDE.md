@@ -203,6 +203,65 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
   current is dev-time work driven by `check` diagnostics; an assistant may help
   *there*, outside the tool.
 
+## Versioning and deprecation (policy, decided 2026-08-26)
+
+Three surfaces version independently; they fail differently and must not be
+conflated.
+
+1. **Facts schema** (projection ↔ binary): `SCHEMA` / `schema = 2`, checked in
+   `render.rs`, fatal on mismatch. Both halves normally ship from one flake, so
+   skew only happens when a `lib` from one rev meets a binary from another (the
+   nixpkgs binary against a pinned flake `lib`, say). Keep it fatal; the error
+   should name both versions, not just the numbers.
+2. **Annotation grammar** (user repos ↔ binary): the only surface that outlives
+   nixdiag versions, because the annotations live in *other people's files*.
+   Edition model, below.
+3. **Package API**: CLI flags, `mkDocs` args, module options — and the rendered
+   output itself, which is an API too (see below).
+
+**Grammar = editions** (Cargo's model, lighter):
+
+- A `GRAMMAR: u32` constant in the binary, printed by `nixdiag --version` so
+  bug reports carry it.
+- Optional declaration by the consumer: flake `nixdiag.grammar = 1;`, mkDocs
+  `grammar`, `--grammar`, same override order as every other setting. Unset
+  means "whatever this binary implements", so zero-config stays zero-config.
+- Old binary, newer declared grammar → hard error naming both numbers and
+  pointing at the input bump. Better than guessing at an unknown statement.
+- New binary, older declared grammar → compatibility mode: old spellings work,
+  deprecated ones warn, nothing is removed *inside* an edition.
+- Removals happen only at an edition bump, never in a patch or minor.
+
+**Deprecation lifecycle** per statement:
+
+1. Introduce the replacement in a minor release; the old spelling keeps
+   working and the renderer warns `file:line: #: <old> deprecated since 0.5,
+   use #: <new>` (every annotation already carries file and line).
+2. `nixdiag check --deny deprecated` for consumers who want CI red at once.
+3. Remove at the next edition, with an error naming the replacement and the
+   migration command. No silent behaviour changes, same reason malformed lines
+   are fatal.
+
+**Migration**: `nixdiag migrate --to N` rewrites the comment lines in place
+through the existing rnix scan; one statement per line is what makes this
+mechanical, and the user reviews a diff. This is the pay-off for the format's
+constraints and the thing that makes an edition bump cheap enough to actually
+perform.
+
+**Rendered output is an API for mode A.** Consumers commit `docs/` and gate CI
+with `check`, so a purely cosmetic renderer change (reworded label, column
+order, d2 layout) turns every consumer's CI red until they re-run `gen`. So:
+output changes are a minor bump at minimum plus a changelog entry, and `check`
+should hint "if you just upgraded nixdiag, run `nixdiag gen`". Mode B consumers
+are structurally immune (nothing committed, input pinned) — another reason
+`mkDocs` is the recommended path, especially for nixpkgs users who pin nothing.
+
+**Do not stamp versions into the `Auto-generated` markers**: it would churn
+every reference snapshot here and every consumer's committed docs on each
+upgrade. If provenance in the output is wanted, it goes in a small
+`.nixdiag.json` manifest in the output dir (`{version, grammar}`), never in the
+pages.
+
 ## To do
 
 - [x] Scaffold: `flake.nix`, `Cargo.toml`, binary via `buildRustPackage`,
@@ -270,7 +329,31 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
 - [x] v2 dogfood: ~/os modules annotated, rendered diagrams verified against
       the schema-1 heuristic output, grammar frozen 2026-08-26. Grew `unit`,
       edge `name=` and the `@key` domain map (see Grammar above).
+- [ ] Versioning mechanics (policy above), in this order:
+      - `GRAMMAR: u32` constant + a grammar line in `nixdiag --version`.
+      - `nixdiag.grammar` / mkDocs `grammar` / `--grammar` plumbing, with both
+        skew errors: declared > implemented is fatal and names the numbers,
+        declared < implemented enters compat mode.
+      - Deprecation warning path: `file:line`, "since X.Y", the replacement
+        spelling; plus `check --deny deprecated`.
+      - Widen the facts-schema mismatch error to name both versions.
+- [ ] `CHANGELOG.md`, and a `check` hint "if you just upgraded nixdiag, run
+      `nixdiag gen`" — rendered output is a mode-A API, cosmetic changes are a
+      minor bump plus a changelog entry.
+- [ ] `nixdiag migrate --to N`: in-place comment rewriter over the rnix scan,
+      reviewed as a diff. Only needed at the first edition bump, but nothing in
+      the frozen grammar may break its feasibility (one statement per line, no
+      continuations).
+- [ ] Optional `.nixdiag.json` output manifest (`{version, grammar}`) if
+      provenance is ever wanted; markers stay version-free.
 - [ ] v2.x: reference plucks (`cfg.*`) + options-tree validation in `check`.
+- [ ] Candidate second axis, **not committed**: see `visualizations.md`, 21
+      plates distilled from the "Nix Visual Atlas" sketch. It visualizes the
+      *Nix pipeline* (eval, instantiate, build, closure, gc, flake) rather than
+      infrastructure intent, so it is an orthogonal product, not a nixdiag
+      feature list. Held to the same bar as everything here: derivable from a
+      stable generic surface, never from option-shape walkers or debug output
+      that is not a contract.
 - [ ] Later: nixpkgs PR; extra diagrams/pages one at a time, each held to the
       v2 bar — derivable from stable generic surfaces (e.g. flake inputs graph
       via `nix flake metadata --json`, systemd timer calendar from units) or
