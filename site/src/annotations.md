@@ -205,6 +205,61 @@ This exists so a public repo can document private endpoints: the source shows
 `vault@home`, the rendered wiki shows `vault.home.example.com`, and the wiki
 is the thing you keep on the tailnet.
 
+## Grammar editions
+
+Annotations live in *your* module files, so the grammar is the one nixdiag
+surface that outlives nixdiag versions. It is versioned as an **edition** — a
+single integer, Cargo's model but lighter — and the binary reports the one it
+implements:
+
+```console
+$ nixdiag --version
+nixdiag 0.1.0
+annotation grammar 1
+```
+
+Declaring an edition is optional; unset means "whatever this binary
+implements", so zero-config stays zero-config. Declare one when you want the
+mismatch caught loudly rather than guessed at:
+
+```nix
+nixdiag.grammar = 1;          # mode A, in your flake
+```
+
+```nix
+nixdiag.lib.mkDocs { grammar = 1; /* … */ }   # mode B
+```
+
+`--grammar N` overrides both, like every other setting.
+
+- **Declared newer than the binary implements** — hard error naming both
+  numbers. Upgrade nixdiag, or lower the declaration.
+- **Declared older** — compatibility mode. Spellings retired since then keep
+  working; nothing is ever removed *inside* an edition.
+
+### Deprecation
+
+A statement is never changed out from under you. When a replacement spelling
+ships, the old one keeps working and the renderer warns, with the file and
+line every annotation already carries:
+
+```
+warning: modules/mesh.nix:3: `#: tailnet` deprecated since 0.5, use `#: mesh`
+```
+
+Want CI red immediately instead of at the next edition? Promote the warnings:
+
+```sh
+nixdiag check --deny deprecated
+```
+
+`nixdiag.deny = [ "deprecated" ];` and `mkDocs`'s `deny` do the same. Removal
+happens only at an edition bump, with an error naming the replacement — and
+`nixdiag migrate --to N` rewrites the comment lines for you to review as a
+diff. One statement per line is what makes that mechanical.
+
+Nothing is deprecated in grammar 1.
+
 ## Zero annotations
 
 Nothing breaks. The wiki, the module tree and the hosts, services and ports

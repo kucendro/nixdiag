@@ -57,6 +57,12 @@ rec {
       # { home = "home.example.com"; } lets `name=vault@home` render as
       # vault.home.example.com without the literal appearing in the repo.
       domains ? { },
+      # Annotation grammar edition the flake's modules are written against.
+      # null means "whatever the nixdiag binary implements"; a declaration
+      # newer than the binary implements is a hard error.
+      grammar ? null,
+      # Warning categories promoted to errors, e.g. [ "deprecated" ].
+      deny ? [ ],
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -68,7 +74,9 @@ rec {
         lib.optional (theme != null) "--theme ${theme}"
         ++ lib.optional (background != null) "--background ${lib.escapeShellArg background}"
         ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors
-        ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains;
+        ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains
+        ++ lib.optional (grammar != null) "--grammar ${toString grammar}"
+        ++ map (d: "--deny ${lib.escapeShellArg d}") deny;
     in
     pkgs.runCommand "nixdiag-docs"
       {

@@ -1,10 +1,10 @@
 //! Data-flow topology diagram, driven entirely by `#:` annotations.
 //! With zero annotations it degrades to host boxes + firewall ports.
 
-use crate::annotations::{Endpoint, Model, Scope};
-use crate::d2::{write_and_render, D2_HEADER};
 use crate::facts::{Facts, Host};
-use crate::output::Out;
+use crate::render::d2::{write_and_render, D2_HEADER};
+use crate::render::out::Out;
+use crate::source::annotations::{Endpoint, Model, Scope};
 use crate::util::sanitize;
 use anyhow::Result;
 use indexmap::IndexMap;
@@ -58,7 +58,7 @@ pub fn generate(
     model: &Model,
     out: &mut Out,
     render_svg: bool,
-    style: &crate::d2::D2Style,
+    style: &crate::render::d2::D2Style,
 ) -> Result<()> {
     // Nodes to draw per host: every annotated service, plus services that only
     // appear as edge endpoints (any enabled service is a valid target).
@@ -92,22 +92,24 @@ pub fn generate(
     // Expose edges: public ones come in from the internet, lan ones from the
     // LAN cloud; mesh endpoints are only listed on the endpoints page.
     let mut expose_edges: Vec<(Endpoint, Endpoint, String)> = Vec::new();
-    let mut collect =
-        |node: Endpoint, host: &str, unit: Option<&str>, info: &crate::annotations::NodeInfo| {
-            for e in &info.exposes {
-                let cloud = match model.effective_scope(host, unit, e) {
-                    Some(Scope::Public) => Endpoint::Internet,
-                    Some(Scope::Lan) => Endpoint::Lan,
-                    _ => continue,
-                };
-                let proto = if e.udp { "/udp" } else { "" };
-                let label = match &e.name {
-                    Some(n) => format!("{n} :{}{proto}", e.port),
-                    None => format!(":{}{proto}", e.port),
-                };
-                expose_edges.push((cloud, node.clone(), label));
-            }
-        };
+    let mut collect = |node: Endpoint,
+                       host: &str,
+                       unit: Option<&str>,
+                       info: &crate::source::annotations::NodeInfo| {
+        for e in &info.exposes {
+            let cloud = match model.effective_scope(host, unit, e) {
+                Some(Scope::Public) => Endpoint::Internet,
+                Some(Scope::Lan) => Endpoint::Lan,
+                _ => continue,
+            };
+            let proto = if e.udp { "/udp" } else { "" };
+            let label = match &e.name {
+                Some(n) => format!("{n} :{}{proto}", e.port),
+                None => format!(":{}{proto}", e.port),
+            };
+            expose_edges.push((cloud, node.clone(), label));
+        }
+    };
     for (host, info) in &model.hosts {
         collect(Endpoint::Host(host.clone()), host, None, info);
     }
@@ -133,7 +135,7 @@ pub fn generate(
 
     // --- emit ------------------------------------------------------------
     let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
-    o.extend(crate::d2::vars_block(style));
+    o.extend(crate::render::d2::vars_block(style));
     o.extend(
         [
             "direction: right",

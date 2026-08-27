@@ -46,28 +46,64 @@ on generated files.
   `gen`) as fallback. Caveat: projections must never force the docs derivation (they read
   vhost names/listen/proxyPass, never `root`) or eval recurses — keep it that way.
 
-## Planned layout
+## Layout
+
+The module tree mirrors the pipeline: **eval a flake -> facts; read the repo's
+source for intent; render documents.** Split by that boundary, not by file size
+— `source/` reads *text* (comments included, which eval cannot see), `render/`
+consumes the evaluated facts plus what `source/` found.
 
 ```
-flake.nix               # packages.default, apps, overlays.default, nixosModules.default,
-                        # lib.{mkFacts,mkDocs}, templates.default, checks, devShells
-Cargo.toml              # clap (derive), serde, serde_json, rayon, rnix
-src/main.rs             # subcommand dispatch
-src/facts.rs            # serde model — THE contract
-src/eval.rs             # mode A: spawn `nix eval --json --apply`, parallel
-src/doccomment.rs       # rnix scan for leading /** */
-src/topology.rs         # port of gen-topology.py
-src/modules.rs          # port of gen-diagram.py (module tree)
-src/wiki.rs             # port of gen-wiki.py (mdBook src + SUMMARY merge)
-src/d2.rs               # spawn `d2 --layout elk`
-nix/projections/*.nix   # shared via include_str! AND exported in flake lib
-nix/lib.nix             # mkFacts / mkDocs
-nix/module.nix          # serve / timer
-templates/default/      # `nix flake init -t` consumer scaffold
-tests/fixture/          # mini flake with 2 fake hosts → reference-file tests
-site/                   # hand-written mdBook, published to GitHub Pages
-.github/workflows/      # pages deploy only; CI proper lives in .gitea/
+src/
+  main.rs                 mod decls + dispatch, nothing else
+  facts.rs                serde model — THE contract
+  eval.rs                 mode A: spawn `nix eval --json --apply`, parallel
+  util.rs
+  cli/
+    mod.rs                clap types (Cli, Cmd, FlakeArgs, RenderArgs) + run()
+    options.rs            flake `nixdiag` output + flags -> RenderOpts/D2Style
+    commands.rs           facts / render / gen / check
+  source/                 static analysis of the documented repo's own .nix files
+    repo.rs               store path -> repo-relative (the `-source/` marker)
+    doccomment.rs         leading RFC 145 /** */ via rnix
+    imports.rs            host entry modules + the import graph
+    annotations/          the `#:` engine — biggest subsystem, one concern per file
+      mod.rs              the grammar doc comment + the public façade
+      grammar.rs          GRAMMAR/VERSION, editions, deprecation table
+      stmt.rs             the statement grammar (parse only)
+      scan.rs             the rnix pass: find statements, record where they sit
+      attach.rs           syntactic position + facts + imports -> which nodes
+      resolve.rs          raws -> Model (two passes; address book before edges)
+      model.rs            Scope, Expose, NodeInfo, Endpoint, Edge, Model
+      diag.rs             Sev + Diag (file:line on everything)
+  render/
+    mod.rs                RenderOpts, render_all
+    out.rs                Out/WKind — the AUTO-marker guarded writer
+    d2.rs                 palette, vars block, spawn `d2 --layout elk`
+    topology.rs           the data-flow diagram
+    modules.rs            the module-tree diagram
+    wiki/                 mdBook source, one module per generated page
+      mod.rs              WikiOpts, page order, shared host->services helper
+      book.rs             book.toml, SUMMARY, index, extra pages
+      architecture.rs / hosts.rs / services.rs / endpoints.rs
+nix/projections/core.nix  shared via include_str! AND exported in flake lib
+nix/lib.nix               mkFacts / mkDocs
+nix/module.nix            serve / timer
+templates/default/        `nix flake init -t` consumer scaffold
+tests/fixture/            mini flake with 2 fake hosts
+tests/reference/          snapshots compared in `nix flake check`
+site/                     hand-written mdBook, published to GitHub Pages
+.github/workflows/        pages deploy only; CI proper lives in .gitea/
 ```
+
+Rules that keep it that way:
+
+- `main.rs` stays a dispatcher. Anything it would grow goes in `cli/`.
+- Nothing in `render/` parses Nix source, and nothing in `source/` writes files.
+- `annotations/mod.rs` is a façade: submodules are private, the crate sees only
+  the `pub use` list. Cross-module items are `pub(super)`, never `pub`.
+- Tests live beside the code they exercise, so `cargo test` output reads as a
+  table of contents (`source::annotations::scan::tests::…`).
 
 ## Rules
 
@@ -209,7 +245,7 @@ Three surfaces version independently; they fail differently and must not be
 conflated.
 
 1. **Facts schema** (projection ↔ binary): `SCHEMA` / `schema = 2`, checked in
-   `render.rs`, fatal on mismatch. Both halves normally ship from one flake, so
+   `render/mod.rs`, fatal on mismatch. Both halves normally ship from one flake, so
    skew only happens when a `lib` from one rev meets a binary from another (the
    nixpkgs binary against a pinned flake `lib`, say). Keep it fatal; the error
    should name both versions, not just the numbers.
@@ -286,7 +322,7 @@ pages.
       serve, CLI), `packages.{site,demo-docs}` + `checks.site`, Pages workflow,
       README trimmed to a landing page.
 - [x] v2 annotation engine (spec in "v2 direction" above): `#:` parser (rnix,
-      render-side, `src/annotations.rs`), generic topology model, single
+      render-side, now `src/source/annotations/`), generic topology model, single
       generic `core.nix` projection, schema 2, role→d2 class map; schema-1
       service fields and the Rust heuristics deleted. First-cut decisions
       (revisit at the dogfood, grammar not frozen yet):
@@ -329,17 +365,31 @@ pages.
 - [x] v2 dogfood: ~/os modules annotated, rendered diagrams verified against
       the schema-1 heuristic output, grammar frozen 2026-08-26. Grew `unit`,
       edge `name=` and the `@key` domain map (see Grammar above).
-- [ ] Versioning mechanics (policy above), in this order:
-      - `GRAMMAR: u32` constant + a grammar line in `nixdiag --version`.
-      - `nixdiag.grammar` / mkDocs `grammar` / `--grammar` plumbing, with both
-        skew errors: declared > implemented is fatal and names the numbers,
-        declared < implemented enters compat mode.
-      - Deprecation warning path: `file:line`, "since X.Y", the replacement
-        spelling; plus `check --deny deprecated`.
-      - Widen the facts-schema mismatch error to name both versions.
-- [ ] `CHANGELOG.md`, and a `check` hint "if you just upgraded nixdiag, run
-      `nixdiag gen`" — rendered output is a mode-A API, cosmetic changes are a
-      minor bump plus a changelog entry.
+- [x] Versioning mechanics (policy above): `GRAMMAR` + `VERSION` from one
+      `def_grammar!` macro in `annotations/grammar.rs` (the parser owns the constant it
+      implements), `resolve_edition` with both skew errors, `--grammar` /
+      `nixdiag.grammar` / mkDocs `grammar`, deprecation warnings +
+      `--deny deprecated`, schema error widened to name both nixdiag versions.
+      Implementation notes:
+      - Deprecation is a **verb-level rewrite before `parse_stmt`**
+        (`canonicalize`), not a change to the grammar match itself — so
+        `parse_stmt` and its tests were untouched. `canonicalize` takes the
+        table as a parameter, which is what lets the tests drive the mechanism
+        with a synthetic entry while the real `DEPRECATIONS` is empty. Roles
+        are free-form and sit in verb position, so a role rename is covered by
+        the same table.
+      - `Diag` grew `Sev { Error, Deprecated }`; the variant names *are* the
+        `--deny` vocabulary, so a future warning category is one variant plus
+        one accepted flag value. `render_all` prints `error:`/`warning:` and
+        counts only fatals.
+      - `--deny` lives in `RenderArgs`, so `render`/`gen`/`check` all take it
+        (the policy text only named `check`) — mode B needs it on `render` to
+        be a usable CI gate at all.
+      - `cmd_render` uses `FlakeConfig::default()`, so mode B never sees the
+        flake's `nixdiag` attr: `mkDocs` must pass `grammar`/`deny` explicitly,
+        same as `title`/`theme`/`domains`.
+- [x] `CHANGELOG.md` (Keep a Changelog; one `## Unreleased` section — nothing
+      is tagged yet, version stays 0.1.0) and the `check` upgrade hint.
 - [ ] `nixdiag migrate --to N`: in-place comment rewriter over the rnix scan,
       reviewed as a diff. Only needed at the first edition bump, but nothing in
       the frozen grammar may break its feasibility (one statement per line, no

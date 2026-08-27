@@ -1,10 +1,18 @@
-//! facts -> full docs tree (topology + modules + wiki).
+//! facts + annotations -> the full docs tree (topology, module tree, wiki).
+
+pub mod d2;
+mod modules;
+pub mod out;
+mod topology;
+mod wiki;
+
+pub use out::{Out, WKind};
+pub use wiki::WikiOpts;
 
 use crate::facts::{Facts, Host, SCHEMA};
-use crate::output::Out;
-use crate::repo::Repo;
-use crate::wiki::WikiOpts;
-use crate::{annotations, doccomment, modules, topology, wiki};
+use crate::source::annotations::{self, Sev};
+use crate::source::repo::Repo;
+use crate::source::{doccomment, imports};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -22,7 +30,7 @@ fn collect_docs(facts: &Facts, repo: &Repo) -> DocComments {
     let mut docs = DocComments::default();
     let flake_text = std::fs::read_to_string(repo.root.join("flake.nix")).unwrap_or_default();
     for (host, f) in &facts.hosts {
-        for entry in modules::host_entry_modules(host, &flake_text, repo) {
+        for entry in imports::host_entry_modules(host, &flake_text, repo) {
             if let Some(doc) = doccomment::from_file(&entry) {
                 docs.hosts.insert(host.clone(), doc);
                 break;
@@ -51,28 +59,46 @@ pub struct RenderOpts {
     pub out: PathBuf,
     pub wiki: WikiOpts,
     pub svg: bool,
-    pub style: crate::d2::D2Style,
+    pub style: d2::D2Style,
     /// `@key` -> domain suffix for fqdn positions in annotations.
     pub domains: std::collections::BTreeMap<String, String>,
+    /// Annotation grammar edition in force (already resolved against
+    /// `annotations::GRAMMAR`).
+    pub grammar: u32,
+    /// Warning categories promoted to errors, e.g. `deprecated`.
+    pub deny: Vec<String>,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
     if facts.schema != SCHEMA {
+        // Both halves normally ship from one flake, so a mismatch means a
+        // `lib` and a binary from different revisions — name the versions,
+        // not just the numbers.
         bail!(
-            "facts schema {} does not match this nixdiag (expects {SCHEMA})",
-            facts.schema
+            "facts.json declares schema {}, but nixdiag {} implements schema {SCHEMA} — \
+             the projection that produced these facts comes from a different nixdiag \
+             revision; pin `lib` and the binary to the same one",
+            facts.schema,
+            env!("CARGO_PKG_VERSION")
         );
     }
     facts.normalize();
     let repo = Repo::new(opts.repo.clone());
     let mut out = Out::new(opts.out.clone());
 
-    let (model, diags) = annotations::collect(facts, &repo, &opts.domains);
-    if !diags.is_empty() {
-        for d in &diags {
+    let (model, diags) = annotations::collect(facts, &repo, &opts.domains, opts.grammar);
+    let deny_deprecated = opts.deny.iter().any(|d| d == "deprecated");
+    let mut errors = 0;
+    for d in &diags {
+        if d.sev == Sev::Error || deny_deprecated {
+            errors += 1;
             eprintln!("error: {d}");
+        } else {
+            eprintln!("warning: {d}");
         }
-        bail!("{} annotation error(s)", diags.len());
+    }
+    if errors > 0 {
+        bail!("{errors} annotation error(s)");
     }
     if model.total == 0 {
         eprintln!(

@@ -68,6 +68,8 @@ Render flags, accepted by `render`, `gen` and `check`:
 | `--background "#ffffff"` | diagram canvas fill, default transparent |
 | `--color public=#ff5555` | palette override, repeatable, see [styling](./build.md#diagram-styling) |
 | `--domain home=home.example.com` | `@key` suffix for annotation fqdns, repeatable |
+| `--grammar 1` | annotation grammar edition your modules are written against |
+| `--deny deprecated` | promote deprecation warnings to errors, repeatable |
 
 Flags override the flake's `nixdiag` output for the same setting.
 

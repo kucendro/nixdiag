@@ -23,6 +23,8 @@ them:
     background = "#ffffff";
     colors.public = "#ff5555";
     domains.home = "home.example.com";
+    grammar = 1;
+    deny = [ "deprecated" ];
   };
 }
 ```
@@ -65,6 +67,8 @@ broken annotation fails the build.
 | `background` | `"transparent"` | diagram canvas fill, any d2 fill |
 | `colors` | `{ }` | palette overrides, see below |
 | `domains` | `{ }` | `@key` suffixes for annotation fqdns |
+| `grammar` | binary's own | annotation grammar edition your modules are written against, see [editions](./annotations.md#grammar-editions) |
+| `deny` | `[ ]` | warning categories promoted to errors, e.g. `[ "deprecated" ]` |
 
 ## Diagram styling
 

@@ -1,6 +1,6 @@
 //! d2 emission and SVG rendering.
 
-use crate::output::Out;
+use crate::render::out::Out;
 use anyhow::{bail, Result};
 use std::io::ErrorKind;
 use std::path::PathBuf;

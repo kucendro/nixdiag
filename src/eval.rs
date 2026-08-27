@@ -24,6 +24,11 @@ pub struct FlakeConfig {
     pub colors: BTreeMap<String, String>,
     /// `@key` -> domain suffix for fqdn positions in annotations.
     pub domains: BTreeMap<String, String>,
+    /// Annotation grammar edition these files are written against. Unset
+    /// means "whatever the binary implements".
+    pub grammar: Option<u32>,
+    /// Warning categories promoted to errors, e.g. `[ "deprecated" ]`.
+    pub deny: Vec<String>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
