@@ -48,6 +48,21 @@
           domains.ts = "ts.example";
         };
 
+        # The fixture rendered with hand-written closure data. Real closures
+        # would mean building two NixOS systems in CI; this exercises the
+        # model, the fleet analysis and the page at zero build cost.
+        fixture-docs-closures =
+          pkgs.runCommand "nixdiag-fixture-closures"
+            {
+              nativeBuildInputs = [ nixdiag ];
+              facts = pkgs.writeText "facts.json" (builtins.toJSON (self.lib.mkFacts { flake = fixtureFlake; }));
+            }
+            ''
+              nixdiag render --facts "$facts" --repo ${fixtureSrc} \
+                --closures ${fixtureSrc}/closures.json \
+                --domain ts=ts.example --out $out --no-svg
+            '';
+
         # The fixture's wiki, published under /demo on the docs site.
         demo-docs = self.lib.mkDocs {
           inherit pkgs;
@@ -112,6 +127,46 @@
       checks = eachSystem (pkgs: {
         build = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
         site = self.packages.${pkgs.stdenv.hostPlatform.system}.site;
+        # The real exportReferencesGraph plumbing, over a package small enough
+        # to substitute in CI — proves __structuredAttrs + jq without building
+        # a NixOS system.
+        closures-plumbing =
+          let
+            out =
+              (import ./nix/closures.nix {
+                inherit pkgs;
+                lib = pkgs.lib;
+              }).mkClosures
+                { demo = pkgs.hello; };
+          in
+          pkgs.runCommand "nixdiag-closures-plumbing" { nativeBuildInputs = [ pkgs.jq ]; } ''
+            jq -e '.schema == 1' ${out} > /dev/null
+            jq -e '.hosts.demo.paths | length > 0' ${out} > /dev/null
+            jq -e '.hosts.demo.paths | all(has("path") and has("narSize"))' ${out} > /dev/null
+            jq -e '.hosts.demo.paths == (.hosts.demo.paths | sort_by(.path))' ${out} > /dev/null
+            touch $out
+          '';
+
+        closures =
+          pkgs.runCommand "nixdiag-closures-reference"
+            {
+              docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs-closures;
+              reference = ./tests/reference;
+            }
+            ''
+              diff -u "$reference/closures.md" "$docs/wiki/src/closures.md"
+              grep -q '| Closure |' "$docs/wiki/src/hosts.md"
+              # Nix records a reference for every store path appearing in an
+              # output, so printing one would make the docs retain the whole
+              # closure it describes. Keep the pages free of them.
+              if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
+                echo "generated docs contain a store path; that would retain Nix references:"
+                grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
+                exit 1
+              fi
+              touch $out
+            '';
+
         reference =
           pkgs.runCommand "nixdiag-reference"
             {
@@ -121,8 +176,10 @@
             ''
               diff -u "$reference/topology.d2" "$docs/topology.d2"
               diff -u "$reference/modules.d2" "$docs/modules.d2"
+              diff -u "$reference/inputs.d2" "$docs/inputs.d2"
               diff -u "$reference/hosts.md" "$docs/wiki/src/hosts.md"
               diff -u "$reference/endpoints.md" "$docs/wiki/src/endpoints.md"
+              diff -u "$reference/inputs.md" "$docs/wiki/src/inputs.md"
               touch $out
             '';
       });

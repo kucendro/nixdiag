@@ -79,6 +79,10 @@ enum Cmd {
         /// Repo source the facts refer to
         #[arg(long, default_value = ".")]
         repo: PathBuf,
+        /// closures.json from `mkDocs { closures = true; }`, adding the
+        /// Closures page
+        #[arg(long)]
+        closures: Option<PathBuf>,
         #[arg(long, default_value = "docs")]
         out: PathBuf,
         #[command(flatten)]
@@ -91,6 +95,9 @@ enum Cmd {
         /// Output directory (default: <flake>/docs)
         #[arg(long)]
         out: Option<PathBuf>,
+        /// Not available in mode A — see the error it prints
+        #[arg(long)]
+        closures: bool,
         #[command(flatten)]
         render: RenderArgs,
     },
@@ -101,6 +108,9 @@ enum Cmd {
         /// Committed docs directory to compare against (default: <flake>/docs)
         #[arg(long)]
         out: Option<PathBuf>,
+        /// Not available in mode A — see the error it prints
+        #[arg(long)]
+        closures: bool,
         #[command(flatten)]
         render: RenderArgs,
     },
@@ -114,9 +124,20 @@ pub fn run() -> anyhow::Result<()> {
             facts,
             repo,
             out,
+            closures,
             render,
-        } => cmd_render(facts, repo, out, render),
-        Cmd::Gen { flake, out, render } => cmd_gen(flake, out, render).map(|_| ()),
-        Cmd::Check { flake, out, render } => cmd_check(flake, out, render),
+        } => cmd_render(facts, repo, out, closures, render),
+        Cmd::Gen {
+            flake,
+            out,
+            closures,
+            render,
+        } => cmd_gen(flake, out, closures, render).map(|_| ()),
+        Cmd::Check {
+            flake,
+            out,
+            closures,
+            render,
+        } => cmd_check(flake, out, closures, render),
     }
 }

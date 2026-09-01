@@ -1,0 +1,36 @@
+# Auto-generated from the Nix config by nixdiag. Do not edit.
+# Regenerate: nixdiag gen
+style.fill: "transparent"
+vars: {
+  appFill: "#1c2e4a"
+  appStroke: "#7fa7e8"
+  infraFill: "#4a3413"
+  infraStroke: "#d9995a"
+  baseFill: "#2a2a2e"
+  baseStroke: "#666"
+  hostFill: "#181825"
+  hostStroke: "#a6adc8"
+  progFill: "#1e3a24"
+  hostCloud: "#3d3517"
+  public: "#e74c3c"
+  lan: "#2ecc71"
+  mesh: "#7fa7e8"
+}
+direction: right
+
+root: "this flake" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }
+nixpkgs: "nixpkgs 56c02bc" { style.fill: ${baseFill}; style.stroke: ${public}; style.stroke-width: 2 }
+nixpkgs_2: "nixpkgs_2 89570f2" { style.fill: ${baseFill}; style.stroke: ${public}; style.stroke-width: 2 }
+stylix: "stylix" { style.fill: ${baseFill}; style.stroke: ${baseStroke} }
+utils: "utils" { style.fill: ${baseFill}; style.stroke: ${baseStroke} }
+utils_2: "utils_2" { style.fill: ${baseFill}; style.stroke: ${baseStroke} }
+
+# direct inputs
+root -> nixpkgs
+root -> stylix
+root -> utils
+stylix -> nixpkgs_2: "nixpkgs"
+stylix -> utils_2: "utils"
+
+# follows (deduplication)
+stylix -> utils: "systems" { style.stroke: ${mesh}; style.stroke-dash: 3 }

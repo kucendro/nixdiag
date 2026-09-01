@@ -10,6 +10,7 @@
 //!   `cli`    — argument parsing, option resolution, command bodies
 
 mod cli;
+mod closures;
 mod eval;
 mod facts;
 mod render;

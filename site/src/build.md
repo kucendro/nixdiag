@@ -69,6 +69,102 @@ broken annotation fails the build.
 | `domains` | `{ }` | `@key` suffixes for annotation fqdns |
 | `grammar` | binary's own | annotation grammar edition your modules are written against, see [editions](./annotations.md#grammar-editions) |
 | `deny` | `[ ]` | warning categories promoted to errors, e.g. `[ "deprecated" ]` |
+| `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **requires those systems built** — see below |
+
+### Closure metrics
+
+`closures` adds a Closures page (per-host totals, largest contributing
+packages, and what the fleet shares) plus a closure row on each host.
+
+Packages are listed by name and version, never by full store path. Nix records
+a reference for every store path that appears in a build output, so printing
+them would make the docs derivation retain the entire closure it describes —
+and `services.nixdiag.serve` would then drag that into the serving host's own
+system closure.
+
+| value | measured |
+|---|---|
+| `false` | nothing (default) |
+| `true` | every NixOS host that does not serve nixdiag docs |
+| `[ "nas" "luna" ]` | exactly those hosts, taken at your word |
+
+Nar sizes exist only for *realised* store paths, so each measured host's
+`system.build.toplevel` becomes a build input: the docs build gets as expensive
+as building those systems. Much of that is usually substituted rather than
+compiled, but it is a real cost. NixOS hosts only — a darwin system cannot be
+built from Linux.
+
+A host that is not measured is still listed, with `—` in place of its numbers.
+An opt-in list that silently dropped the rest would leave the page reading as
+though it covered the whole fleet.
+
+#### It measures; it does not build your fleet
+
+The measurement is not a way to get systems built. Anything it realises is
+unrooted by construction: the pages contain no store paths, so the docs
+derivation holds no references to the systems it describes, and the next
+`nix-collect-garbage` takes them. That is the same property that keeps
+`services.nixdiag.serve` from dragging a fleet into the serving host's system,
+so it is not going to change.
+
+Turn it around and the cost disappears. Build the systems in your own
+pipeline, root them there, and enable `closures` on a docs build that runs
+afterwards:
+
+```yaml
+- name: BUILD
+  run: |
+    for host in nas edge nixbook; do
+      nix build ".#nixosConfigurations.$host.config.system.build.toplevel" \
+        --out-link "/var/lib/ci/gcroots/$host"
+    done
+
+- name: DOCS
+  run: nix build .#docs        # closures = [ "nas" "nixbook" ]
+```
+
+`--out-link` is the GC root. By the time the docs build runs every path is
+already realised, so the measurement is a few seconds of `jq` over data on
+disk — and as a side effect a binary cache on that machine (harmonia,
+nix-serve, attic) can serve the systems to the hosts that will deploy them.
+
+If your docs derivation is *also* a flake check, the order flips: `nix flake
+check` realises the measured systems on its own, and the build step is left
+doing nothing but attaching roots. Put it after the check then, so only a
+revision that passed gets pinned.
+
+Run the docs build **on the machine that holds the systems**. The per-host
+measurement derivation is `preferLocalBuild`, which pins it to whichever
+machine invoked the build; invoking it from your laptop against a remote
+builder copies every measured closure to the laptop.
+
+#### Why serving hosts are skipped
+
+`services.nixdiag.serve` roots an nginx vhost at a docs derivation, so that
+host's system closure *contains* the docs. Measuring it from inside a docs
+build would make the docs depend on a system that contains them —
+`docs -> toplevel -> docs` — which Nix reports as infinite recursion, with a
+trace that points nowhere useful.
+
+`closures = true` detects this and skips those hosts, naming them in a warning.
+The detection is safe because reading `serve.enable` does not force
+`serve.docs`; it is forcing `serve.docs` that closes the loop.
+
+If you serve one build and measure another, no cycle exists and you can ask for
+every host by name:
+
+```nix
+packages.docs      = mkDocs { inherit pkgs; flake = self; };
+packages.docs-full = mkDocs {
+  inherit pkgs;
+  flake = self;
+  closures = [ "edge" "nas" ];   # edge serves `docs`, not `docs-full`
+};
+services.nixdiag.serve.docs = self.packages.x86_64-linux.docs;
+```
+
+An explicit list is taken at your word and is never filtered, so naming the
+host that serves *this* build will still recurse.
 
 ## Diagram styling
 
@@ -119,7 +215,7 @@ wiki ships atomically with every deploy. No daemon, no timer, no checkout.
 | Option | Default | Effect |
 |---|---|---|
 | `serve.enable` | `false` | create the vhost |
-| `serve.docs` | required | docs derivation, typically `lib.mkDocs { … }` |
+| `serve.docs` | required | docs derivation, typically `lib.mkDocs { … }`. Safe with `closures = true`, which skips serving hosts; only an explicit `closures = [ … ]` naming this host recurses |
 | `serve.virtualHost` | required | nginx vhost name |
 | `serve.subpath` | `"wiki/book"` | path inside the derivation used as web root |
 | `serve.virtualHostExtra` | `{ }` | merged into the vhost: TLS, listen addresses |

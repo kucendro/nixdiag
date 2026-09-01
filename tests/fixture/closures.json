@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "hosts": {
+    "luna": {
+      "paths": [
+        { "path": "/nix/store/1ka4vq9dnvxfw8yq3s0f6bpmxbxnbz7h-bash-5.2p37", "narSize": 8912896 },
+        { "path": "/nix/store/3mfq9dqxvhbn0lw5c8rj2p7ktz6yavgd-coreutils-9.6", "narSize": 21495808 },
+        { "path": "/nix/store/6zbq2xhldvnw3rt8kf9c0mjyp4saeqbn-systemd-257.2", "narSize": 89128960 },
+        { "path": "/nix/store/8vd3nqwxk2mlbc7hf5rj9pt0yzagesud-nginx-1.26.2", "narSize": 4194304 },
+        { "path": "/nix/store/0d8g8n0a11v6f5m2h416ajyxmnkwc3md-glibc-2.42-67", "narSize": 35073096 },
+        { "path": "/nix/store/qz7wm2xhbvdn6ct9kf3rj5p8yl0aesgu-linux-6.12.9", "narSize": 149225472 }
+      ]
+    },
+    "sol": {
+      "paths": [
+        { "path": "/nix/store/1ka4vq9dnvxfw8yq3s0f6bpmxbxnbz7h-bash-5.2p37", "narSize": 8912896 },
+        { "path": "/nix/store/3mfq9dqxvhbn0lw5c8rj2p7ktz6yavgd-coreutils-9.6", "narSize": 21495808 },
+        { "path": "/nix/store/6zbq2xhldvnw3rt8kf9c0mjyp4saeqbn-systemd-257.2", "narSize": 89128960 },
+        { "path": "/nix/store/0d8g8n0a11v6f5m2h416ajyxmnkwc3md-glibc-2.42-67", "narSize": 35073096 },
+        { "path": "/nix/store/qz7wm2xhbvdn6ct9kf3rj5p8yl0aesgu-linux-6.12.9", "narSize": 149225472 },
+        { "path": "/nix/store/rt5nk8vqmxdhw2bc6jf0py9lz3aesgud-postgresql-16.6", "narSize": 62914560 },
+        { "path": "/nix/store/wm3xhqvbdn7ct2kf9rj5p8yl0aesgu6z-prometheus-3.1.0", "narSize": 125829120 }
+      ]
+    }
+  }
+}

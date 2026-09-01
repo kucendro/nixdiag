@@ -63,9 +63,86 @@ rec {
       grammar ? null,
       # Warning categories promoted to errors, e.g. [ "deprecated" ].
       deny ? [ ],
+      # Per-host system closure sizes, adding a Closures wiki page and a row
+      # on each host. Requires every measured host's system to be BUILT (or
+      # substituted), so this makes `nix build .#docs` as expensive as
+      # building those systems. NixOS hosts only: darwin cannot be built
+      # from Linux.
+      #
+      #   false          off (default)
+      #   true           every NixOS host that does not serve nixdiag docs
+      #   [ "nas" … ]    exactly these hosts, taken at your word
+      #
+      # This MEASURES; it is not a way to build a fleet. Nothing here keeps
+      # what it realises alive: the pages carry no store paths (printing one
+      # would make the docs retain the closure they describe), so the docs
+      # hold no references to those systems and the next garbage collection
+      # removes anything your own pipeline did not root. Build and root the
+      # systems first -- a deploy step, a CI job, `nix build
+      # .#nixosConfigurations.<h>.config.system.build.toplevel --out-link ...`
+      # -- and enable this on a docs build that runs after. Everything is then
+      # already realised and the measurement costs a few seconds of jq.
+      #
+      # Run that docs build on the machine that holds the systems: the
+      # per-host derivation is preferLocalBuild, so invoking it elsewhere
+      # copies every measured closure to the invoking machine.
+      #
+      # A host running services.nixdiag.serve is skipped under `true` because
+      # its system closure contains an nginx vhost rooted at a docs
+      # derivation. Measuring it would make these docs depend on a system
+      # that contains docs, and Nix reports that as infinite recursion rather
+      # than anything legible. See `serving` below.
+      closures ? false,
     }:
     let
       facts = mkFacts { inherit flake hosts; };
+
+      nixosConfigs = lib.filterAttrs (n: _: hosts == null || builtins.elem n hosts) (
+        flake.nixosConfigurations or { }
+      );
+
+      # Reading `serve.enable` is safe; reading `serve.docs` is not. The
+      # latter is the vhost root, and forcing it from within a docs build is
+      # precisely the cycle. Verified: `serve.enable` evaluates without
+      # forcing `serve.docs`, while `system.build.toplevel` does force it.
+      serving = builtins.attrNames (
+        lib.filterAttrs (_: cfg: cfg.config.services.nixdiag.serve.enable or false) nixosConfigs
+      );
+
+      closureHosts =
+        if lib.isList closures then
+          let
+            unknown = builtins.filter (n: !(nixosConfigs ? ${n})) closures;
+          in
+          if unknown != [ ] then
+            throw "nixdiag: closures names unknown host(s): ${lib.concatStringsSep ", " unknown}"
+          else
+            closures
+        else if closures then
+          let
+            kept = builtins.filter (n: !(builtins.elem n serving)) (builtins.attrNames nixosConfigs);
+          in
+          if serving == [ ] then
+            kept
+          else
+            lib.warn ''
+              nixdiag: skipping closure metrics for ${lib.concatStringsSep ", " serving}.
+              Those hosts run services.nixdiag.serve, so their system closure contains an
+              nginx vhost rooted at a docs derivation; measuring them would make these docs
+              depend on a system that contains docs, which Nix reports as infinite recursion.
+              If this build is not the one being served, ask for the hosts by name:
+                closures = [ ${lib.concatMapStringsSep " " (n: ''"${n}"'') (builtins.attrNames nixosConfigs)} ];
+            '' kept
+        else
+          [ ];
+
+      closureFile =
+        if closureHosts == [ ] then
+          null
+        else
+          (import ./closures.nix { inherit pkgs lib; }).mkClosures (
+            lib.mapAttrs (_: cfg: cfg.config.system.build.toplevel) (lib.getAttrs closureHosts nixosConfigs)
+          );
       factsJson = pkgs.writeText "nixdiag-facts.json" (builtins.toJSON facts);
       nixdiag = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
       pageFlags = lib.mapAttrsToList (t: p: "--extra-page ${lib.escapeShellArg "${t}=${p}"}") extraPages;
@@ -76,7 +153,8 @@ rec {
         ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors
         ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains
         ++ lib.optional (grammar != null) "--grammar ${toString grammar}"
-        ++ map (d: "--deny ${lib.escapeShellArg d}") deny;
+        ++ map (d: "--deny ${lib.escapeShellArg d}") deny
+        ++ lib.optional (closureFile != null) "--closures ${closureFile}";
     in
     pkgs.runCommand "nixdiag-docs"
       {

@@ -54,6 +54,10 @@ nixdiag facts | nixdiag render --facts - --repo .
 
 `--flake DIR` on `facts`, `gen`, `check`, default `.`.
 `--repo DIR` and `--facts FILE` on `render`, `-` reads stdin.
+`--closures FILE` on `render`, taking the `closures.json` that
+[`mkDocs { closures = true; }`](./build.md#closure-metrics) produces. `gen` and
+`check` accept the flag only to tell you it cannot work there: closure sizes
+need every host's system built, which only a derivation can express purely.
 `--out DIR` on `render`, `gen`, `check`.
 
 Render flags, accepted by `render`, `gen` and `check`:

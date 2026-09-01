@@ -50,7 +50,13 @@ pub(super) fn copy_extra_pages(
     Ok(links)
 }
 
-pub(super) fn page_summary(out: &mut Out, src: &Path, extra: &[(String, String)]) -> Result<()> {
+pub(super) fn page_summary(
+    out: &mut Out,
+    src: &Path,
+    extra: &[(String, String)],
+    has_inputs: bool,
+    has_closures: bool,
+) -> Result<()> {
     let mut text = format!(
         "{MD_MARKER}\n\n\
          # Summary\n\n\
@@ -60,6 +66,12 @@ pub(super) fn page_summary(out: &mut Out, src: &Path, extra: &[(String, String)]
          - [Services](./services.md)\n\
          - [Endpoints](./endpoints.md)\n"
     );
+    if has_inputs {
+        text.push_str("- [Inputs](./inputs.md)\n");
+    }
+    if has_closures {
+        text.push_str("- [Closures](./closures.md)\n");
+    }
     for (title, fname) in extra {
         text.push_str(&format!("- [{title}](./{fname})\n"));
     }

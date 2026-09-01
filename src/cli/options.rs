@@ -2,6 +2,7 @@
 //! declared `nixdiag` output first, CLI flags on top.
 
 use super::RenderArgs;
+use crate::closures::Closures;
 use crate::eval;
 use crate::render::{d2, RenderOpts, WikiOpts};
 use crate::source::annotations;
@@ -32,6 +33,7 @@ pub(super) fn to_render_opts(
     out: PathBuf,
     r: &RenderArgs,
     cfg: &eval::FlakeConfig,
+    closures: Option<Closures>,
 ) -> Result<RenderOpts> {
     let mut extra_pages: Vec<(String, PathBuf)> = cfg
         .extra_pages
@@ -77,6 +79,7 @@ pub(super) fn to_render_opts(
         domains,
         grammar: annotations::resolve_edition(r.grammar.or(cfg.grammar))?,
         deny,
+        closures,
     })
 }
 

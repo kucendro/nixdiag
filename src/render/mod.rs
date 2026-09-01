@@ -1,6 +1,7 @@
 //! facts + annotations -> the full docs tree (topology, module tree, wiki).
 
 pub mod d2;
+mod inputs;
 mod modules;
 pub mod out;
 mod topology;
@@ -9,8 +10,10 @@ mod wiki;
 pub use out::{Out, WKind};
 pub use wiki::WikiOpts;
 
+use crate::closures::{Closures, CLOSURES_SCHEMA};
 use crate::facts::{Facts, Host, SCHEMA};
 use crate::source::annotations::{self, Sev};
+use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use crate::source::{doccomment, imports};
 use anyhow::{bail, Result};
@@ -67,6 +70,9 @@ pub struct RenderOpts {
     pub grammar: u32,
     /// Warning categories promoted to errors, e.g. `deprecated`.
     pub deny: Vec<String>,
+    /// Per-host closure sizes, when `mkDocs { closures = true; }` supplied
+    /// them. Absent in every other case, including all of mode A.
+    pub closures: Option<Closures>,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
@@ -81,6 +87,17 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
             facts.schema,
             env!("CARGO_PKG_VERSION")
         );
+    }
+    if let Some(c) = &opts.closures {
+        if c.schema != CLOSURES_SCHEMA {
+            bail!(
+                "closures.json declares schema {}, but nixdiag {} implements schema \
+                 {CLOSURES_SCHEMA} — the derivation that produced it comes from a \
+                 different nixdiag revision; pin `lib` and the binary to the same one",
+                c.schema,
+                env!("CARGO_PKG_VERSION")
+            );
+        }
     }
     facts.normalize();
     let repo = Repo::new(opts.repo.clone());
@@ -110,7 +127,23 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
 
     topology::generate(facts, &model, &mut out, opts.svg, &opts.style)?;
     modules::generate(facts, &repo, &mut out, opts.svg, &opts.style)?;
+    // A flake without a lock is legitimate; the input pages are simply absent.
+    let lock = Lock::read(&repo.root);
+    if let Some(lock) = &lock {
+        inputs::generate(lock, &mut out, opts.svg, &opts.style)?;
+    }
     let docs = collect_docs(facts, &repo);
-    wiki::generate(facts, &repo, &mut out, &opts.wiki, &docs, &model)?;
+    wiki::generate(
+        &mut out,
+        &opts.wiki,
+        &wiki::WikiData {
+            facts,
+            repo: &repo,
+            docs: &docs,
+            model: &model,
+            lock: lock.as_ref(),
+            closures: opts.closures.as_ref(),
+        },
+    )?;
     Ok(out)
 }

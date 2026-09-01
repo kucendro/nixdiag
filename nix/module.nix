@@ -17,7 +17,15 @@ in
       enable = lib.mkEnableOption "serving nixdiag docs via nginx";
       docs = lib.mkOption {
         type = lib.types.package;
-        description = "Docs derivation, typically nixdiag.lib.mkDocs { … }.";
+        description = ''
+          Docs derivation, typically nixdiag.lib.mkDocs { … }.
+
+          This option roots an nginx vhost at the derivation, so this host's
+          system closure contains the docs. A docs build that measured this
+          host's closure would therefore depend on itself. `closures = true`
+          detects that and skips serving hosts automatically; only an explicit
+          `closures = [ ... ]` naming this host reintroduces the cycle.
+        '';
       };
       virtualHost = lib.mkOption {
         type = lib.types.str;

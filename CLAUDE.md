@@ -67,6 +67,7 @@ src/
     repo.rs               store path -> repo-relative (the `-source/` marker)
     doccomment.rs         leading RFC 145 /** */ via rnix
     imports.rs            host entry modules + the import graph
+    flakelock.rs          flake.lock -> input graph + duplicate detection
     annotations/          the `#:` engine — biggest subsystem, one concern per file
       mod.rs              the grammar doc comment + the public façade
       grammar.rs          GRAMMAR/VERSION, editions, deprecation table
@@ -82,10 +83,11 @@ src/
     d2.rs                 palette, vars block, spawn `d2 --layout elk`
     topology.rs           the data-flow diagram
     modules.rs            the module-tree diagram
+    inputs.rs             the flake input graph
     wiki/                 mdBook source, one module per generated page
       mod.rs              WikiOpts, page order, shared host->services helper
       book.rs             book.toml, SUMMARY, index, extra pages
-      architecture.rs / hosts.rs / services.rs / endpoints.rs
+      architecture.rs / hosts.rs / services.rs / endpoints.rs / inputs.rs
 nix/projections/core.nix  shared via include_str! AND exported in flake lib
 nix/lib.nix               mkFacts / mkDocs
 nix/module.nix            serve / timer
@@ -397,13 +399,127 @@ pages.
 - [ ] Optional `.nixdiag.json` output manifest (`{version, grammar}`) if
       provenance is ever wanted; markers stay version-free.
 - [ ] v2.x: reference plucks (`cfg.*`) + options-tree validation in `check`.
-- [ ] Candidate second axis, **not committed**: see `visualizations.md`, 21
-      plates distilled from the "Nix Visual Atlas" sketch. It visualizes the
-      *Nix pipeline* (eval, instantiate, build, closure, gc, flake) rather than
-      infrastructure intent, so it is an orthogonal product, not a nixdiag
-      feature list. Held to the same bar as everything here: derivable from a
-      stable generic surface, never from option-shape walkers or debug output
-      that is not a contract.
+- [x] Atlas triage (`visualizations.md`, 21 plates). Held against the bar, only
+      six survive; the disqualifier is nearly always that the plate needs a
+      build to have happened (3.x), a live store (5.x, 2.2), a clock, or debug
+      output that is not a contract (1.x). The survivors are exactly the two
+      families the sketch's own triage called best-ratio: flake-lock arithmetic
+      and closure size. **Liveness/status is permanently out** — Beszel and
+      Prometheus/blackbox already own it, and mixing world-at-time-T into a
+      derivation would kill mode B's reproducibility.
+- [x] Flake inputs (plates 6.1/6.2/6.3): `source/flakelock.rs` +
+      `render/inputs.rs` + `render/wiki/inputs.rs`. Decisions:
+      - `flake.lock` is a plain file read — no eval, no realisation, no clock —
+        so this needs zero new plumbing (`render` already takes `--repo`) and
+        behaves identically in both modes. Default on. `lastModified` is a
+        fixed integer *in the lock*, which is what keeps dates deterministic;
+        "overdue" would need a clock and is therefore not rendered.
+      - Two duplicate signals, deliberately separated because they need
+        different reactions: a **diamond** (one repo at several revs — a
+        correctness risk, reported with the `follows` that fixes it) versus
+        **redundancy** (one rev under several node names — a wasted fetch).
+      - Identity folds case on forge `owner`/`repo`. Without it `nixos/nixpkgs`
+        beside `NixOS/nixpkgs` is missed — which is exactly the diamond the
+        ~/os lock actually had (sops-nix pulling its own nixpkgs).
+      - A `follows` is only suggested when the root has an input to point at,
+        so no advice is invented for a repo the root never pulls.
+      - Only diamond nodes carry their rev in the d2 label; a rev on every box
+        is noise. Reuses existing `PALETTE` names rather than adding any, so
+        `topology.d2`/`modules.d2` stayed byte-identical — `vars_block` emits
+        the whole palette into every diagram, so a new entry would churn every
+        snapshot here and in every consumer's committed docs.
+      - The `![…](./inputs.svg)` line is emitted whether or not the SVG was
+        rendered: `check` runs with `--no-svg` and the Markdown must not differ.
+      - `tests/fixture/flake.lock` is hand-written and exercises every branch
+        (diamond with case difference, redundancy, a `follows`). Safe because
+        `tests/fixture/flake.nix` is a plain attrset that is never evaluated as
+        a flake, so nothing will ever rewrite the lock.
+- [x] Closures (plates 4.1/4.2/4.4): `nix/closures.nix` + `src/closures.rs` +
+      `render/wiki/closures.rs`, opt-in via `mkDocs { closures = true; }`.
+      Decisions:
+      - **Mode B only.** Nar sizes exist only for *realised* paths (Nix 2.34.8:
+        `nix path-info` "does not build or substitute"; exportReferencesGraph
+        errors `cannot export references of path '%s' because it is not in the
+        input closure`). Only a derivation can depend on builds purely, so
+        `gen --closures` / `check --closures` exist solely to refuse with a
+        pointer at `mkDocs`.
+      - **Separate `closures.json`, own schema** — not more fields on facts.
+        The provenance differs (realisation vs evaluation) and `mkFacts` is
+        pure eval, so it structurally cannot fill them. `facts.json` stays
+        schema 2 and no consumer breaks.
+      - `__structuredAttrs = true` is **load-bearing**: the classic
+        exportReferencesGraph text format is `path / empty deriver / nrefs /
+        refs` with *no sizes*. Structured attrs replace the path list with
+        PathInfo objects carrying `narSize`. Depend only on `path`/`narSize`
+        and tolerate extra keys. Under structuredAttrs `$out` is not set the
+        usual way — take `out=''${outputs[out]}`, as closureInfo does.
+      - One derivation per host, not one multi-key derivation:
+        exportReferencesGraph keys land at the *top level* of `.attrs.json`,
+        where a host named `outputs` or `builder` would collide.
+      - Totals/counts are always derived from `paths`, never stored, so they
+        cannot disagree with the list they summarise.
+      - **The serve cycle, and why `mkDocs` breaks it itself.**
+        `services.nixdiag.serve` roots an nginx vhost at a docs derivation, so
+        a serving host's closure *contains* the docs; measuring it would give
+        `docs -> toplevel -> docs`, which Nix surfaces only as infinite
+        recursion. Verified with `throw` tripwires rather than by building the
+        cycle (safer, and it says who forced what): reading
+        `serve.enable` does **not** force `serve.docs`, while
+        `system.build.toplevel` **does**. That asymmetry is what makes
+        detection possible, so `closures = true` filters serving hosts out and
+        `lib.warn`s naming them. `closures = [ … ]` is taken at the user's
+        word and never filtered — needed because serving one build while
+        measuring another is legitimate and has no cycle, and nixdiag cannot
+        tell the two apart without forcing `serve.docs`.
+      - **Never print a store path into generated output.** Nix scans build
+        outputs for store-path strings and records each as a real reference:
+        measured, a 367-byte markdown table listing five paths had a 36 MiB
+        closure. Printing a system closure would make the docs derivation
+        retain every path it describes, and `serve` would pull that into the
+        serving host's system. So the page lists `linux-6.12.9`, not
+        `/nix/store/<hash>-linux-6.12.9` (`util::store_name`), and
+        `checks.closures` greps the whole output tree for
+        `/nix/store/<32>-` so it cannot regress. Full paths *are* kept in
+        `closures.json`, because the shared/unique set analysis needs real
+        identity — two hosts can hold different builds of the same name — and
+        that file is a transient build input, not a GC root.
+      - Testing an eval cycle safely: never bound it with `timeout` alone,
+        which does not cap memory. Prefer `throw` tripwires; if a real cycle
+        must be evaluated, use `--option max-call-depth` plus `ulimit -v` or a
+        systemd scope with `MemoryMax`.
+      - Tests build no NixOS system: `checks.closures` renders
+        `tests/fixture/closures.json` (hand-written, deliberate overlap) and
+        diffs `tests/reference/closures.md`; `checks.closures-plumbing` runs
+        the real derivation over `pkgs.hello` and asserts shape *and* sort
+        order. The end-to-end path over real hosts is verified by hand.
+      - `wiki::generate` grew past clippy's argument limit, so the data inputs
+        (facts, repo, docs, model, lock, closures) are bundled into
+        `WikiData`. Add future inputs there, not to the signature.
+      - **It measures, it does not build a fleet** (settled 2026-09-01 while
+        checking whether a `closures` build could double as a binary-cache
+        warm). It can't, on its own: the same no-store-paths rule that stops
+        `serve` retaining a fleet means the docs hold *no* references to the
+        systems they measure, so everything realised is unrooted and the next
+        GC takes it. The working arrangement inverts the order — your own
+        pipeline builds and roots the systems (`--out-link` is the GC root),
+        the docs build runs after and finds everything realised, and a cache
+        on that machine serves the systems as a side effect. ~/os already had
+        exactly this in `.gitea/workflows/update.yaml`. Documented on the
+        `mkDocs` arg, in `site/src/build.md`, and here; no code needed.
+      - `preferLocalBuild` on the per-host derivation is **correct, not a
+        bug** — checked and nearly "fixed" the wrong way. It pins the jq to
+        the invoking machine, which is what you want when the docs build runs
+        where the systems are; removing it would let Nix ship a whole system
+        closure *to* a remote builder, since Nix does not schedule on input
+        locality. The real failure mode is invoking the build from a machine
+        that is not the one holding the systems, and that is an instruction,
+        not a flag.
+      - Unmeasured NixOS hosts get a row with `—` rather than being dropped:
+        `closures` takes an opt-in list, and a silent omission reads as "this
+        is the whole fleet". On the hosts page the row says `not measured`,
+        which is distinguishable from the feature being off (no row at all).
+        `summary_rows` is split out of `page_closures` purely so that case is
+        unit-testable without constructing a whole `Facts`.
 - [ ] Later: nixpkgs PR; extra diagrams/pages one at a time, each held to the
       v2 bar — derivable from stable generic surfaces (e.g. flake inputs graph
       via `nix flake metadata --json`, systemd timer calendar from units) or

@@ -2,11 +2,23 @@
 
 use super::options::{abs, resolve_out, to_render_opts};
 use super::{FlakeArgs, RenderArgs};
+use crate::closures::Closures;
 use crate::eval;
 use crate::facts::Facts;
 use crate::render::{render_all, Out, WKind};
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
+
+/// Closure sizes exist only for realised paths, so producing them means
+/// building every host's system. Only a derivation can express that purely —
+/// see nix/closures.nix.
+fn closures_need_mode_b() -> anyhow::Error {
+    anyhow::anyhow!(
+        "closure metrics require every host's system to be built, which this \
+         command cannot do purely.\nDeclare them in your flake instead:\n\n    \
+         nixdiag.lib.mkDocs {{ closures = true; /* … */ }}\n"
+    )
+}
 
 fn gather_facts(args: &FlakeArgs) -> Result<(PathBuf, Facts)> {
     let flake = abs(&args.flake);
@@ -54,6 +66,7 @@ pub(super) fn cmd_render(
     facts_path: PathBuf,
     repo: PathBuf,
     out: PathBuf,
+    closures_path: Option<PathBuf>,
     r: RenderArgs,
 ) -> Result<()> {
     let text = if facts_path == Path::new("-") {
@@ -63,22 +76,45 @@ pub(super) fn cmd_render(
             .with_context(|| format!("reading {}", facts_path.display()))?
     };
     let mut facts: Facts = serde_json::from_str(&text).context("parsing facts.json")?;
+    let closures = closures_path
+        .map(|p| -> Result<Closures> {
+            let text =
+                std::fs::read_to_string(&p).with_context(|| format!("reading {}", p.display()))?;
+            serde_json::from_str(&text).context("parsing closures.json")
+        })
+        .transpose()?;
     let cfg = eval::FlakeConfig::default();
     render_all(
         &mut facts,
-        &to_render_opts(abs(&repo), abs(&out), &r, &cfg)?,
+        &to_render_opts(abs(&repo), abs(&out), &r, &cfg, closures)?,
     )?;
     Ok(())
 }
 
-pub(super) fn cmd_gen(args: FlakeArgs, out: Option<PathBuf>, r: RenderArgs) -> Result<Out> {
+pub(super) fn cmd_gen(
+    args: FlakeArgs,
+    out: Option<PathBuf>,
+    closures: bool,
+    r: RenderArgs,
+) -> Result<Out> {
+    if closures {
+        return Err(closures_need_mode_b());
+    }
     let (flake, mut facts) = gather_facts(&args)?;
     let cfg = eval::flake_config(&flake);
     let out = resolve_out(out, &cfg, &flake);
-    render_all(&mut facts, &to_render_opts(flake, out, &r, &cfg)?)
+    render_all(&mut facts, &to_render_opts(flake, out, &r, &cfg, None)?)
 }
 
-pub(super) fn cmd_check(args: FlakeArgs, out: Option<PathBuf>, mut r: RenderArgs) -> Result<()> {
+pub(super) fn cmd_check(
+    args: FlakeArgs,
+    out: Option<PathBuf>,
+    closures: bool,
+    mut r: RenderArgs,
+) -> Result<()> {
+    if closures {
+        return Err(closures_need_mode_b());
+    }
     let flake = abs(&args.flake);
     let cfg = eval::flake_config(&flake);
     let committed = resolve_out(out, &cfg, &flake);
@@ -88,7 +124,10 @@ pub(super) fn cmd_check(args: FlakeArgs, out: Option<PathBuf>, mut r: RenderArgs
     }
     r.no_svg = true; // SVG output varies with the d2 version; compare sources only
     let (_, mut facts) = gather_facts(&args)?;
-    let rendered = render_all(&mut facts, &to_render_opts(flake, tmp.clone(), &r, &cfg)?)?;
+    let rendered = render_all(
+        &mut facts,
+        &to_render_opts(flake, tmp.clone(), &r, &cfg, None)?,
+    )?;
 
     let mut drift: Vec<PathBuf> = Vec::new();
     for w in &rendered.manifest {

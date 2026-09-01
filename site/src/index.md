@@ -34,7 +34,9 @@ your own. Roles are any word you like, and only the scope vocabulary
 
 From eval, via a single generic projection: enabled services and programs with
 their defining files, firewall ports, users, platform, stateVersion, package
-count. From the repo source: `#:` annotations and `/** */` doc comments.
+count. From the repo source: `#:` annotations, `/** */` doc comments, and
+`flake.lock` — a plain file read, so the input graph costs no eval and no
+build.
 
 ## What you get
 
@@ -42,11 +44,14 @@ count. From the repo source: `#:` annotations and `/** */` doc comments.
 |---|---|
 | `topology.d2`, `topology.svg` | who talks to what, by scope: public, mesh, lan |
 | `modules.d2`, `modules.svg` | host to module file tree |
+| `inputs.d2`, `inputs.svg` | flake input graph; `follows` edges dashed |
 | `wiki/src/index.md` | your hand-written overview, written once, never overwritten |
 | `wiki/src/architecture.md` | both diagrams |
 | `wiki/src/hosts.md` | per host: platform, users, ports, services and their files |
 | `wiki/src/services.md` | every service, the hosts running it, the file defining it |
 | `wiki/src/endpoints.md` | fqdn, port, scope, host, service |
+| `wiki/src/inputs.md` | every input with its rev and lock date, plus duplicate detection |
+| `wiki/src/closures.md` | opt-in: per-host closure size, largest paths, fleet sharing |
 
 ## Next
 
