@@ -1,0 +1,29 @@
+<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" width="720" height="440" role="img" font-family="ui-sans-serif, system-ui, sans-serif">
+  <title>sol closure by package</title>
+  <rect x="0" y="0" width="720" height="440" fill="#ffffff"/>
+  <rect x="0" y="10" width="10" height="10" fill="#4a76c4"/>
+  <text x="15" y="19" font-size="12" fill="#777777">shared by every host</text>
+  <rect x="169" y="10" width="10" height="10" fill="#27893f"/>
+  <text x="184" y="19" font-size="12" fill="#777777">unique to this host</text>
+  <rect x="1" y="33" width="216" height="398" fill="#4a76c4"/>
+  <text x="5" y="48" font-size="13" fill="#ffffff">linux</text>
+  <text x="5" y="63" font-size="12" fill="#ffffff">142.3 MiB</text>
+  <rect x="219" y="33" width="312" height="232" fill="#27893f"/>
+  <text x="223" y="48" font-size="13" fill="#ffffff">prometheus</text>
+  <text x="223" y="63" font-size="12" fill="#ffffff">120.0 MiB</text>
+  <rect x="219" y="267" width="312" height="164" fill="#4a76c4"/>
+  <text x="223" y="282" font-size="13" fill="#ffffff">systemd</text>
+  <text x="223" y="297" font-size="12" fill="#ffffff">85.0 MiB</text>
+  <rect x="533" y="33" width="186" height="194" fill="#27893f"/>
+  <text x="537" y="48" font-size="13" fill="#ffffff">postgresql</text>
+  <text x="537" y="63" font-size="12" fill="#ffffff">60.0 MiB</text>
+  <rect x="533" y="229" width="186" height="107" fill="#4a76c4"/>
+  <text x="537" y="244" font-size="13" fill="#ffffff">glibc</text>
+  <text x="537" y="259" font-size="12" fill="#ffffff">33.4 MiB</text>
+  <rect x="533" y="338" width="131" height="93" fill="#4a76c4"/>
+  <text x="537" y="353" font-size="13" fill="#ffffff">coreutils</text>
+  <text x="537" y="368" font-size="12" fill="#ffffff">20.5 MiB</text>
+  <rect x="666" y="338" width="53" height="93" fill="#4a76c4"/>
+  <text x="670" y="353" font-size="13" fill="#ffffff">bash</text>
+</svg>

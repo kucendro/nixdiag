@@ -48,11 +48,20 @@ snapshots:
     cp --no-preserve=mode "$closures"/wiki/src/closures*.svg tests/reference/
     git diff --stat -- tests/reference/
 
-# Re-render the README and site diagrams from tests/reference/*.d2.
-assets:
+# Re-render the README and site pictures from the fixture.
+assets: build
     #!/usr/bin/env bash
     set -euo pipefail
     for d in topology modules; do
       d2 --layout elk --theme 200 "tests/reference/$d.d2" "assets/$d.svg"
     done
+    facts="$(nix build .#fixture-facts --no-link --print-out-paths)"
+    rm -rf .dev/assets
+    ./target/debug/nixdiag render \
+      --facts "$facts" --repo tests/fixture \
+      --closures tests/fixture/closures.json \
+      --domain ts=ts.example --title 'Example fleet' \
+      --theme light --background '#ffffff' \
+      --out .dev/assets --no-svg
+    cp .dev/assets/wiki/src/{inputs-timeline,closures,closures-sol}.svg assets/
     git diff --stat -- assets/

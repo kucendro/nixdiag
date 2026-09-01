@@ -12,6 +12,23 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 ![modules](assets/modules.svg)
 
+Every flake input placed by the date it is locked at, straight out of
+`flake.lock` — no eval, no clock, and blue for the inputs your own flake
+declares:
+
+![lock dates](assets/inputs-timeline.svg)
+
+Opt in to closure metrics and each host is measured against the rest of the
+fleet, then broken down by package:
+
+![fleet closure sizes](assets/closures.svg)
+
+![closure treemap](assets/closures-sol.svg)
+
+nixdiag draws those three itself rather than through d2, so they need no
+binary on PATH and come out byte-identical run to run — which is what lets
+`nixdiag check` hold a picture to a diff.
+
 ---
 
 ## Docs
