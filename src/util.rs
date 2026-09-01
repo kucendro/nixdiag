@@ -57,6 +57,22 @@ pub fn store_name(path: &str) -> &str {
     base.split_once('-').map(|(_, name)| name).unwrap_or(base)
 }
 
+/// `glibc-2.42-67` -> `glibc`; a name with no version is returned whole.
+///
+/// nixpkgs spells store names `<name>-<version>` and a version starts with a
+/// digit, so the first `-` before a digit ends the name. Folding there is what
+/// makes a treemap of a real closure readable: the several outputs and
+/// versions of one package become one tile instead of a scatter of slivers.
+pub fn package_name(name: &str) -> &str {
+    let b = name.as_bytes();
+    for i in 0..b.len().saturating_sub(1) {
+        if b[i] == b'-' && b[i + 1].is_ascii_digit() {
+            return &name[..i];
+        }
+    }
+    name
+}
+
 /// Thousands-separated count — closure path tallies run to five figures.
 pub fn human_count(n: usize) -> String {
     let s = n.to_string();
@@ -96,6 +112,25 @@ mod tests {
         // Not a store path, or no hash to strip: left alone.
         assert_eq!(store_name("plain"), "plain");
         assert_eq!(store_name("/some/where/else"), "else");
+    }
+
+    #[test]
+    fn package_names_drop_the_version() {
+        assert_eq!(package_name("linux-6.12.9"), "linux");
+        assert_eq!(package_name("glibc-2.42-67"), "glibc");
+        assert_eq!(package_name("bash-5.2p37"), "bash");
+        // Multiple outputs of one package fold together.
+        assert_eq!(package_name("gcc-13.2.0-lib"), "gcc");
+        // A python module keeps its interpreter prefix: the `-` before `12`
+        // is not preceded by a digit-starting segment boundary we want.
+        assert_eq!(
+            package_name("python3.12-requests-2.32.3"),
+            "python3.12-requests"
+        );
+        // No version at all.
+        assert_eq!(package_name("playwright-chromium"), "playwright-chromium");
+        assert_eq!(package_name(""), "");
+        assert_eq!(package_name("-"), "-");
     }
 
     #[test]

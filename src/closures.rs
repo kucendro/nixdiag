@@ -105,6 +105,25 @@ impl Closures {
         self.hosts.values().map(HostClosure::total).sum()
     }
 
+    /// This host's paths with how many measured hosts hold each one.
+    ///
+    /// The per-path form of `split`, which the treemap needs to colour a tile.
+    /// The count is returned raw rather than classified, so the model does not
+    /// have to know the renderer's vocabulary.
+    pub fn path_shares(&self, host: &str) -> Vec<(&str, u64, usize)> {
+        let occ = self.occurrences();
+        let Some(h) = self.hosts.get(host) else {
+            return Vec::new();
+        };
+        h.paths
+            .iter()
+            .map(|p| {
+                let count = occ.get(p.path.as_str()).map_or(0, |(c, _)| *c);
+                (p.path.as_str(), p.nar_size, count)
+            })
+            .collect()
+    }
+
     /// One host's closure split by how widely each path is held: carried by
     /// every measured host, by some of them, or by this host alone.
     ///
@@ -223,6 +242,16 @@ mod tests {
             c.hosts["luna"].total()
         );
         assert_eq!(c.split("nope"), Split::default());
+    }
+
+    #[test]
+    fn path_shares_carries_the_holder_count_per_path() {
+        let c = fixture();
+        assert_eq!(
+            c.path_shares("luna"),
+            vec![("libc", 100, 2), ("bash", 50, 2), ("nginx", 10, 1)]
+        );
+        assert_eq!(c.path_shares("nope"), vec![]);
     }
 
     #[test]

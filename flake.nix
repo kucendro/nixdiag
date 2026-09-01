@@ -216,7 +216,9 @@
               # nixdiag draws the fleet bar chart itself, so unlike anything d2
               # produces it is byte-deterministic and survives --no-svg — which
               # is what lets a picture be diffed here at all.
-              diff -u "$reference/closures.svg" "$docs/wiki/src/closures.svg"
+              for svg in "$docs"/wiki/src/closures*.svg; do
+                diff -u "$reference/$(basename "$svg")" "$svg"
+              done
               grep -q '| Closure |' "$docs/wiki/src/hosts.md"
               # Nix records a reference for every store path appearing in an
               # output, so printing one would make the docs retain the whole

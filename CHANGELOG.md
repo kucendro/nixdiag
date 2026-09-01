@@ -71,6 +71,13 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
   overrides under their own names — `chartShared`, `chartPartial`,
   `chartUnique`, `chartInk`, `chartMuted`, `chartTrack` — which are deliberately
   absent from the d2 `vars` palette so existing diagrams stay byte-identical.
+- **Closure treemap**, one `wiki/src/closures-<host>.svg` per measured host:
+  every package in that host's closure as a rectangle sized by its share of
+  the bytes, squarified, coloured with the same bands as the fleet bar — so it
+  reads as that bar exploded by package. Tiles are packages rather than store
+  paths (a package's several outputs fold into one), while the table beneath
+  stays per path. The long tail past the largest two dozen becomes a single
+  counted tile rather than a scatter of slivers.
 - **Flake input graph.** A new `inputs.d2` diagram and `wiki/src/inputs.md`
   page, read straight from `flake.lock`. No eval and no realisation, so it
   costs nothing and behaves identically in both modes. The page lists every

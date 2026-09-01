@@ -20,7 +20,11 @@ What each host's system closure weighs, measured from the realised store paths. 
 | Sum of per-host closures | 763.5 MiB |
 | Saved by sharing | 289.8 MiB |
 
-## luna — largest contributors
+## luna
+
+![luna closure by package](./closures-luna.svg)
+
+Largest single paths:
 
 | Package | Size |
 |---|---|
@@ -31,7 +35,11 @@ What each host's system closure weighs, measured from the realised store paths. 
 | `bash-5.2p37` | 8.5 MiB |
 | `nginx-1.26.2` | 4.0 MiB |
 
-## sol — largest contributors
+## sol
+
+![sol closure by package](./closures-sol.svg)
+
+Largest single paths:
 
 | Package | Size |
 |---|---|

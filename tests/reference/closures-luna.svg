@@ -1,0 +1,27 @@
+<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" width="720" height="440" role="img" font-family="ui-sans-serif, system-ui, sans-serif">
+  <title>luna closure by package</title>
+  <rect x="0" y="0" width="720" height="440" fill="transparent"/>
+  <rect x="0" y="10" width="10" height="10" fill="#7fa7e8"/>
+  <text x="15" y="19" font-size="12" fill="#8b949e">shared by every host</text>
+  <rect x="169" y="10" width="10" height="10" fill="#2ecc71"/>
+  <text x="184" y="19" font-size="12" fill="#8b949e">unique to this host</text>
+  <rect x="1" y="33" width="347" height="398" fill="#7fa7e8"/>
+  <text x="5" y="48" font-size="13" fill="#14181f">linux</text>
+  <text x="5" y="63" font-size="12" fill="#14181f">142.3 MiB</text>
+  <rect x="350" y="33" width="369" height="222" fill="#7fa7e8"/>
+  <text x="354" y="48" font-size="13" fill="#14181f">systemd</text>
+  <text x="354" y="63" font-size="12" fill="#14181f">85.0 MiB</text>
+  <rect x="350" y="257" width="185" height="174" fill="#7fa7e8"/>
+  <text x="354" y="272" font-size="13" fill="#14181f">glibc</text>
+  <text x="354" y="287" font-size="12" fill="#14181f">33.4 MiB</text>
+  <rect x="537" y="257" width="113" height="174" fill="#7fa7e8"/>
+  <text x="541" y="272" font-size="13" fill="#14181f">coreutils</text>
+  <text x="541" y="287" font-size="12" fill="#14181f">20.5 MiB</text>
+  <rect x="651" y="257" width="68" height="117" fill="#7fa7e8"/>
+  <text x="655" y="272" font-size="13" fill="#14181f">bash</text>
+  <text x="655" y="287" font-size="12" fill="#14181f">8.5 MiB</text>
+  <rect x="651" y="377" width="68" height="54" fill="#2ecc71"/>
+  <text x="655" y="392" font-size="13" fill="#14181f">nginx</text>
+  <text x="655" y="407" font-size="12" fill="#14181f">4.0 MiB</text>
+</svg>

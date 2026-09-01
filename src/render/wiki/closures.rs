@@ -4,18 +4,24 @@
 //! Opt-in and mode B only — nar sizes exist only for realised paths, so this
 //! page is present exactly when `mkDocs { closures = …; }` supplied the data.
 
-use super::super::chart::{self, Band, Row};
+use super::super::chart::{self, Band, Row, Tile};
 use super::super::d2::D2Style;
 use super::super::out::{Out, MD_MARKER};
 use crate::closures::{Closures, HostClosure};
 use crate::facts::Facts;
-use crate::util::{human_count, human_size, store_name};
+use crate::util::{human_count, human_size, package_name, sanitize, store_name};
 use anyhow::Result;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Biggest contributors listed per host. Enough to see what dominates without
 /// turning the page into a store dump.
 const TOP_PATHS: usize = 10;
+
+/// Treemap tiles before the tail is folded into one. A real closure has a few
+/// hundred packages, and past this many the rectangles are thinner than their
+/// own labels.
+const TREEMAP_TILES: usize = 24;
 
 pub(super) fn page_closures(
     out: &mut Out,
@@ -105,7 +111,21 @@ pub(super) fn page_closures(
         // An unmeasured host has nothing to contribute; an empty heading would
         // only repeat what the summary table already said.
         let Some(h) = closure else { continue };
-        o.push(format!("## {host} — largest contributors"));
+        o.push(format!("## {host}"));
+        o.push("".into());
+
+        let tiles = treemap_tiles(closures, host);
+        if !tiles.is_empty() {
+            let file = format!("closures-{}.svg", sanitize(host));
+            let caption = format!("{host} closure by package");
+            out.write_auto(&src.join(&file), &chart::treemap(&caption, &tiles, style))?;
+            o.push(format!("![{caption}](./{file})"));
+            o.push("".into());
+        }
+
+        // Single paths, where the treemap tiles are packages: the two differ
+        // wherever one package ships several outputs.
+        o.push("Largest single paths:".into());
         o.push("".into());
         o.push("| Package | Size |".into());
         o.push("|---|---|".into());
@@ -165,6 +185,50 @@ fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<
             },
         })
         .collect()
+}
+
+/// Treemap tiles for one host: package name and how widely it is held, summed
+/// over every store path that folds to that name, with the long tail folded
+/// into a single tile so it is visible without being drawn.
+fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
+    let n = closures.hosts.len();
+    let band = |count: usize| match count {
+        _ if n < 2 => Band::Solid,
+        c if c >= n => Band::Shared,
+        1 => Band::Unique,
+        _ => Band::Partial,
+    };
+
+    // Keyed on the holder count as well as the name, so a tile never averages
+    // two bands: one package's outputs are almost always held alike, and when
+    // they are not, saying so is the honest answer.
+    let mut groups: BTreeMap<(&str, usize), u64> = BTreeMap::new();
+    for (path, size, count) in closures.path_shares(host) {
+        *groups
+            .entry((package_name(store_name(path)), count))
+            .or_default() += size;
+    }
+    let mut v: Vec<((&str, usize), u64)> = groups.into_iter().collect();
+    v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+
+    let mut tiles: Vec<Tile> = v
+        .iter()
+        .take(TREEMAP_TILES)
+        .map(|((name, count), size)| Tile {
+            label: (*name).to_string(),
+            value: *size,
+            band: band(*count),
+        })
+        .collect();
+    let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|(_, s)| s).sum();
+    if rest > 0 {
+        tiles.push(Tile {
+            label: format!("{} more", human_count(v.len() - TREEMAP_TILES)),
+            value: rest,
+            band: Band::Rest,
+        });
+    }
+    tiles
 }
 
 /// The summary table. Split out so the unmeasured-host case is testable
@@ -244,6 +308,52 @@ mod tests {
         assert_eq!(rows[0].note, "1.0 KiB");
         assert!(rows[1].bands.is_empty());
         assert_eq!(rows[1].note, "not measured");
+    }
+
+    #[test]
+    fn treemap_tiles_fold_a_packages_outputs_together() {
+        let mut hosts = IndexMap::new();
+        let path = |n: &str, name: &str, size| ClosurePath {
+            path: format!("/nix/store/0000000000000000000000000000000{n}-{name}"),
+            nar_size: size,
+        };
+        hosts.insert(
+            "nas".to_string(),
+            HostClosure {
+                paths: vec![
+                    path("a", "glibc-2.42-67", 100),
+                    path("b", "glibc-2.42-67-bin", 40),
+                    path("c", "linux-6.12.9", 300),
+                ],
+            },
+        );
+        let c = Closures { schema: 1, hosts };
+        let tiles = treemap_tiles(&c, "nas");
+        let seen: Vec<(&str, u64)> = tiles.iter().map(|t| (t.label.as_str(), t.value)).collect();
+        // Two outputs of glibc are one 140-byte tile, and it sorts under linux.
+        assert_eq!(seen, vec![("linux", 300), ("glibc", 140)]);
+        // One measured host, so nothing to compare and no legend to earn.
+        assert!(tiles.iter().all(|t| t.band == Band::Solid), "{seen:?}");
+    }
+
+    #[test]
+    fn the_treemap_tail_folds_into_one_counted_tile() {
+        let mut hosts = IndexMap::new();
+        // TREEMAP_TILES big ones plus three stragglers.
+        let paths = (0..TREEMAP_TILES + 3)
+            .map(|i| ClosurePath {
+                path: format!("/nix/store/0000000000000000000000000000{i:04}-pkg{i:03}-1.0"),
+                nar_size: if i < TREEMAP_TILES { 1000 } else { 7 },
+            })
+            .collect();
+        hosts.insert("nas".to_string(), HostClosure { paths });
+        let c = Closures { schema: 1, hosts };
+        let tiles = treemap_tiles(&c, "nas");
+        assert_eq!(tiles.len(), TREEMAP_TILES + 1);
+        let last = tiles.last().unwrap();
+        assert_eq!(last.label, "3 more");
+        assert_eq!(last.value, 21);
+        assert_eq!(last.band, Band::Rest);
     }
 
     /// Three hosts is the smallest fleet where a path can be held by some but

@@ -625,10 +625,39 @@ pages.
         `closures.rs` and `render/wiki/closures.rs` instead of by inventing
         a third fixture host. Both palettes were checked by rendering the
         snapshot to PNG over mdBook's navy and over white.
-- [ ] Closure **treemap** (plate 4.1) on the same machinery: rectangles by
-      `narSize`, grouped by package name, squarified. Reads `closures.json`
-      like the bar, so the only new code is the layout. Must keep printing
-      names via `util::store_name`, never store paths.
+- [x] Closure **treemap** on the same machinery (plate 4.1 here, 4.2 in
+      `visualizations.md` — the numbers drift between the two files, the names
+      do not). One `closures-<host>.svg` per measured host, above that host's
+      table. Decisions:
+      - Squarified (Bruls, Huizing and van Wijk): grow a row along the shorter
+        side while the worst aspect ratio in it improves. Ratios are `f64` —
+        integer cross-multiplication buys nothing when every coordinate is
+        rounded to a whole pixel anyway — and it stays deterministic because
+        the same values drive the same IEEE-754 ops in the same order.
+      - Tiles are packages, not paths: `util::package_name` cuts at the first
+        `-` before a digit, so a package's several outputs are one tile
+        (`glibc`, not three slivers). The table below stays per *path*, and
+        says so, because the two genuinely differ.
+      - Keyed on `(name, holder count)` so a tile never averages two bands,
+        and coloured with the bar's own legend — the treemap is the fleet bar
+        exploded by package, not a second visual language. `Closures::split`
+        has a per-path sibling, `path_shares`, which returns the raw count so
+        the model never learns the renderer's vocabulary.
+      - Top 24 plus one counted `N more` tile (`Band::Rest`, muted). It sorts
+        by size like everything else, so on a long-tailed closure it lands
+        first — which is itself the finding, and squarify needs descending
+        input to stay squarish.
+      - Labels elide rather than clip, and vanish below six characters:
+        losing the name on the *biggest* rectangle is the worse failure, and
+        that is exactly what a strict fits-or-nothing rule did to
+        `playwright-chromium-headless-shell`.
+      - Tile text takes `chartTileInk`, the inverse of the theme's ink: it
+        sits on a band fill, and the light palette's fills are dark while the
+        dark palette's are light. A one-pixel inset is the only separator —
+        the gaps show the page through, so tiles need no strokes.
+      - Verified against a **real 363-path closure** (nixdiag's own, pre-d2
+        fix), not only the 7-path fixture; that is what surfaced both the
+        unlabelled-big-tile bug and the value of grouping by name.
 - [ ] Open: a **second renderer dependency** is not ruled out, only unjustified
       so far. The bar it must clear is that it draws something the current
       pair cannot — not a second way to draw the same node-link picture, which

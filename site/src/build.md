@@ -87,6 +87,12 @@ is the one picture `nixdiag check` can compare. Its colors follow `theme` and
 can be overridden by name: `chartShared`, `chartPartial`, `chartUnique`,
 `chartInk`, `chartMuted`, `chartTrack`.
 
+Each measured host then gets `closures-<host>.svg`, a treemap of its own
+closure: one rectangle per package, sized by its share of the bytes and
+coloured with the same bands, so it reads as the bar above exploded by
+package. Its tiles are packages — a package's several outputs fold together —
+while the table beside it stays per store path.
+
 Packages are listed by name and version, never by full store path. Nix records
 a reference for every store path that appears in a build output, so printing
 them would make the docs derivation retain the entire closure it describes —
