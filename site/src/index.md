@@ -50,7 +50,7 @@ build.
 | `wiki/src/hosts.md` | per host: platform, users, ports, services and their files |
 | `wiki/src/services.md` | every service, the hosts running it, the file defining it |
 | `wiki/src/endpoints.md` | fqdn, port, scope, host, service |
-| `wiki/src/inputs.md` | every input with its rev and lock date, plus duplicate detection |
+| `wiki/src/inputs.md`, `inputs-timeline.svg` | every input with its rev and lock date, a timeline of those dates, plus duplicate detection |
 | `wiki/src/closures.md`, `closures.svg` | opt-in: per-host closure size, largest paths, fleet sharing, stacked bar chart |
 
 ## Next

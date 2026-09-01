@@ -78,6 +78,19 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
   paths (a package's several outputs fold into one), while the table beneath
   stays per path. The long tail past the largest two dozen becomes a single
   counted tile rather than a scatter of slivers.
+- **Lock timeline**, `wiki/src/inputs-timeline.svg`: every input placed on a
+  shared axis by its `lastModified`, oldest first, with the direct inputs of
+  this flake coloured apart from the ones reached through another input —
+  because a `nix flake update` moves the first and only the responsible input
+  moves the second. Rows sort by date, so the first and last of them label the
+  ends of the axis and no separate scale is drawn; an input without a date
+  keeps its row and gets no tick. The page states the span between the oldest
+  and newest input in days. `lastModified` is a fixed integer in the lock, not
+  a clock read, so this is the *spread* of the supply chain and makes no claim
+  about today — an "overdue" reading would need the current time and would make
+  two builds of one input disagree. On by default, in both modes, and drawn by
+  nixdiag rather than d2, so `nixdiag check` compares it. Marker colour:
+  `chartMark`.
 - **Flake input graph.** A new `inputs.d2` diagram and `wiki/src/inputs.md`
   page, read straight from `flake.lock`. No eval and no realisation, so it
   costs nothing and behaves identically in both modes. The page lists every
@@ -115,9 +128,10 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
 
 ### Changed
 
-- Default output gained `inputs.d2`, `inputs.svg` and `wiki/src/inputs.md`
-  plus a SUMMARY entry. Mode A consumers who commit `docs/` should run
-  `nixdiag gen` once after upgrading; mode B consumers need do nothing.
+- Default output gained `inputs.d2`, `inputs.svg`, `wiki/src/inputs.md` and
+  `wiki/src/inputs-timeline.svg` plus a SUMMARY entry. Mode A consumers who
+  commit `docs/` should run `nixdiag gen` once after upgrading; mode B
+  consumers need do nothing.
 - **Facts schema 1 → 2.** The projection now reads only quasi-frozen,
   stack-agnostic surfaces: enabled services and programs with their defining
   files, firewall ports, users, platform, `stateVersion`, package count. The

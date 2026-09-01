@@ -5,7 +5,7 @@
 //! lock, which is what keeps every rendered date deterministic.
 
 use serde::Deserialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -232,6 +232,24 @@ impl Lock {
         dups
     }
 
+    /// The nodes the root flake declares itself.
+    ///
+    /// These are the inputs `nix flake update` moves; every other node is
+    /// locked by whichever input pulled it in, so its date is that input's to
+    /// move, not this flake's.
+    pub fn root_inputs(&self) -> BTreeSet<String> {
+        let Some(root) = self.nodes.get(&self.root) else {
+            return BTreeSet::new();
+        };
+        root.inputs
+            .values()
+            .filter_map(|r| match r {
+                InputRef::Node(n) => Some(n.clone()),
+                InputRef::Follows(p) => self.resolve(p),
+            })
+            .collect()
+    }
+
     /// The root's own input name for this repo, if it has one — the target a
     /// `follows` should point at.
     pub fn root_input_for(&self, identity: &str) -> Option<String> {
@@ -338,6 +356,16 @@ mod tests {
             l.parents_of("nixpkgs_2"),
             vec![("stylix".into(), "nixpkgs".into())]
         );
+    }
+
+    #[test]
+    fn root_inputs_are_the_ones_this_flake_declares() {
+        let l = lock();
+        let roots = l.root_inputs();
+        assert!(roots.contains("nixpkgs") && roots.contains("stylix") && roots.contains("utils"));
+        // Reached only through stylix, so a flake update here moves stylix,
+        // not this node.
+        assert!(!roots.contains("nixpkgs_2"), "{roots:?}");
     }
 
     #[test]

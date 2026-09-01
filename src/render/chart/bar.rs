@@ -4,7 +4,7 @@
 //! Closures summary table states and does not show.
 
 use super::{
-    color, legend, legend_bands, rect, svg_open, text, Band, D2Style, CH, LEGEND_H, PAD, W,
+    color, gutter, legend, legend_bands, rect, svg_open, text, Band, D2Style, LEGEND_H, PAD, W,
 };
 
 const ROW_H: u64 = 26;
@@ -17,16 +17,6 @@ pub struct Row {
     pub bands: Vec<(Band, u64)>,
     /// Right-hand annotation: the formatted total, or why there is no bar.
     pub note: String,
-}
-
-/// Gutter wide enough for the longest of these strings.
-fn gutter<'a>(strings: impl Iterator<Item = &'a str>) -> u64 {
-    let longest = strings
-        .map(str::chars)
-        .map(Iterator::count)
-        .max()
-        .unwrap_or(0);
-    CH * longest as u64 + 12
 }
 
 /// A horizontal stacked bar chart, one row per entry, scaled to the largest

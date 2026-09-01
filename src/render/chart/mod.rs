@@ -23,9 +23,11 @@
 //! only ever sees the `pub use` list.
 
 mod bar;
+mod timeline;
 mod treemap;
 
 pub use bar::{bars, Row};
+pub use timeline::{timeline, Mark};
 pub use treemap::{treemap, Tile};
 
 use super::d2::{color, D2Style};
@@ -42,6 +44,15 @@ const PAD: u64 = 8;
 const CH: u64 = 7;
 const LEGEND_H: u64 = 24;
 const SWATCH: u64 = 10;
+
+/// One entry in a chart's key: the colour override name with its light and
+/// dark defaults, and what that colour means. A chart that colours something
+/// other than closure bands builds these itself.
+#[derive(PartialEq, Eq)]
+struct Key {
+    color: (&'static str, &'static str, &'static str),
+    label: &'static str,
+}
 
 /// How widely the paths in one segment are held across the measured fleet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +74,13 @@ impl Band {
             Band::Partial => "shared by some",
             Band::Unique => "unique to this host",
             Band::Rest => "everything smaller",
+        }
+    }
+
+    fn key(self) -> Key {
+        Key {
+            color: self.color(),
+            label: self.legend(),
         }
     }
 
@@ -90,6 +108,16 @@ fn xml_escape(s: &str) -> String {
         }
     }
     o
+}
+
+/// Gutter wide enough for the longest of these strings.
+fn gutter<'a>(strings: impl Iterator<Item = &'a str>) -> u64 {
+    let longest = strings
+        .map(str::chars)
+        .map(Iterator::count)
+        .max()
+        .unwrap_or(0);
+    CH * longest as u64 + 12
 }
 
 fn rect(o: &mut String, x: u64, y: u64, w: u64, h: u64, fill: &str) {
@@ -127,7 +155,7 @@ fn text(o: &mut String, x: u64, y: u64, size: u64, fill: &str, end: bool, s: &st
 ///
 /// A lone `Solid` earns no key: it is the "nothing to compare" case, so a
 /// legend would name a distinction the picture does not draw.
-fn legend_bands(bands: impl Iterator<Item = Band>) -> Vec<Band> {
+fn legend_bands(bands: impl Iterator<Item = Band>) -> Vec<Key> {
     let mut o: Vec<Band> = Vec::new();
     for b in bands {
         if !o.contains(&b) {
@@ -137,14 +165,14 @@ fn legend_bands(bands: impl Iterator<Item = Band>) -> Vec<Band> {
     if o == [Band::Solid] {
         o.clear();
     }
-    o
+    o.into_iter().map(Band::key).collect()
 }
 
 /// Swatch-and-label key along the top, running right from `x`.
-fn legend(o: &mut String, bands: &[Band], mut x: u64, style: &D2Style) {
+fn legend(o: &mut String, keys: &[Key], mut x: u64, style: &D2Style) {
     let muted = color(style, "chartMuted", ("#777777", "#8b949e"));
-    for band in bands {
-        let (name, light, dark) = band.color();
+    for key in keys {
+        let (name, light, dark) = key.color;
         rect(
             o,
             x,
@@ -153,7 +181,7 @@ fn legend(o: &mut String, bands: &[Band], mut x: u64, style: &D2Style) {
             SWATCH,
             color(style, name, (light, dark)),
         );
-        text(o, x + SWATCH + 5, PAD + 11, 12, muted, false, band.legend());
-        x += SWATCH + 5 + CH * band.legend().len() as u64 + 14;
+        text(o, x + SWATCH + 5, PAD + 11, 12, muted, false, key.label);
+        x += SWATCH + 5 + CH * key.label.len() as u64 + 14;
     }
 }

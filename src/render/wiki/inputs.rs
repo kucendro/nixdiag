@@ -5,6 +5,8 @@
 //! correctness risk, while one revision under several node names is only a
 //! redundant fetch.
 
+use super::super::chart::{self, Mark};
+use super::super::d2::D2Style;
 use super::super::out::{Out, MD_MARKER};
 use crate::source::flakelock::{Dup, Lock};
 use crate::util::human_date;
@@ -81,7 +83,63 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     o.push("".into());
 }
 
-pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock) -> Result<()> {
+/// The lock-date section: the chart, plus the one number the picture cannot
+/// state on its own.
+///
+/// Skipped entirely when nothing carries a date — a timeline of undated rows
+/// is an empty axis with a legend on it.
+fn lock_dates(
+    o: &mut Vec<String>,
+    out: &mut Out,
+    src: &Path,
+    lock: &Lock,
+    style: &D2Style,
+) -> Result<()> {
+    let roots = lock.root_inputs();
+    let marks: Vec<Mark> = lock
+        .inputs()
+        .into_iter()
+        .map(|(name, locked)| Mark {
+            label: name.clone(),
+            at: locked.last_modified,
+            direct: roots.contains(name.as_str()),
+            note: locked
+                .last_modified
+                .map(human_date)
+                .unwrap_or_else(|| "—".into()),
+        })
+        .collect();
+    let lo = marks.iter().filter_map(|m| m.at).min();
+    let hi = marks.iter().filter_map(|m| m.at).max();
+    let (Some(lo), Some(hi)) = (lo, hi) else {
+        return Ok(());
+    };
+
+    let svg = chart::timeline("Locked inputs by date, oldest first", &marks, style);
+    out.write_auto(&src.join("inputs-timeline.svg"), &svg)?;
+
+    o.push("## Lock dates".into());
+    o.push("".into());
+    o.push("![Input dates](./inputs-timeline.svg)".into());
+    o.push("".into());
+    o.push(
+        "Where each input's `lastModified` sits relative to the rest. That is a \
+         fixed integer in the lock rather than a clock read, so this is the \
+         *spread* of the supply chain and makes no claim about today."
+            .into(),
+    );
+    o.push("".into());
+    let days = (hi - lo) / 86_400;
+    if days > 0 {
+        o.push(format!(
+            "**{days} days** separate the oldest input from the newest."
+        ));
+        o.push("".into());
+    }
+    Ok(())
+}
+
+pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Style) -> Result<()> {
     let from = out.root.join("inputs.svg");
     if from.exists() {
         let rel = src.join("inputs.svg");
@@ -121,6 +179,8 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock) -> Result<()> 
         o.push("| — | — | — | — |".into());
     }
     o.push("".into());
+
+    lock_dates(&mut o, out, src, lock, style)?;
 
     let dups = lock.duplicates();
     let (diamonds, redundant): (Vec<&Dup>, Vec<&Dup>) = dups.iter().partition(|d| d.is_diamond());

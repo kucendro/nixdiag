@@ -244,6 +244,9 @@
               diff -u "$reference/hosts.md" "$docs/wiki/src/hosts.md"
               diff -u "$reference/endpoints.md" "$docs/wiki/src/endpoints.md"
               diff -u "$reference/inputs.md" "$docs/wiki/src/inputs.md"
+              # Drawn by nixdiag rather than d2, so its bytes do not move with
+              # someone else's version and a picture can be diffed here.
+              diff -u "$reference/inputs-timeline.svg" "$docs/wiki/src/inputs-timeline.svg"
               touch $out
             '';
       });

@@ -14,6 +14,14 @@ What this flake depends on, read from `flake.lock`. Dashed edges are `follows`, 
 | `utils` | `github:numtide/flake-utils` | `11707dc` | 2026-02-02 |
 | `utils_2` | `github:numtide/flake-utils` | `11707dc` | 2026-02-02 |
 
+## Lock dates
+
+![Input dates](./inputs-timeline.svg)
+
+Where each input's `lastModified` sits relative to the rest. That is a fixed integer in the lock rather than a clock read, so this is the *spread* of the supply chain and makes no claim about today.
+
+**202 days** separate the oldest input from the newest.
+
 ## Duplicate inputs
 
 `github:nixos/nixpkgs` is locked at **2 revisions**, so every copy is fetched and evaluated separately:

@@ -83,9 +83,11 @@ every host carries, what some of them carry, and what this host alone costs:
 
 nixdiag draws that chart itself rather than through d2, so it needs no binary
 on PATH, ignores `--no-svg`, and is byte-identical run to run — which is why it
-is the one picture `nixdiag check` can compare. Its colors follow `theme` and
-can be overridden by name: `chartShared`, `chartPartial`, `chartUnique`,
-`chartInk`, `chartMuted`, `chartTrack`.
+is the one kind of picture `nixdiag check` can compare — the lock-date
+timeline on the Inputs page is drawn the same way, and is on by default. Chart
+colors follow `theme` and can be overridden by name: `chartShared`,
+`chartPartial`, `chartUnique`, `chartMark`, `chartInk`, `chartMuted`,
+`chartTrack`, `chartTileInk`.
 
 Each measured host then gets `closures-<host>.svg`, a treemap of its own
 closure: one rectangle per package, sized by its share of the bytes and

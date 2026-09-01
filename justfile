@@ -43,6 +43,7 @@ snapshots:
     closures="$(nix build .#fixture-docs-closures --no-link --print-out-paths)"
     cp --no-preserve=mode "$docs"/{topology,modules,inputs}.d2 tests/reference/
     cp --no-preserve=mode "$docs"/wiki/src/{hosts,endpoints,inputs}.md tests/reference/
+    cp --no-preserve=mode "$docs"/wiki/src/inputs-timeline.svg tests/reference/
     cp --no-preserve=mode "$closures"/wiki/src/closures.md tests/reference/
     cp --no-preserve=mode "$closures"/wiki/src/closures*.svg tests/reference/
     git diff --stat -- tests/reference/

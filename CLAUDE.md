@@ -85,8 +85,9 @@ src/
     modules.rs            the module-tree diagram
     inputs.rs             the flake input graph
     chart/                the SVG nixdiag draws itself, one chart per file
-      mod.rs              façade: Band, canvas geometry, the SVG primitives
+      mod.rs              façade: Band/Key, canvas geometry, the SVG primitives
       bar.rs              the fleet closure bar
+      timeline.rs         the flake.lock date timeline
       treemap.rs          the closure treemap (squarified)
     wiki/                 mdBook source, one module per generated page
       mod.rs              WikiOpts, page order, shared host->services helper
@@ -110,10 +111,12 @@ Rules that keep it that way:
 - `annotations/mod.rs` is a façade: submodules are private, the crate sees only
   the `pub use` list. Cross-module items are `pub(super)`, never `pub`.
 - `render/chart/mod.rs` is the same shape, one chart per submodule. It owns the
-  shared vocabulary — `Band`, the canvas constants, `svg_open`/`rect`/`text`
-  and the legend — because two charts drawing the same distinction in two
-  different ways is the failure mode. Rust privacy reaches descendants, so
-  those helpers need no visibility annotation at all.
+  shared vocabulary — `Band`, `Key`, the canvas constants, `gutter`,
+  `svg_open`/`rect`/`text` and the legend — because two charts drawing the
+  same distinction in two different ways is the failure mode. Rust privacy
+  reaches descendants, so those helpers need no visibility annotation at all.
+  A chart whose colours are not closure bands builds its own `Key` constants
+  (see `timeline.rs`); `legend` takes keys, not bands, for exactly that.
 - Tests live beside the code they exercise, so `cargo test` output reads as a
   table of contents (`source::annotations::scan::tests::…`).
 
@@ -667,6 +670,42 @@ pages.
       - Verified against a **real 363-path closure** (nixdiag's own, pre-d2
         fix), not only the 7-path fixture; that is what surfaced both the
         unlabelled-big-tile bug and the value of grouping by name.
+- [x] Lock **timeline** (plate 6.2, de-clocked): `render/chart/timeline.rs` +
+      the Lock dates section of `render/wiki/inputs.rs`, one
+      `inputs-timeline.svg`. Decisions:
+      - **De-clocked is the whole design.** 6.2 as sketched ("which inputs are
+        overdue?") needs *now*, and a clock read would make two builds of one
+        input disagree — the same reason liveness is permanently out. What
+        survives is the *spread*: `lastModified` is a fixed integer in the
+        lock, so the picture is deterministic and the drift gate can hold it.
+        The one derived number, the day span from oldest to newest, is
+        likewise lock-only.
+      - Direct versus transitive is the colour distinction because it is the
+        one that changes what you *do*: `nix flake update` moves what the root
+        declares, everything else moves only when its parent does. That needed
+        `Lock::root_inputs()`, which resolves a root-level `follows` like
+        `root_input_for` already did.
+      - Rows sort by date inside the chart, so the first and last row's own
+        notes label the ends of the axis — no separate scale, no second
+        rendering of a date the table already carries. Sorting in the chart
+        rather than the caller also means a caller cannot silently break the
+        staircase, same contract as `treemap`.
+      - A dot plot, not a bar from the left edge. The lollipop was tempting
+        (it uses the length channel, which is why native SVG exists here) but
+        "days newer than the oldest input" is not a quantity anyone acts on,
+        and a filled bar claims a meaningful zero.
+      - Undated inputs (a `path:` input) keep their row, sort last and draw no
+        tick *and no track* — a track under an unplaceable row implies a
+        position on a scale it has none on. Same reasoning as the unmeasured
+        host's `—` on the closures page.
+      - The chart needed `legend` to stop being band-shaped: it now takes
+        `Key`, `Band::key()` adapts, and `bar`/`treemap` output did not change
+        by a byte. `gutter` moved from `bar.rs` up to the façade at the same
+        time, since two charts sizing a gutter two ways is exactly what
+        `mod.rs` exists to prevent.
+      - Second picture under `nix flake check` (`checks.reference` diffs the
+        SVG) and the first one that is on by default, in both modes, with no
+        opt-in — the lock is a plain file read.
 - [ ] Open: a **second renderer dependency** is not ruled out, only unjustified
       so far. The bar it must clear is that it draws something the current
       pair cannot — not a second way to draw the same node-link picture, which

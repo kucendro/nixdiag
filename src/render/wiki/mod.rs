@@ -81,7 +81,7 @@ pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -
     page_services(out, &src, d.facts, d.repo, d.docs)?;
     page_endpoints(out, &src, d.facts, d.model)?;
     if let Some(lock) = d.lock {
-        page_inputs(out, &src, lock)?;
+        page_inputs(out, &src, lock, style)?;
     }
     if let Some(closures) = d.closures {
         page_closures(out, &src, d.facts, closures, style)?;
