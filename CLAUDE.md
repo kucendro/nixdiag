@@ -84,6 +84,10 @@ src/
     topology.rs           the data-flow diagram
     modules.rs            the module-tree diagram
     inputs.rs             the flake input graph
+    chart/                the SVG nixdiag draws itself, one chart per file
+      mod.rs              façade: Band, canvas geometry, the SVG primitives
+      bar.rs              the fleet closure bar
+      treemap.rs          the closure treemap (squarified)
     wiki/                 mdBook source, one module per generated page
       mod.rs              WikiOpts, page order, shared host->services helper
       book.rs             book.toml, SUMMARY, index, extra pages
@@ -105,6 +109,11 @@ Rules that keep it that way:
 - Nothing in `render/` parses Nix source, and nothing in `source/` writes files.
 - `annotations/mod.rs` is a façade: submodules are private, the crate sees only
   the `pub use` list. Cross-module items are `pub(super)`, never `pub`.
+- `render/chart/mod.rs` is the same shape, one chart per submodule. It owns the
+  shared vocabulary — `Band`, the canvas constants, `svg_open`/`rect`/`text`
+  and the legend — because two charts drawing the same distinction in two
+  different ways is the failure mode. Rust privacy reaches descendants, so
+  those helpers need no visibility annotation at all.
 - Tests live beside the code they exercise, so `cargo test` output reads as a
   table of contents (`source::annotations::scan::tests::…`).
 
