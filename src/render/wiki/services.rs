@@ -32,10 +32,6 @@ pub(super) fn page_services(
         "".into(),
         "# Services".into(),
         "".into(),
-        "Every service this repo configures, the host(s) that run it, and the \
-         file that defines it."
-            .into(),
-        "".into(),
         "| Service | Hosts | Defined in |".into(),
         "|---|---|---|".into(),
     ];

@@ -95,7 +95,7 @@ fn host_nixos(
     o.push(format!("| Repo-configured services | {} |", svcs.len()));
     o.push("".into());
     if !svcs.is_empty() {
-        o.push("**Services** (configured in this repo):".into());
+        o.push("**Services:**".into());
         o.push("".into());
         for (name, files) in &svcs {
             let files = files

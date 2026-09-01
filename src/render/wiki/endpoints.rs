@@ -18,9 +18,7 @@ pub(super) fn page_endpoints(
         "".into(),
         "# Endpoints".into(),
         "".into(),
-        "Declared service endpoints across the fleet, from `#: expose` and \
-         named `#: ->` annotations in the module files."
-            .into(),
+        "From `#: expose` and named `#: ->` annotations.".into(),
         "".into(),
         "| Endpoint | Port | Scope | Host | Service |".into(),
         "|---|---|---|---|---|".into(),

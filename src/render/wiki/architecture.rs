@@ -21,10 +21,8 @@ pub(super) fn page_architecture(out: &mut Out, src: &Path) -> Result<()> {
             "{MD_MARKER}\n\n\
              # Architecture\n\n\
              ## Data-flow topology\n\n\
-             What talks to what across the fleet.\n\n\
              ![Data-flow topology](./topology.svg)\n\n\
              ## Module tree\n\n\
-             How each host is assembled from the module files in this repo.\n\n\
              ![Module tree](./modules.svg)\n"
         ),
     )

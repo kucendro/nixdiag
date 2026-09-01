@@ -82,10 +82,8 @@ pub(super) fn page_index(out: &mut Out, src: &Path) -> Result<()> {
     out.write_once(
         &src.join("index.md"),
         "# Infrastructure wiki\n\n\
-         _Hand-written overview goes here_ — the big picture, where a newcomer \
-         should start, and *why* things are the way they are.\n\n\
-         Everything else in this wiki (Architecture, Hosts, Services, Endpoints) \
-         is **auto-generated from the Nix configuration**, so it is always \
-         current. This page is the one you edit by hand.\n",
+         _Hand-written overview goes here_ — the big picture, and *why* things \
+         are the way they are. Every other page is generated from the Nix \
+         configuration; this is the one you edit.\n",
     )
 }

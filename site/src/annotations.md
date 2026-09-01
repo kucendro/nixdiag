@@ -1,8 +1,8 @@
 # Annotations
 
-Topology is not guessed. Every node, edge and endpoint comes from a `#:` line
-in your own module files. Comments are invisible to eval, so nixdiag parses
-them from the repo source with rnix, in both the CLI and the derivation mode.
+Every node, edge and endpoint comes from a `#:` line in your own module files.
+Comments are invisible to eval, so nixdiag parses them from the repo source
+with rnix, in both modes.
 
 The grammar is frozen since 2026-08-26. New statements and optional tokens may
 be added, existing ones keep their meaning.
@@ -16,8 +16,8 @@ be added, existing ones keep their meaning.
 }
 ```
 
-Sigil `#:`, two characters because you write it often. `# nixdiag:` is the
-long alias, and both are recognized inside a leading `/** */` doc comment:
+`# nixdiag:` is the long alias. Both are recognized inside a leading `/** */`
+doc comment:
 
 ```nix
 /**
@@ -34,8 +34,6 @@ One statement per line. A malformed line is a reported error, never silently
 ignored.
 
 ## Attachment
-
-Where a line sits decides what it describes.
 
 | Position | Attaches to |
 |---|---|
@@ -72,9 +70,9 @@ extend without touching nixdiag.
 ```
 
 Port first, then an optional scope (`public`, `mesh`, `lan`) and an optional
-`name=<fqdn>`. Every expose is a row on the Endpoints page. `public` and `lan`
-also draw an edge to the internet or lan cloud in the topology. Without a
-scope the node's `#: scope` applies.
+`name=<fqdn>`. Every expose is an Endpoints row; `public` and `lan` also draw
+an edge to the internet or lan cloud. Without a scope the node's `#: scope`
+applies.
 
 ## `#: ->` and `#: <-`
 
@@ -97,9 +95,9 @@ arrow. Targets:
 | `hs.example.com` | the node that declared this fqdn with `#: name` |
 | `internet`, `lan` | the cloud nodes |
 
-Any enabled service is a valid target for free, because the generic
-projection knows them all. References resolve against real evaluated state,
-not strings, so a typo or a service you turned off is an error at render time.
+Any enabled service is a valid target for free, because the generic projection
+knows them all. Targets resolve against real evaluated state, not strings, so a
+typo or a service you turned off is an error at render time.
 
 ### `name=` on an edge
 
@@ -107,9 +105,9 @@ not strings, so a typo or a service you turned off is an error at render time.
 #: -> nas/vaultwarden vault name=vault.example.com:443
 ```
 
-The annotated node fronts that fqdn for the target: a proxy vhost, in
+The annotated node fronts that fqdn for the target — a proxy vhost, in
 practice. It becomes an Endpoints row (scope from the node's `#: scope`, port
-as written, a dash when omitted). The diagram is deliberately unaffected, the
+as written, a dash when omitted). The diagram is deliberately unaffected: the
 edge is the same edge.
 
 ## `#: name`
@@ -118,8 +116,8 @@ edge is the same edge.
 #: name hs.example.com
 ```
 
-Address book. The fqdn now resolves to this node, so other files can point an
-edge at `hs.example.com` without knowing which host runs it.
+Address book: other files can now point an edge at `hs.example.com` without
+knowing which host runs it.
 
 ## `#: scope`
 
@@ -127,9 +125,8 @@ edge at `hs.example.com` without knowing which host runs it.
 #: scope mesh
 ```
 
-Default scope for this node's exposes and fronted endpoints. Scopes are
-`public`, `mesh` and `lan`, and they drive edge colour and the Endpoints
-column.
+Default scope for this node's exposes and fronted endpoints. `public`, `mesh`
+and `lan` drive edge colour and the Endpoints column.
 
 ## `#: unit`
 
@@ -150,9 +147,8 @@ contiguous block after it attaches to that node.
 }
 ```
 
-In a file-leading doc comment, `unit` sets the file's default attachment.
-File-level lines anywhere in that file then attach to it, which is what lets a
-plain data file carry annotations next to its entries:
+In a file-leading doc comment, `unit` sets the file's default attachment, which
+is what lets a plain data file carry annotations next to its entries:
 
 ```nix
 /**
@@ -169,18 +165,16 @@ plain data file carry annotations next to its entries:
 
 Per-binding attachment still wins over the file default.
 
-The `host/` prefix pins the host. It is required when several hosts reach the
-same file, which happens as soon as two hosts import one table: a proxy and a
-blackbox exporter sharing an endpoint list, for example. Unpinned, every
-annotation in the file would be duplicated onto both hosts.
+The `host/` prefix pins the host, and is required as soon as two hosts import
+one file — a proxy and a blackbox exporter sharing an endpoint list, say.
+Unpinned, every annotation in it lands on both hosts.
 
 The import graph follows `imports = [ ./a.nix ]` lists and plain
 `import ./a.nix` expressions alike.
 
 ## `@key` domains
 
-Any fqdn position accepts `<sub>@<key>`, and a bare `@<key>` is the domain
-itself:
+Any fqdn position accepts `<sub>@<key>`; bare `@<key>` is the domain itself:
 
 ```nix
 #: -> nas/vaultwarden vault name=vault@home:443
@@ -202,15 +196,14 @@ CLI flags override the flake. An unknown key is a hard render error, never a
 literal `@home` in the output.
 
 This exists so a public repo can document private endpoints: the source shows
-`vault@home`, the rendered wiki shows `vault.home.example.com`, and the wiki
-is the thing you keep on the tailnet.
+`vault@home`, the rendered wiki shows `vault.home.example.com`, and the wiki is
+the part you keep on the tailnet.
 
 ## Grammar editions
 
 Annotations live in *your* module files, so the grammar is the one nixdiag
-surface that outlives nixdiag versions. It is versioned as an **edition** — a
-single integer, Cargo's model but lighter — and the binary reports the one it
-implements:
+surface that outlives nixdiag versions. It is versioned as an **edition**, a
+single integer, and the binary reports the one it implements:
 
 ```console
 $ nixdiag --version
@@ -239,15 +232,14 @@ nixdiag.lib.mkDocs { grammar = 1; /* … */ }   # mode B
 
 ### Deprecation
 
-A statement is never changed out from under you. When a replacement spelling
-ships, the old one keeps working and the renderer warns, with the file and
-line every annotation already carries:
+When a replacement spelling ships, the old one keeps working and the renderer
+warns, with the file and line every annotation already carries:
 
 ```
 warning: modules/mesh.nix:3: `#: tailnet` deprecated since 0.5, use `#: mesh`
 ```
 
-Want CI red immediately instead of at the next edition? Promote the warnings:
+To have CI go red immediately instead, promote the warnings:
 
 ```sh
 nixdiag check --deny deprecated
@@ -262,9 +254,9 @@ Nothing is deprecated in grammar 1.
 
 ## Zero annotations
 
-Nothing breaks. The wiki, the module tree and the hosts, services and ports
-pages are unaffected. The topology renders hosts with their firewall ports and
-no edges, plus a hint on stderr pointing here.
+The wiki, the module tree and the hosts, services and ports pages are
+unaffected. The topology renders hosts with their firewall ports and no edges,
+plus a hint on stderr pointing here.
 
 ## Full example
 

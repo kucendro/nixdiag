@@ -7,10 +7,9 @@ cd ~/my-nix-config
 nix run github:kucendro/nixdiag -- gen --flake .
 ```
 
-That writes `docs/` next to your flake: two diagrams and an mdBook source
-tree. Nothing is required in the flake itself, and with zero annotations you
-still get host boxes with their open ports, the module tree and the whole
-wiki.
+That writes `docs/` next to your flake. Nothing is required in the flake
+itself: with zero annotations you still get host boxes with their open ports,
+the module tree and the whole wiki.
 
 Build the book with mdbook, or let [mkDocs](./build.md) do it in a derivation:
 
@@ -43,9 +42,8 @@ Edges and endpoints come from comments in your own module files:
 }
 ```
 
-Re-run `nixdiag gen` and headscale is a node in the topology, drawn with the
-`mesh-control` role, linked to the internet cloud, with a row on the Endpoints
-page. Point something at it:
+Headscale is now a node in the topology, linked to the internet cloud, with a
+row on the Endpoints page. Point something at it:
 
 ```nix
 {
@@ -67,6 +65,6 @@ nixdiag check --flake .
 ```
 
 `check` re-renders to a temp dir and diffs against the committed output, so a
-config change that outdates the docs fails the build. If you would rather not
-commit generated files at all, build the docs as a derivation instead and skip
-`check` entirely: see [Build and serve](./build.md).
+config change that outdates the docs fails the build. To skip committing
+generated files at all, build the docs as a derivation instead and drop
+`check`: see [Build and serve](./build.md).

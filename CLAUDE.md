@@ -7,20 +7,20 @@ metrics (Beszel/Grafana own live state).
 
 Full design spec: https://claude.ai/code/artifact/e1c211d1-a06b-44fb-8cf8-76914e77e2c8
 
-## Origin / reference implementation
+## Origin
 
-This is an extraction of `~/os/automations/{nixdiag,gen-topology,gen-diagram,gen-wiki}.py`
-(~500 LOC Python) into a reusable, distributable tool. Port those scripts **to parity
-first**, keeping their heuristics: nginx upstream resolution (`proxyPass` + `set $var`),
-headscale address book (base_domain + policy.json hosts), `definitionsWithLocations`
-service→file mapping, store-path→repo-relative via the `-source/` marker, `AUTO` marker
-on generated files.
+Extracted from `~/os/automations/{nixdiag,gen-topology,gen-diagram,gen-wiki}.py`
+(~500 LOC Python), which it reached parity with and then outgrew: v2 deleted the
+service-specific heuristics (nginx upstream resolution, headscale address book) in
+favour of annotations. What survives from the Python is the generic machinery —
+`definitionsWithLocations` service→file mapping, store-path→repo-relative via the
+`-source/` marker, the `AUTO` marker on generated files.
 
 ## Architecture (decided — don't relitigate)
 
 - **Extract / render split.** Nix projection expressions live as `.nix` files in
   `nix/projections/` — the single source of truth. The Rust binary never evaluates Nix
-  logic itself; it consumes a schema-versioned `facts.json` (`"schema": 1`). Bump the
+  logic itself; it consumes a schema-versioned `facts.json` (`"schema": 2`). Bump the
   schema on any breaking change to the model.
 - **Two modes, one binary:**
   - **A — zero-touch CLI**: `nixdiag gen --flake . [--out docs] [HOST…]`. Projections
@@ -37,9 +37,9 @@ on generated files.
 - **Doc comments**: leading RFC 145 `/** … */` block in a module file = file-level doc
   (Markdown body). Parse with the `rnix` crate, not regex. Attachment is automatic: file
   defining a service → that service's wiki entry; a host's entry module → host description.
-  No annotation grammar in v1 (v2 adds one — see "v2 direction" below). Hand-written
-  pages come in via `mkDocs.extraPages` / `--extra-page` (generalizes the old
-  `write_once` index.md behavior).
+  The `#:` grammar is a separate surface, see "v2 direction" below. Hand-written pages
+  come in via `mkDocs.extraPages` / `--extra-page` (generalizes the old `write_once`
+  index.md behavior).
 - **NixOS module** (`nix/module.nix`): `services.nixdiag.serve` points an nginx vhost
   root at the docs derivation — no daemon, no timer; docs ship atomically with each
   deploy. Optional `services.nixdiag.timer` (oneshot + OnCalendar, pulls a ref, runs
@@ -730,6 +730,50 @@ pages.
         preprocessor plus vendored JS, against the no-assets rule.
       - Anything needing node/JS at build time (vega-lite, plotly) is out on
         mode B purity and closure size.
+- [ ] **PDF export** (before the nixpkgs PR). The wiki as one PDF, SUMMARY
+      order, diagrams and charts embedded. Constraints, in the order they will
+      kill candidates:
+      - Mode B is a sandboxed derivation, so nothing may fetch at build time.
+      - **No headless browser.** `mdbook-pdf`, weasyprint and every puppeteer
+        wrapper pull `playwright-driver.browsers` — the 2.2 GiB `nix/d2.nix`
+        just removed, and `checks.closures-self` would fire on it.
+      - Deterministic bytes or it stays out of `check`. PDFs stamp a creation
+        time by default; pin it (`SOURCE_DATE_EPOCH`) or say plainly that the
+        PDF is not gated.
+      - It is a second upstream promise, so it answers to the bar in the item
+        above.
+      Leading candidate **typst**: one static binary, small closure, embeds
+      SVG natively, reproducible with a pinned timestamp. Runner-up pandoc +
+      context. Anything needing node/JS at build time is already out on mode B
+      purity. Surface mirrors `closures` — a flag plus `mkDocs { pdf = true; }`
+      — including the question of whether mode A can do it at all.
+- [x] **Strip the docs prose.** Rule applied throughout: a sentence stays if
+      it records a decision, a constraint, or something a reader would
+      otherwise get wrong; it goes if it describes what the picture or the
+      table beside it already shows. Three surfaces, done in that order
+      because only the first is versioned:
+      - **Generated pages** — Architecture and Services lost their intros
+        entirely (they restated the headings and the column names); Endpoints,
+        Inputs, Closures and the seeded `index.md` kept only the
+        anti-misreading half. What survives is exactly three facts: a dashed
+        input edge *removes* a duplicate, `lastModified` is a lock value and
+        not a clock read, and why a darwin or docs-serving host has no
+        closure. This is an output change, so it took a CHANGELOG entry under
+        `### Changed` and a deliberate `just snapshots` — no page, table,
+        column or picture moved, only text. Done before there were consumers
+        to turn red, which was the whole reason for the ordering.
+      - **`site/src/*.md`** — 126 lines out for 100 in. Deleted throughout:
+        sentences narrating the code block or picture directly beneath them,
+        and rationale for its own sake ("two characters because you write it
+        often"). Every *reason a thing exists* was kept — the `@key` map's
+        public-repo case, why charts ignore `--no-svg`, why serving hosts are
+        skipped, why the grammar has editions at all.
+      - **This file** — almost every sentence records a decision, so the pass
+        found staleness rather than padding: the Origin section still ordered
+        a future reader to "port to parity, keeping their heuristics" that v2
+        deleted on purpose, `"schema": 1` outlived schema 2, and the doc
+        comment bullet still said "no annotation grammar in v1". Bad
+        instructions, not long ones.
 - [ ] Later: nixpkgs PR; extra diagrams/pages one at a time, each held to the
       v2 bar — derivable from stable generic surfaces (e.g. flake inputs graph
       via `nix flake metadata --json`, systemd timer calendar from units) or

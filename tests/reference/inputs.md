@@ -2,7 +2,7 @@
 
 # Inputs
 
-What this flake depends on, read from `flake.lock`. Dashed edges are `follows`, which is what *removes* a duplicate rather than adding one.
+Read from `flake.lock`. Dashed edges are `follows`, which *removes* a duplicate rather than adding one.
 
 ![Input graph](./inputs.svg)
 
@@ -18,7 +18,7 @@ What this flake depends on, read from `flake.lock`. Dashed edges are `follows`, 
 
 ![Input dates](./inputs-timeline.svg)
 
-Where each input's `lastModified` sits relative to the rest. That is a fixed integer in the lock rather than a clock read, so this is the *spread* of the supply chain and makes no claim about today.
+`lastModified` is a fixed integer in the lock, not a clock read: this is the *spread*, not a claim about today.
 
 **202 days** separate the oldest input from the newest.
 
@@ -39,6 +39,6 @@ inputs.stylix.inputs.nixpkgs.follows = "nixpkgs";
 
 ## Redundant inputs
 
-Locked at a single revision, but reached under more than one node name. Harmless, though a `follows` would drop the extra fetch.
+One revision under several node names. Harmless; a `follows` drops the extra fetch.
 
 - `github:numtide/flake-utils` — `utils`, `utils_2`

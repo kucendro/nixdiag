@@ -46,10 +46,10 @@ packages.x86_64-linux.docs = nixdiag.lib.mkDocs {
 ```
 
 `nix build .#docs` and the whole thing, mdBook included, is a cached
-derivation. Your flake evaluates its own configurations at eval time, the
-sandbox only renders, so nothing needs to be committed back and CI has nothing
-to drift from. Add `checks.docs = self.packages.x86_64-linux.docs;` and a
-broken annotation fails the build.
+derivation. Your flake evaluates its own configurations at eval time and the
+sandbox only renders, so nothing is committed back and there is nothing to
+drift from. Add `checks.docs = self.packages.x86_64-linux.docs;` and a broken
+annotation fails the build.
 
 | Argument | Default | Effect |
 |---|---|---|
@@ -73,27 +73,23 @@ broken annotation fails the build.
 
 ### Closure metrics
 
-`closures` adds a Closures page (per-host totals, largest contributing
-packages, and what the fleet shares) plus a closure row on each host.
-
-The page opens with `closures.svg`, one stacked bar per host split into what
-every host carries, what some of them carry, and what this host alone costs:
+`closures` adds a Closures page plus a closure row on each host. Its bars are
+each host's closure split into what every host carries, what some of them
+carry, and what this host alone costs:
 
 ![Fleet closure sizes](./closures.svg)
 
 nixdiag draws that chart itself rather than through d2, so it needs no binary
 on PATH, ignores `--no-svg`, and is byte-identical run to run — which is why it
-is the one kind of picture `nixdiag check` can compare — the lock-date
-timeline on the Inputs page is drawn the same way, and is on by default. Chart
-colors follow `theme` and can be overridden by name: `chartShared`,
-`chartPartial`, `chartUnique`, `chartMark`, `chartInk`, `chartMuted`,
-`chartTrack`, `chartTileInk`.
+is the one kind of picture `nixdiag check` can compare. The lock-date timeline
+on the Inputs page is drawn the same way, and is on by default. Chart colors
+follow `theme` and can be overridden by name: `chartShared`, `chartPartial`,
+`chartUnique`, `chartMark`, `chartInk`, `chartMuted`, `chartTrack`,
+`chartTileInk`.
 
-Each measured host then gets `closures-<host>.svg`, a treemap of its own
-closure: one rectangle per package, sized by its share of the bytes and
-coloured with the same bands, so it reads as the bar above exploded by
-package. Its tiles are packages — a package's several outputs fold together —
-while the table beside it stays per store path.
+Each measured host also gets `closures-<host>.svg`, that host's bar exploded
+into one rectangle per package. Its tiles are packages — a package's several
+outputs fold together — while the table beside it stays per store path.
 
 Packages are listed by name and version, never by full store path. Nix records
 a reference for every store path that appears in a build output, so printing
@@ -119,16 +115,14 @@ though it covered the whole fleet.
 
 #### It measures; it does not build your fleet
 
-The measurement is not a way to get systems built. Anything it realises is
-unrooted by construction: the pages contain no store paths, so the docs
-derivation holds no references to the systems it describes, and the next
-`nix-collect-garbage` takes them. That is the same property that keeps
-`services.nixdiag.serve` from dragging a fleet into the serving host's system,
-so it is not going to change.
+Anything the measurement realises is unrooted by construction: the pages
+contain no store paths, so the docs derivation holds no references to the
+systems it describes and the next `nix-collect-garbage` takes them. That is the
+same property that keeps `services.nixdiag.serve` from dragging a fleet into
+the serving host's system, so it is not going to change.
 
-Turn it around and the cost disappears. Build the systems in your own
-pipeline, root them there, and enable `closures` on a docs build that runs
-afterwards:
+Turn it around and the cost disappears. Build the systems in your own pipeline,
+root them there, and enable `closures` on a docs build that runs afterwards:
 
 ```yaml
 - name: BUILD
@@ -144,13 +138,13 @@ afterwards:
 
 `--out-link` is the GC root. By the time the docs build runs every path is
 already realised, so the measurement is a few seconds of `jq` over data on
-disk — and as a side effect a binary cache on that machine (harmonia,
-nix-serve, attic) can serve the systems to the hosts that will deploy them.
+disk — and a binary cache on that machine (harmonia, nix-serve, attic) can
+serve the systems to the hosts that will deploy them.
 
 If your docs derivation is *also* a flake check, the order flips: `nix flake
-check` realises the measured systems on its own, and the build step is left
-doing nothing but attaching roots. Put it after the check then, so only a
-revision that passed gets pinned.
+check` realises the measured systems on its own and the build step does nothing
+but attach roots. Put it after the check then, so only a revision that passed
+gets pinned.
 
 Run the docs build **on the machine that holds the systems**. The per-host
 measurement derivation is `preferLocalBuild`, which pins it to whichever
@@ -160,16 +154,15 @@ builder copies every measured closure to the laptop.
 #### Why serving hosts are skipped
 
 `services.nixdiag.serve` roots an nginx vhost at a docs derivation, so that
-host's system closure *contains* the docs. Measuring it from inside a docs
-build would make the docs depend on a system that contains them —
-`docs -> toplevel -> docs` — which Nix reports as infinite recursion, with a
+host's system closure *contains* the docs. Measuring it would give
+`docs -> toplevel -> docs`, which Nix reports as infinite recursion with a
 trace that points nowhere useful.
 
 `closures = true` detects this and skips those hosts, naming them in a warning.
 The detection is safe because reading `serve.enable` does not force
 `serve.docs`; it is forcing `serve.docs` that closes the loop.
 
-If you serve one build and measure another, no cycle exists and you can ask for
+Serve one build and measure another and there is no cycle, so you can ask for
 every host by name:
 
 ```nix
@@ -187,8 +180,8 @@ host that serves *this* build will still recurse.
 
 ## Diagram styling
 
-Colours live in a `vars` block at the top of the generated d2, so you can edit
-a rendered `.d2` by hand as well as override at build time. Names:
+Colours live in a `vars` block at the top of the generated d2, so a rendered
+`.d2` can be edited by hand as well as overridden at build time. Names:
 `appFill`, `appStroke`, `infraFill`, `infraStroke`, `baseFill`, `baseStroke`,
 `hostFill`, `hostStroke`, `progFill`, `hostCloud`, `public`, `lan`, `mesh`.
 
@@ -205,9 +198,9 @@ icon or image assets, ever.
 ## What you may edit
 
 `wiki/src/index.md` and `wiki/book.toml` are written once and never
-overwritten: the index is your hand-written overview. Everything else carries
-an auto-generated marker and is rewritten on every run. In mode B, pass
-`indexPage` and `bookToml` to own them from the flake instead.
+overwritten. Everything else carries an auto-generated marker and is rewritten
+on every run. In mode B, pass `indexPage` and `bookToml` to own the two from
+the flake instead.
 
 ## Serving it
 
@@ -239,9 +232,9 @@ wiki ships atomically with every deploy. No daemon, no timer, no checkout.
 | `serve.subpath` | `"wiki/book"` | path inside the derivation used as web root |
 | `serve.virtualHostExtra` | `{ }` | merged into the vhost: TLS, listen addresses |
 
-A binding this vhost carries would be read by nixdiag's own projection, so it
-reads names, listen addresses and `proxyPass` only, never `root`, which would
-force the docs derivation during eval.
+nixdiag's own projection reads vhost names, listen addresses and `proxyPass`
+only, never `root` — reading `root` would force the docs derivation during
+eval.
 
 For repos that want a checkout regenerated on a schedule instead:
 

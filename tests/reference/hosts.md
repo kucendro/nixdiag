@@ -14,7 +14,7 @@
 | Open UDP ports | — |
 | Repo-configured services | 2 |
 
-**Services** (configured in this repo):
+**Services:**
 
 - **grafana** — `modules/monitoring.nix`
 - **tailscale** — `hosts/luna/default.nix`
@@ -33,7 +33,7 @@ Edge node: mesh control plane and the fleet's reverse proxy.
 | Open UDP ports | — |
 | Repo-configured services | 2 |
 
-**Services** (configured in this repo):
+**Services:**
 
 - **headscale** — `modules/mesh.nix`
 - **nginx** — `modules/web.nix`

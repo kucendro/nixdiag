@@ -123,9 +123,8 @@ fn lock_dates(
     o.push("![Input dates](./inputs-timeline.svg)".into());
     o.push("".into());
     o.push(
-        "Where each input's `lastModified` sits relative to the rest. That is a \
-         fixed integer in the lock rather than a clock read, so this is the \
-         *spread* of the supply chain and makes no claim about today."
+        "`lastModified` is a fixed integer in the lock, not a clock read: this \
+         is the *spread*, not a claim about today."
             .into(),
     );
     o.push("".into());
@@ -153,8 +152,8 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
         "".into(),
         "# Inputs".into(),
         "".into(),
-        "What this flake depends on, read from `flake.lock`. Dashed edges are \
-         `follows`, which is what *removes* a duplicate rather than adding one."
+        "Read from `flake.lock`. Dashed edges are `follows`, which *removes* a \
+         duplicate rather than adding one."
             .into(),
         "".into(),
         // Emitted whether or not the SVG was rendered: `nixdiag check` runs
@@ -197,8 +196,8 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
         o.push("## Redundant inputs".into());
         o.push("".into());
         o.push(
-            "Locked at a single revision, but reached under more than one node \
-             name. Harmless, though a `follows` would drop the extra fetch."
+            "One revision under several node names. Harmless; a `follows` drops \
+             the extra fetch."
                 .into(),
         );
         o.push("".into());

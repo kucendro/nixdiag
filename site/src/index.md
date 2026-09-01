@@ -10,25 +10,22 @@ nix run github:kucendro/nixdiag -- gen --flake .
 
 The topology comes from `#:` comments in your own module files, so it records
 intent ("this is my proxy, it fronts grafana") instead of guessing from option
-shapes that nixpkgs reshapes every month. nixdiag has no service adapters and
-no built-in knowledge of tailscale, nginx or prometheus.
+shapes that nixpkgs reshapes every month. There are no service adapters and no
+built-in knowledge of tailscale, nginx or prometheus.
 
 ![Data-flow topology](./topology.svg)
 
-The module tree shows how each host is assembled from the files in the repo,
-including files pulled in with a plain `import ./x.nix`:
+The module tree follows `imports` lists and plain `import ./x.nix` expressions
+alike:
 
 ![Module tree](./modules.svg)
 
-Both diagrams above are the two-host test fixture, rendered by the same code
-path you get. The wiki it produces alongside them is published as the
-[live demo](./demo.md).
-
-That fixture happens to run headscale and tailscale, and nixdiag knows nothing
-about either. Its mesh node is `services.tailscale.enable = true` plus three
-comment lines, so the same graph comes out for wireguard, nebula or a mesh of
-your own. Roles are any word you like, and only the scope vocabulary
-(`public`, `mesh`, `lan`) is fixed.
+Both are the two-host test fixture, published in full as the
+[live demo](./demo.md). It happens to run headscale and tailscale; its mesh
+node is `services.tailscale.enable = true` plus three comment lines, so the
+same graph comes out for wireguard, nebula or a mesh of your own. Roles are any
+word you like, and only the scope vocabulary (`public`, `mesh`, `lan`) is
+fixed.
 
 ## What it reads
 

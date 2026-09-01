@@ -2,7 +2,7 @@
 
 # Closures
 
-What each host's system closure weighs, measured from the realised store paths. NixOS hosts only — a darwin system cannot be built from Linux, so those hosts are absent here. A host shown as — was not selected for measurement; note that a host serving these docs cannot measure itself, as the docs would then depend on a system that contains them.
+NixOS hosts only — a darwin system cannot be built from Linux. A host shown as — was not measured; a host serving these docs cannot measure itself, since the docs would then depend on a system containing them.
 
 ![System closure size by host](./closures.svg)
 

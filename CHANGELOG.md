@@ -128,6 +128,14 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
 
 ### Changed
 
+- **Generated prose trimmed.** The intro paragraphs on the Architecture,
+  Services, Endpoints, Inputs and Closures pages, and the seeded `index.md`,
+  said in a sentence what the table or picture beneath them already showed.
+  What remains is only what a reader would otherwise get wrong: that a dashed
+  input edge *removes* a duplicate, that `lastModified` is a lock value rather
+  than a clock read, and why a darwin or docs-serving host has no closure. Text
+  only — no page, table, column or picture changed. Mode A consumers who commit
+  `docs/` will see `nixdiag check` go red until they re-run `nixdiag gen`.
 - Default output gained `inputs.d2`, `inputs.svg`, `wiki/src/inputs.md` and
   `wiki/src/inputs-timeline.svg` plus a SUMMARY entry. Mode A consumers who
   commit `docs/` should run `nixdiag gen` once after upgrading; mode B

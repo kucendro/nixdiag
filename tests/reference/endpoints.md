@@ -2,7 +2,7 @@
 
 # Endpoints
 
-Declared service endpoints across the fleet, from `#: expose` and named `#: ->` annotations in the module files.
+From `#: expose` and named `#: ->` annotations.
 
 | Endpoint | Port | Scope | Host | Service |
 |---|---|---|---|---|

@@ -9,7 +9,7 @@ every host discovered in `nixosConfigurations` and `darwinConfigurations`.
 
 ## `gen`
 
-Evaluate and render in one step. This is the everyday command.
+Evaluate and render in one step.
 
 ```sh
 nixdiag gen --flake . --out docs
@@ -20,10 +20,9 @@ nixdiag gen luna sol
 
 ## `check`
 
-Re-render to a temp dir and diff against the committed output. Exits non-zero
-listing the stale files, so CI catches docs that no longer match the config.
-SVGs are skipped, d2 output varies with the d2 version, sources are compared
-instead.
+Re-render to a temp dir and diff against the committed output, exiting non-zero
+with the stale files listed. d2-produced SVGs are skipped — their bytes move
+with the d2 version — and the `.d2` sources compared instead.
 
 ```sh
 nixdiag check --flake .
@@ -31,9 +30,7 @@ nixdiag check --flake .
 
 ## `facts`
 
-Evaluate only, print `facts.json` on stdout. Useful to inspect what the
-projection sees, or to render on a machine that has the repo but not the
-evaluated closure.
+Evaluate only, print `facts.json` on stdout — what the projection sees.
 
 ```sh
 nixdiag facts --flake . > facts.json
