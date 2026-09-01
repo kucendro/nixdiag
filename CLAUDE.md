@@ -140,18 +140,19 @@ Rules that keep it that way:
 - Reference tests: render the fixture flake, snapshot d2 + Markdown, compare in
   `nix flake check`. Update snapshots deliberately, never automatically —
   `just snapshots` refreshes them and prints the diff for you to read.
-  The README's example pictures are rendered from the fixture — whenever they
-  change, `just assets` re-renders them: the d2 diagrams with
-  `d2 --layout elk --theme 200 tests/reference/<x>.d2 assets/<x>.svg`
-  (`--theme 200` because the default palette is dark), and the three
-  self-drawn charts by running the working-tree binary over the fixture with
-  `--theme light --background '#ffffff'`. The explicit white is the one place
-  a chart does not ship transparent: GitHub serves the README on both a light
-  and a dark page, and light ink on transparent is invisible on the dark one.
-  The **site** keeps the dark snapshot instead (`tests/reference/closures.svg`,
-  copied in by the `site` derivation) because its book.toml pins
-  `default-theme = "navy"` — same chart, two audiences, one fixture, so
-  neither can drift from the renderer.
+  The README's pictures are rendered from the fixture by `just assets`, **in
+  both themes**: it renders the fixture twice and writes `assets/<x>.svg`
+  (dark) beside `assets/<x>-light.svg`. d2 gets `--theme 200` for the dark
+  pass and nothing for the light one, because the palette lives in the `.d2`
+  file and 200 only fixes d2's own label colors. The README then pairs them
+  with `<picture><source media="(prefers-color-scheme: dark)" …>`, which
+  GitHub honours: one render cannot serve both pages. The charts are
+  transparent in both, so no theme paints a panel behind itself.
+  Unsuffixed = dark is deliberate, not alphabetical — the `site` derivation
+  copies `assets/topology.svg` and `assets/modules.svg` into a book whose
+  `book.toml` pins `default-theme = "navy"`, so the plain name must stay the
+  dark one. The dark chart files are byte-identical to `tests/reference/`,
+  which is what keeps README, snapshots, site and demo from drifting.
 - **`justfile` holds every command this file used to describe in prose**, so
   they are runnable rather than transcribed: the two preview loops (`just site`
   for the hand-written docs with live reload, `just wiki` to render the fixture

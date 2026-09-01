@@ -8,26 +8,17 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 ---
 
-![topology](assets/topology.svg)
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/topology.svg"><img alt="topology" src="assets/topology-light.svg"></picture>
 
-![modules](assets/modules.svg)
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/modules.svg"><img alt="modules" src="assets/modules-light.svg"></picture>
 
-Every flake input placed by the date it is locked at, straight out of
-`flake.lock` — no eval, no clock, and blue for the inputs your own flake
-declares:
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs.svg"><img alt="flake inputs" src="assets/inputs-light.svg"></picture>
 
-![lock dates](assets/inputs-timeline.svg)
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs-timeline.svg"><img alt="input lock dates" src="assets/inputs-timeline-light.svg"></picture>
 
-Opt in to closure metrics and each host is measured against the rest of the
-fleet, then broken down by package:
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/closures.svg"><img alt="fleet closure sizes" src="assets/closures-light.svg"></picture>
 
-![fleet closure sizes](assets/closures.svg)
-
-![closure treemap](assets/closures-sol.svg)
-
-nixdiag draws those three itself rather than through d2, so they need no
-binary on PATH and come out byte-identical run to run — which is what lets
-`nixdiag check` hold a picture to a diff.
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/closures-sol.svg"><img alt="closure treemap" src="assets/closures-sol-light.svg"></picture>
 
 ---
 

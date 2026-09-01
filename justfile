@@ -48,20 +48,28 @@ snapshots:
     cp --no-preserve=mode "$closures"/wiki/src/closures*.svg tests/reference/
     git diff --stat -- tests/reference/
 
-# Re-render the README and site pictures from the fixture.
+# Re-render the README and site pictures from the fixture, dark and light.
 assets: build
     #!/usr/bin/env bash
     set -euo pipefail
-    for d in topology modules; do
-      d2 --layout elk --theme 200 "tests/reference/$d.d2" "assets/$d.svg"
-    done
     facts="$(nix build .#fixture-facts --no-link --print-out-paths)"
-    rm -rf .dev/assets
-    ./target/debug/nixdiag render \
-      --facts "$facts" --repo tests/fixture \
-      --closures tests/fixture/closures.json \
-      --domain ts=ts.example --title 'Example fleet' \
-      --theme light --background '#ffffff' \
-      --out .dev/assets --no-svg
-    cp .dev/assets/wiki/src/{inputs-timeline,closures,closures-sol}.svg assets/
+    for theme in dark light; do
+      out=".dev/assets-$theme"
+      rm -rf "$out"
+      ./target/debug/nixdiag render \
+        --facts "$facts" --repo tests/fixture \
+        --closures tests/fixture/closures.json \
+        --domain ts=ts.example --title 'Example fleet' \
+        --theme "$theme" --out "$out" --no-svg
+      suffix=""
+      d2theme="--theme 200"
+      if [ "$theme" = light ]; then suffix="-light"; d2theme=""; fi
+      for d in topology modules inputs; do
+        d2 --layout elk $d2theme "$out/$d.d2" "assets/$d$suffix.svg"
+      done
+      for c in inputs-timeline closures closures-sol; do
+        cp "$out/wiki/src/$c.svg" "assets/$c$suffix.svg"
+      done
+    done
+    chmod 644 assets/*.svg
     git diff --stat -- assets/
