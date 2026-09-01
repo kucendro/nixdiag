@@ -40,17 +40,36 @@ pub const PALETTE: &[(&str, &str, &str)] = &[
     ("mesh", "#4a76c4", "#7fa7e8"),
 ];
 
+/// Resolve one color: an explicit `--color NAME=#hex` wins, then the built-in
+/// light/dark pair for `name` in `PALETTE`, then `default`.
+///
+/// The `default` arm is what lets `render::chart` have its own tunable color
+/// names without adding `PALETTE` entries. `vars_block` writes the whole
+/// palette into every diagram, so a new entry would churn every snapshot in
+/// this repo and in every consumer's committed docs; a name that resolves
+/// only through `default` is still overridable but appears nowhere.
+pub fn color<'a>(style: &'a D2Style, name: &str, default: (&'a str, &'a str)) -> &'a str {
+    if let Some((_, v)) = style.colors.iter().rev().find(|(n, _)| n == name) {
+        return v;
+    }
+    let (light, dark) = PALETTE
+        .iter()
+        .find(|(n, _, _)| *n == name)
+        .map_or(default, |(_, l, d)| (*l, *d));
+    if style.dark {
+        dark
+    } else {
+        light
+    }
+}
+
 pub fn vars_block(style: &D2Style) -> Vec<String> {
     let mut o = vec!["vars: {".to_string()];
     for (name, light, dark) in PALETTE {
-        let v = style
-            .colors
-            .iter()
-            .rev()
-            .find(|(n, _)| n == name)
-            .map(|(_, v)| v.as_str())
-            .unwrap_or(if style.dark { dark } else { light });
-        o.push(format!("  {name}: \"{v}\""));
+        o.push(format!(
+            "  {name}: \"{}\"",
+            color(style, name, (light, dark))
+        ));
     }
     o.push("}".into());
     o

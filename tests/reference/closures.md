@@ -4,6 +4,8 @@
 
 What each host's system closure weighs, measured from the realised store paths. NixOS hosts only — a darwin system cannot be built from Linux, so those hosts are absent here. A host shown as — was not selected for measurement; note that a host serving these docs cannot measure itself, as the docs would then depend on a system that contains them.
 
+![System closure size by host](./closures.svg)
+
 | Host | Closure | Paths | Unique |
 |---|---|---|---|
 | `luna` | 293.8 MiB | 6 | 4.0 MiB |

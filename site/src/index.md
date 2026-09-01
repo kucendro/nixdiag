@@ -51,7 +51,7 @@ build.
 | `wiki/src/services.md` | every service, the hosts running it, the file defining it |
 | `wiki/src/endpoints.md` | fqdn, port, scope, host, service |
 | `wiki/src/inputs.md` | every input with its rev and lock date, plus duplicate detection |
-| `wiki/src/closures.md` | opt-in: per-host closure size, largest paths, fleet sharing |
+| `wiki/src/closures.md`, `closures.svg` | opt-in: per-host closure size, largest paths, fleet sharing, stacked bar chart |
 
 ## Next
 

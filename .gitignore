@@ -1,3 +1,5 @@
 /target
 /result
 /site/book
+/.dev
+/site/src/*.svg

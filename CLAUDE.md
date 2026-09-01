@@ -92,6 +92,7 @@ nix/projections/core.nix  shared via include_str! AND exported in flake lib
 nix/lib.nix               mkFacts / mkDocs
 nix/module.nix            serve / timer
 templates/default/        `nix flake init -t` consumer scaffold
+justfile                  preview loops + the deliberate regenerations
 tests/fixture/            mini flake with 2 fake hosts
 tests/reference/          snapshots compared in `nix flake check`
 site/                     hand-written mdBook, published to GitHub Pages
@@ -112,15 +113,34 @@ Rules that keep it that way:
 - Package with `rustPlatform.buildRustPackage`; the in-repo flake uses
   `cargoLock.lockFile` (no hash churn during dev), the eventual `pkgs/by-name`
   PR uses `cargoHash` against a release tarball. Wrap `d2` and `nix` onto PATH
-  with `makeWrapper` (`--suffix`, so the user's own binaries win).
+  with `makeWrapper` (`--suffix`, so the user's own binaries win). The wrapped
+  d2 is `d2.override { withImageSupport = false; }`: that option exists only
+  for PNG export and drags in `playwright-driver.browsers`, so leaving it at
+  its default meant 2.2 GiB of Chromium/Firefox/WebKit — 2308 MiB and 363
+  paths of runtime closure against 228 MiB and 69 — for a tool that only ever
+  runs `d2 --layout elk in.d2 out.svg`. SVG output is byte-identical (checked
+  against all three reference diagrams and the committed `assets/`). It is a
+  named upstream argument, so a nixpkgs rename makes `.override` throw at eval
+  naming the argument — loud, not silent rot. Found by measuring nixdiag's own
+  closure with `nix/closures.nix`, which is the feature dogfooding itself.
 - The renderer **refuses to overwrite an existing file that lacks the AUTO marker**
   (`<!-- Auto-generated … -->` / `# Auto-generated …`). Safer than the Python.
 - Reference tests: render the fixture flake, snapshot d2 + Markdown, compare in
-  `nix flake check`. Update snapshots deliberately, never automatically.
-  The README's example diagrams are rendered from the reference files — whenever they
-  change, refresh with
+  `nix flake check`. Update snapshots deliberately, never automatically —
+  `just snapshots` refreshes them and prints the diff for you to read.
+  The README's example diagrams are rendered from the reference files — whenever
+  they change, `just assets` re-renders them with
   `d2 --layout elk --theme 200 tests/reference/<x>.d2 assets/<x>.svg`
   (`--theme 200` because the default palette is dark).
+- **`justfile` holds every command this file used to describe in prose**, so
+  they are runnable rather than transcribed: the two preview loops (`just site`
+  for the hand-written docs with live reload, `just wiki` to render the fixture
+  with the working-tree binary and serve it) and the two deliberate
+  regenerations above. The devShell prints `just --list` on entry and starts
+  nothing: a server spawned by a `shellHook` outlives the shell, fights the
+  previous one for the port, and fires in CI and editor shells too. Keep each
+  recipe's blurb to the single comment line above it — `just --list` shows only
+  the last one, so a two-line comment renders as its own second half.
 - User-facing docs live in `site/` (mdBook, `nix build .#site`, `checks.site`),
   published to <https://kucendro.github.io/nixdiag> by
   `.github/workflows/pages.yml` as a Pages artifact — no gh-pages branch, which
@@ -311,8 +331,8 @@ pages.
       Verified byte-for-byte against the committed os docs (modulo marker lines).
 - [x] `nixdiag check` drift gate.
 - [x] `nix/lib.nix` `mkFacts`/`mkDocs` (mode B) + `tests/fixture/` + reference
-      tests in `checks` (`nix build .#fixture-docs` refreshes; copy with
-      `cp --no-preserve=mode`, store files are read-only).
+      tests in `checks` (`just snapshots`, which is `nix build .#fixture-docs`
+      plus `cp --no-preserve=mode` — store files are read-only).
 - [x] `doccomment.rs` (`/** */` via rnix) — host entry-module doc under the
       host heading, service file docs as sections on the services page.
 - [x] `nix/module.nix` serve (+ optional timer), `templates/default/`.
@@ -492,6 +512,30 @@ pages.
         diffs `tests/reference/closures.md`; `checks.closures-plumbing` runs
         the real derivation over `pkgs.hello` and asserts shape *and* sort
         order. The end-to-end path over real hosts is verified by hand.
+      - **The fixture stays unbuildable, on purpose** (settled 2026-09-01 while
+        asking whether the feature could be tested against it). `luna`/`sol`
+        are eval-only: `system.build.toplevel` trips five assertions — root
+        `fileSystems`, `boot.loader.grub.devices`, grafana `secret_key`,
+        headscale `dns.nameservers.global`, and probably nginx's gixy lint on
+        sol's `proxy_pass $grafana_upstream`. Stubbing them is possible and,
+        done carefully, invisible to the facts: use a **tmpfs** root (an ext4
+        one can pull e2fsprogs into `environment.systemPackages` and move
+        `pkgCount`), leave grub *enabled* and only set `devices` (disabling it
+        drops a package, same problem), and put the stub **inline in the outer
+        `flake.nix` modules list**, never as a new `tests/fixture/modules/*.nix`
+        — the import graph is walked from each host's entry module, so a new
+        file would add a node and two edges to `modules.d2`. What kills it is
+        the other end: real closures are a function of the nixpkgs lock, so
+        `closures.md`/`closures.svg` could no longer be diffed byte-for-byte,
+        and `nix flake check` would build two full NixOS systems on every
+        laptop. Snapshot the fabricated numbers; dogfood the real path instead.
+      - `checks.closures-self` is that dogfood: `mkClosures` over nixdiag's own
+        package, which `checks.build` realises anyway. It asserts no
+        `playwright` path and a 600 MiB ceiling rather than an exact size —
+        real closures move with nixpkgs, so the invariant is the testable part,
+        not the bytes. Both tripwires were confirmed to fire against the
+        pre-`nix/d2.nix` closure (2307 MiB) before being committed; a check
+        that has never failed has not been tested.
       - `wiki::generate` grew past clippy's argument limit, so the data inputs
         (facts, repo, docs, model, lock, closures) are bundled into
         `WikiData`. Add future inputs there, not to the signature.
@@ -520,6 +564,86 @@ pages.
         which is distinguishable from the feature being off (no row at all).
         `summary_rows` is split out of `page_closures` purely so that case is
         unit-testable without constructing a whole `Facts`.
+- [x] Quantitative plates in **native SVG**, not another graph tool (decided
+      2026-09-01, once the inputs page was live on the os wiki). d2+elk has no
+      area or length channel, which is why the closure plates landed as tables
+      — a property of node-link renderers, not of the data. nixdiag emitting
+      the SVG itself fits this codebase specifically:
+      - No new runtime dependency. d2 has to be wrapped onto PATH with
+        `makeWrapper`; a treemap is arithmetic. Mode A gets the picture on a
+        machine with no d2 at all.
+      - **Byte-deterministic, so it can go into `check`.** No drawing is
+        gated today — `check` skips SVG precisely because d2's output moves
+        with d2's version. A self-emitted chart would be the first picture
+        the drift gate can actually hold.
+      - Nothing to rot: ~120 LOC of layout arithmetic, against a permanent
+        promise to track another upstream (the argument that killed adapters
+        in v2).
+      - Reuses `PALETTE` / `vars_block` semantics, so it neither forks the
+        visual language nor churns `topology.d2` / `modules.d2` / `inputs.d2`.
+      First cut, cheapest first: **fleet closure bar** (plates 4.2/4.4) — one
+      horizontal stacked bar per host, shared vs unique bytes; the picture of
+      what a host costs *extra*, which `summary_rows` states numerically but
+      does not show. Degrades to a single readable bar when only one host is
+      measured (the os case today). Then the **closure treemap** (4.1),
+      rectangles by `narSize` grouped by package name. Both read
+      `closures.json`, so there is no new plumbing. Output change ⇒ minor
+      bump + CHANGELOG entry + a deliberate snapshot move.
+
+      First cut shipped: the fleet bar, `render/chart.rs` (Band/Row/`bars`,
+      generic) plus `Closures::split` (the model half). Decisions:
+      - `d2::color(style, name, default)` was extracted out of `vars_block`,
+        which now calls it — same output, so no diagram churned. The
+        `default` arm is the whole point: the chart's color names
+        (`chartShared`/`chartPartial`/`chartUnique`/`chartInk`/`chartMuted`/
+        `chartTrack`) resolve through it, stay overridable by `--color`, and
+        never enter `PALETTE` — an entry there is emitted into *every*
+        diagram's `vars` block and would churn every snapshot here and in
+        every consumer's committed docs.
+      - The chart **ignores `--no-svg`** and is written as `WKind::Auto`.
+        That flag means "do not shell out to d2"; it exists because d2 needs
+        a binary on PATH and its bytes move with its version, and neither
+        applies. The payoff is immediate: `checks.closures` renders with
+        `--no-svg` and now `diff -u`s `tests/reference/closures.svg`, so this
+        is the first picture in the repo under a drift gate.
+      - `wiki::generate` takes `style` as its own parameter rather than a
+        `WikiData` field — `WikiData` is what the pages draw *on*, a palette
+        is what they draw *with*. Future data inputs still go in `WikiData`.
+      - `bar_rows` decides "is a comparison meaningful?" from
+        `closures.hosts.len()`, the same divisor `split` uses, not from the
+        page's row list — the two must agree or a bar would be split against
+        a fleet size the numbers were not computed for.
+      - Layout is integer-only, and segment ends are the *running total*
+        scaled (`acc * plot_w / max`), never each band scaled separately, so
+        segments tile exactly and the last one lands on the bar's own end
+        whatever the rounding did. Text metrics are approximated (7px/char)
+        for gutter sizing only, where being generous costs whitespace and
+        never clipping; both gutters are right-aligned inward so nothing
+        rides the canvas edge.
+      - The fixture stays at two hosts, where a "shared by some" band is
+        arithmetically impossible; that band is covered by unit tests in
+        `closures.rs` and `render/wiki/closures.rs` instead of by inventing
+        a third fixture host. Both palettes were checked by rendering the
+        snapshot to PNG over mdBook's navy and over white.
+- [ ] Closure **treemap** (plate 4.1) on the same machinery: rectangles by
+      `narSize`, grouped by package name, squarified. Reads `closures.json`
+      like the bar, so the only new code is the layout. Must keep printing
+      names via `util::store_name`, never store paths.
+- [ ] Open: a **second renderer dependency** is not ruled out, only unjustified
+      so far. The bar it must clear is that it draws something the current
+      pair cannot — not a second way to draw the same node-link picture, which
+      costs an upstream promise, a second snapshot set and another compat
+      surface (rendered output is an API) for no new information. Where the
+      candidates stand:
+      - **graphviz `dot`** — beats elk on dense graphs, and the inputs graph
+        is ~39 nodes on ~/os and getting busy. Aesthetic gain only, for now.
+      - **mermaid** — the one with a real argument: the picture source is
+        text inside the Markdown, so `check` could diff the drawing itself
+        and mode A would need no d2 binary. Declined for now because its
+        layout degrades well before 39 nodes, and `mdbook-mermaid` means a
+        preprocessor plus vendored JS, against the no-assets rule.
+      - Anything needing node/JS at build time (vega-lite, plotly) is out on
+        mode B purity and closure size.
 - [ ] Later: nixpkgs PR; extra diagrams/pages one at a time, each held to the
       v2 bar — derivable from stable generic surfaces (e.g. flake inputs graph
       via `nix flake metadata --json`, systemd timer calendar from units) or

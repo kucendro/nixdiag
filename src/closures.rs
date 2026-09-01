@@ -104,6 +104,39 @@ impl Closures {
     pub fn naive_sum(&self) -> u64 {
         self.hosts.values().map(HostClosure::total).sum()
     }
+
+    /// One host's closure split by how widely each path is held: carried by
+    /// every measured host, by some of them, or by this host alone.
+    ///
+    /// The three always sum to that host's `total()`, which is what lets the
+    /// fleet chart stack them into one bar. With a single measured host every
+    /// path is trivially held by all of them, so the whole closure lands in
+    /// `shared` and the chart draws a plain bar instead of a legend that
+    /// would distinguish nothing.
+    pub fn split(&self, host: &str) -> Split {
+        let n = self.hosts.len();
+        let occ = self.occurrences();
+        let mut s = Split::default();
+        let Some(h) = self.hosts.get(host) else {
+            return s;
+        };
+        for p in &h.paths {
+            match occ.get(p.path.as_str()).map(|(count, _)| *count) {
+                Some(c) if c == n => s.shared += p.nar_size,
+                Some(1) => s.unique += p.nar_size,
+                _ => s.partial += p.nar_size,
+            }
+        }
+        s
+    }
+}
+
+/// See `Closures::split`.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Split {
+    pub shared: u64,
+    pub partial: u64,
+    pub unique: u64,
 }
 
 #[cfg(test)]
@@ -174,6 +207,54 @@ mod tests {
     }
 
     #[test]
+    fn a_split_partitions_the_host_total() {
+        let c = fixture();
+        // Two hosts, so nothing can be held by "some but not all".
+        assert_eq!(
+            c.split("luna"),
+            Split {
+                shared: 150,
+                partial: 0,
+                unique: 10
+            }
+        );
+        assert_eq!(
+            c.split("luna").shared + c.split("luna").unique,
+            c.hosts["luna"].total()
+        );
+        assert_eq!(c.split("nope"), Split::default());
+    }
+
+    #[test]
+    fn a_third_host_makes_the_partial_band_possible() {
+        let mut c = fixture();
+        // `nginx` now sits on two of three hosts: shared by some, unique to
+        // none, and counted in neither of the other two bands.
+        c.hosts.insert(
+            "terra".to_string(),
+            HostClosure {
+                paths: vec![p("libc", 100), p("bash", 50), p("nginx", 10)],
+            },
+        );
+        assert_eq!(
+            c.split("luna"),
+            Split {
+                shared: 150,
+                partial: 10,
+                unique: 0
+            }
+        );
+        assert_eq!(
+            c.split("sol"),
+            Split {
+                shared: 150,
+                partial: 0,
+                unique: 400
+            }
+        );
+    }
+
+    #[test]
     fn a_single_host_shares_everything_with_itself() {
         let mut hosts = IndexMap::new();
         hosts.insert(
@@ -186,5 +267,14 @@ mod tests {
         // Degenerate but consistent; the page suppresses the fleet section.
         assert_eq!(c.shared(), vec![("libc", 100)]);
         assert_eq!(c.deduped(), (1, 100));
+        // "shared" wins the tie, so the split still sums to the total.
+        assert_eq!(
+            c.split("only"),
+            Split {
+                shared: 100,
+                partial: 0,
+                unique: 0
+            }
+        );
     }
 }

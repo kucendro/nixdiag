@@ -4,6 +4,8 @@
 //! Opt-in and mode B only — nar sizes exist only for realised paths, so this
 //! page is present exactly when `mkDocs { closures = …; }` supplied the data.
 
+use super::super::chart::{self, Band, Row};
+use super::super::d2::D2Style;
 use super::super::out::{Out, MD_MARKER};
 use crate::closures::{Closures, HostClosure};
 use crate::facts::Facts;
@@ -20,6 +22,7 @@ pub(super) fn page_closures(
     src: &Path,
     facts: &Facts,
     closures: &Closures,
+    style: &D2Style,
 ) -> Result<()> {
     // Every NixOS host gets a row, measured or not. `closures` accepts an
     // opt-in host list, so dropping the unselected ones would leave the page
@@ -46,6 +49,21 @@ pub(super) fn page_closures(
             .into(),
         "".into(),
     ];
+    // The chart is nixdiag's own SVG, not d2's, so it is written whatever
+    // `--no-svg` says: that flag exists because d2 needs a binary on PATH and
+    // its bytes move with its version, and neither is true here. Being an
+    // `Auto` file, it is covered by the drift gate like the Markdown.
+    if !hosts.is_empty() {
+        let svg = chart::bars(
+            "System closure size by host",
+            &bar_rows(closures, &hosts),
+            style,
+        );
+        out.write_auto(&src.join("closures.svg"), &svg)?;
+        o.push("![System closure size by host](./closures.svg)".into());
+        o.push("".into());
+    }
+
     o.extend(summary_rows(closures, &hosts));
     o.push("".into());
 
@@ -106,6 +124,47 @@ pub(super) fn page_closures(
     }
 
     out.write_auto(&src.join("closures.md"), &o.join("\n"))
+}
+
+/// One bar per host, stacked by how widely its paths are held.
+///
+/// An unmeasured host keeps its row and loses its bar, for the same reason it
+/// keeps its `—` in the table: silently dropping it would make the picture
+/// read as the whole fleet.
+fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<Row> {
+    // Measured against the same set `split` divides by, not against the rows:
+    // with one measured host every path is trivially held by "all" of them, so
+    // the split says nothing and the bar is drawn plain.
+    let comparable = closures.hosts.len() > 1;
+    hosts
+        .iter()
+        .map(|(host, closure)| match closure {
+            Some(h) if comparable => {
+                let s = closures.split(host);
+                Row {
+                    label: (*host).to_string(),
+                    // Zero-valued bands draw nothing and claim no legend
+                    // entry, so a fleet too small for one is handled here.
+                    bands: vec![
+                        (Band::Shared, s.shared),
+                        (Band::Partial, s.partial),
+                        (Band::Unique, s.unique),
+                    ],
+                    note: human_size(h.total()),
+                }
+            }
+            Some(h) => Row {
+                label: (*host).to_string(),
+                bands: vec![(Band::Solid, h.total())],
+                note: human_size(h.total()),
+            },
+            None => Row {
+                label: (*host).to_string(),
+                bands: Vec::new(),
+                note: "not measured".into(),
+            },
+        })
+        .collect()
 }
 
 /// The summary table. Split out so the unmeasured-host case is testable
@@ -175,5 +234,50 @@ mod tests {
     fn no_nixos_hosts_at_all_renders_a_placeholder() {
         let rows = summary_rows(&closures(), &[]);
         assert_eq!(rows.last().unwrap(), "| — | — | — | — |");
+    }
+
+    #[test]
+    fn a_lone_measured_host_gets_one_plain_band() {
+        let c = closures();
+        let rows = bar_rows(&c, &[("nas", c.hosts.get("nas")), ("edge", None)]);
+        assert_eq!(rows[0].bands, vec![(Band::Solid, 1024)]);
+        assert_eq!(rows[0].note, "1.0 KiB");
+        assert!(rows[1].bands.is_empty());
+        assert_eq!(rows[1].note, "not measured");
+    }
+
+    /// Three hosts is the smallest fleet where a path can be held by some but
+    /// not all, so it is the only shape that exercises every band.
+    #[test]
+    fn three_hosts_stack_all_three_bands() {
+        let mut hosts = IndexMap::new();
+        let path = |n: &str, size| ClosurePath {
+            path: format!("/nix/store/0000000000000000000000000000000{n}-p"),
+            nar_size: size,
+        };
+        hosts.insert(
+            "a".to_string(),
+            HostClosure {
+                paths: vec![path("a", 100), path("b", 20), path("c", 3)],
+            },
+        );
+        hosts.insert(
+            "b".to_string(),
+            HostClosure {
+                paths: vec![path("a", 100), path("b", 20)],
+            },
+        );
+        hosts.insert(
+            "c".to_string(),
+            HostClosure {
+                paths: vec![path("a", 100)],
+            },
+        );
+        let c = Closures { schema: 1, hosts };
+        let rows = bar_rows(&c, &[("a", c.hosts.get("a"))]);
+        assert_eq!(
+            rows[0].bands,
+            vec![(Band::Shared, 100), (Band::Partial, 20), (Band::Unique, 3)]
+        );
     }
 }

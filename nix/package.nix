@@ -6,6 +6,9 @@
   nix,
 }:
 
+let
+  d2-svg = import ./d2.nix d2;
+in
 rustPlatform.buildRustPackage {
   pname = "nixdiag";
   version = (builtins.fromTOML (builtins.readFile ../Cargo.toml)).package.version;
@@ -17,7 +20,7 @@ rustPlatform.buildRustPackage {
     wrapProgram $out/bin/nixdiag \
       --suffix PATH : ${
         lib.makeBinPath [
-          d2
+          d2-svg
           nix
         ]
       }

@@ -76,6 +76,17 @@ broken annotation fails the build.
 `closures` adds a Closures page (per-host totals, largest contributing
 packages, and what the fleet shares) plus a closure row on each host.
 
+The page opens with `closures.svg`, one stacked bar per host split into what
+every host carries, what some of them carry, and what this host alone costs:
+
+![Fleet closure sizes](./closures.svg)
+
+nixdiag draws that chart itself rather than through d2, so it needs no binary
+on PATH, ignores `--no-svg`, and is byte-identical run to run — which is why it
+is the one picture `nixdiag check` can compare. Its colors follow `theme` and
+can be overridden by name: `chartShared`, `chartPartial`, `chartUnique`,
+`chartInk`, `chartMuted`, `chartTrack`.
+
 Packages are listed by name and version, never by full store path. Nix records
 a reference for every store path that appears in a build output, so printing
 them would make the docs derivation retain the entire closure it describes —

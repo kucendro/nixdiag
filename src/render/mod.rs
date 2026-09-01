@@ -1,5 +1,6 @@
 //! facts + annotations -> the full docs tree (topology, module tree, wiki).
 
+mod chart;
 pub mod d2;
 mod inputs;
 mod modules;
@@ -136,6 +137,7 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
     wiki::generate(
         &mut out,
         &opts.wiki,
+        &opts.style,
         &wiki::WikiData {
             facts,
             repo: &repo,

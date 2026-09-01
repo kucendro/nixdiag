@@ -160,7 +160,7 @@ rec {
       {
         nativeBuildInputs = [
           nixdiag
-          pkgs.d2
+          (import ./d2.nix pkgs.d2)
         ]
         ++ lib.optional buildWiki pkgs.mdbook;
       }

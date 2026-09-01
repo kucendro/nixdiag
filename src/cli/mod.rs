@@ -50,8 +50,9 @@ pub struct RenderArgs {
     /// Diagram canvas fill (default transparent)
     #[arg(long)]
     background: Option<String>,
-    /// Palette override as NAME=#HEX (names: the vars block in the d2
-    /// output); repeatable
+    /// Palette override as NAME=#HEX (names: the vars block in the d2 output,
+    /// plus chartShared/chartPartial/chartUnique/chartInk/chartMuted/
+    /// chartTrack for the SVG charts); repeatable
     #[arg(long = "color", value_name = "NAME=#HEX")]
     colors: Vec<String>,
     /// Domain suffix for `@KEY` in annotation fqdns, as KEY=DOMAIN;

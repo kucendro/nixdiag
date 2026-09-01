@@ -19,6 +19,7 @@ use hosts::page_hosts;
 use inputs::page_inputs;
 use services::page_services;
 
+use super::d2::D2Style;
 use super::out::Out;
 use super::DocComments;
 use crate::closures::Closures;
@@ -63,7 +64,10 @@ pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<
     svcs
 }
 
-pub fn generate(out: &mut Out, opts: &WikiOpts, d: &WikiData) -> Result<()> {
+/// `style` is passed alongside the data rather than folded into `WikiData`
+/// because it is not data: the Closures page draws its own SVG chart and needs
+/// the palette to do it.
+pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -> Result<()> {
     let wiki = PathBuf::from("wiki");
     let src = wiki.join("src");
 
@@ -80,7 +84,7 @@ pub fn generate(out: &mut Out, opts: &WikiOpts, d: &WikiData) -> Result<()> {
         page_inputs(out, &src, lock)?;
     }
     if let Some(closures) = d.closures {
-        page_closures(out, &src, d.facts, closures)?;
+        page_closures(out, &src, d.facts, closures, style)?;
     }
     Ok(())
 }

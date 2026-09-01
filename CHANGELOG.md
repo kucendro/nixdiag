@@ -53,6 +53,24 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
   that build on the machine holding the systems: the per-host derivation is
   `preferLocalBuild`, so invoking it elsewhere copies every measured closure
   to the invoking machine.
+- `checks.closures-self` measures nixdiag's own runtime closure with
+  `nix/closures.nix` and fails if a `playwright` path reappears or the total
+  passes 600 MiB — a tripwire, not a budget.
+- **Fleet closure chart**, `wiki/src/closures.svg`: one stacked horizontal bar
+  per host, divided into paths every host carries, paths some carry, and paths
+  unique to that host — the picture of what a host costs *beyond* the shared
+  base. Unmeasured hosts keep their row and lose their bar, for the same reason
+  they keep their `—` in the table. nixdiag emits this SVG itself instead of
+  through d2: node-link renderers have no length or area channel, so the
+  quantitative pages could not be drawn with one at all, and a second renderer
+  dependency would be a standing commitment to track another upstream. Two
+  consequences worth knowing: the chart needs no binary on PATH and so ignores
+  `--no-svg`, and it is byte-identical run to run, which makes it the first
+  picture `nixdiag check` can compare (every d2-produced SVG is excluded,
+  because its bytes move with the d2 version). Colors follow `--theme` and take
+  overrides under their own names — `chartShared`, `chartPartial`,
+  `chartUnique`, `chartInk`, `chartMuted`, `chartTrack` — which are deliberately
+  absent from the d2 `vars` palette so existing diagrams stay byte-identical.
 - **Flake input graph.** A new `inputs.d2` diagram and `wiki/src/inputs.md`
   page, read straight from `flake.lock`. No eval and no realisation, so it
   costs nothing and behaves identically in both modes. The page lists every
@@ -103,6 +121,13 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
 - `nixdiag check` hints that a cosmetic output change is expected after an
   upgrade, and points at this file.
 - A d2 compile failure is a hard render error (was a silent message on stderr).
+- **The packaged binary wraps a `d2` built without image support**, cutting its
+  runtime closure from 2308 MiB / 363 paths to 228 MiB / 69. d2's image support
+  exists only for PNG export and pulls `playwright-driver.browsers` — Chromium,
+  Firefox and WebKit — which nixdiag never launches: it only ever runs
+  `d2 --layout elk in.d2 out.svg`. Rendered SVGs are byte-identical either way.
+  Nothing changes for anyone who already has d2 on PATH, since the wrapper uses
+  `--suffix`.
 
 ### Removed
 
