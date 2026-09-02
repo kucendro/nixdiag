@@ -1,6 +1,4 @@
 /**
-  nginx fronts every internal service; *mesh* vhosts bind the mesh IP.
-
   #: proxy
 */
 {

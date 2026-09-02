@@ -1,5 +1,3 @@
-//! One function per subcommand: `facts`, `render`, `gen`, `check`.
-
 use super::options::{abs, resolve_out, to_render_opts};
 use super::{FlakeArgs, RenderArgs};
 use crate::closures::Closures;
@@ -9,9 +7,6 @@ use crate::render::{render_all, Out, WKind};
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 
-/// Closure sizes exist only for realised paths, so producing them means
-/// building every host's system. Only a derivation can express that purely —
-/// see nix/closures.nix.
 fn closures_need_mode_b() -> anyhow::Error {
     anyhow::anyhow!(
         "closure metrics require every host's system to be built, which this \

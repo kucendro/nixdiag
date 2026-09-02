@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    nixdiag.url = "github:kucendro/nixdiag"; # adjust to where you track nixdiag
+    nixdiag.url = "github:kucendro/nixdiag";
   };
 
   outputs =
@@ -13,7 +13,6 @@
       nixdiag,
     }:
     {
-      # Defaults for the zero-touch CLI (`nixdiag gen`); flags override.
       nixdiag = {
         out = "docs";
         # title = "my infrastructure wiki";
@@ -21,14 +20,12 @@
         # extraLinks.Termux = "termux.md";
       };
 
-      # nix build .#docs — pure, cached; nothing to commit back.
+      # nix build .#docs
       packages.x86_64-linux.docs = nixdiag.lib.mkDocs {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         flake = self;
         # title = "my infrastructure wiki";
         # extraPages.Runbooks = ./docs-src/runbooks.md;
       };
-
-      # …your nixosConfigurations / darwinConfigurations here.
     };
 }

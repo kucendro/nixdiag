@@ -70,9 +70,6 @@ in
   config = lib.mkMerge [
     (lib.mkIf cfg.serve.enable {
       services.nginx.enable = true;
-      # Projections must never read this vhost's `root` (it forces the docs
-      # derivation and eval would recurse); they only read names, listen
-      # addresses and proxyPass — keep it that way.
       services.nginx.virtualHosts.${cfg.serve.virtualHost} = lib.mkMerge [
         { root = "${cfg.serve.docs}/${cfg.serve.subpath}"; }
         cfg.serve.virtualHostExtra

@@ -1,14 +1,11 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-# List these recipes.
 default:
     @just --list --unsorted
 
-# Serve the hand-written docs site (site/) with live reload.
 site: _site-assets
     mdbook serve site --open
 
-# Render the example fleet with the working-tree binary and serve its wiki.
 wiki: build
     #!/usr/bin/env bash
     set -euo pipefail
@@ -24,18 +21,15 @@ wiki: build
 _site-assets:
     cp -f assets/topology.svg assets/modules.svg tests/reference/closures.svg site/src/
 
-# Build the binary into target/debug.
 build:
     cargo build
 
-# What CI runs, ordered so the cheapest thing fails first.
 check:
     cargo fmt --check
     cargo clippy --all-targets -- -D warnings
     cargo test
     nix flake check
 
-# Refresh tests/reference/ from the fixture, then show what moved.
 snapshots:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -48,7 +42,6 @@ snapshots:
     cp --no-preserve=mode "$closures"/wiki/src/closures*.svg tests/reference/
     git diff --stat -- tests/reference/
 
-# Re-render the README and site pictures from the fixture, dark and light.
 assets: build
     #!/usr/bin/env bash
     set -euo pipefail

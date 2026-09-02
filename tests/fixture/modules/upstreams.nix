@@ -1,6 +1,4 @@
 /**
-  Upstream table for the mesh vhosts; annotations attach to nginx.
-
   #: unit sol/nginx
   #: scope mesh
 */

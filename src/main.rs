@@ -1,6 +1,5 @@
-//! nixdiag — static infrastructure docs from any Nix flake.
+//! nixdiag
 //!
-//! The pipeline, and the module tree that mirrors it:
 //!   `eval`   — mode A: run the projection over a flake, producing `facts`
 //!   `facts`  — the schema-versioned contract between extraction and rendering
 //!   `source` — static analysis of the documented repo's own .nix files:

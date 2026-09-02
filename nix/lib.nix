@@ -1,8 +1,5 @@
-# Mode B: pure-derivation docs. The consumer flake evals its own
-# configurations at eval time; the sandbox only renders.
 { self, lib }:
 rec {
-  # flake -> facts attrset (same shape as `nixdiag facts`).
   mkFacts =
     {
       flake,

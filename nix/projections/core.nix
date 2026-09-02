@@ -1,7 +1,3 @@
-# The single generic projection — applied to a nixosConfigurations.<host> or
-# darwinConfigurations.<host> value. Schema 2 reads only quasi-frozen,
-# stack-agnostic surfaces; all topology semantics come from `#:` annotations
-# in the documented repo, parsed at render time.
 { host, kind }:
 
 let
@@ -35,7 +31,6 @@ in
 if kind == "darwin" then
   {
     kind = "darwin";
-    # x.name or x tolerates both plain-string and attrset cask entries
     casks = map (x: x.name or x) (c.homebrew.casks or [ ]);
     daemons = builtins.attrNames (c.launchd.daemons or { });
     userAgents = builtins.attrNames (c.launchd.user.agents or { });

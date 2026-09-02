@@ -27,7 +27,7 @@ rustPlatform.buildRustPackage {
   '';
 
   meta = {
-    description = "Static infrastructure docs from any Nix flake";
+    description = "Static infrastructure docs";
     homepage = "https://github.com/kucendro/nixdiag";
     license = lib.licenses.mit;
     mainProgram = "nixdiag";
