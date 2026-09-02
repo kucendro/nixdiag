@@ -21,8 +21,6 @@
 
 ## 🖥️ sol
 
-Edge node: mesh control plane and the fleet's reverse proxy.
-
 | | |
 |---|---|
 | Platform | `x86_64-linux` |

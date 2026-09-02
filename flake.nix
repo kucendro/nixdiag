@@ -69,7 +69,6 @@
           flake = fixtureFlake;
           title = "Example fleet";
           domains.ts = "ts.example";
-          # closures = true;
         };
 
         site =
