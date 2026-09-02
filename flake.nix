@@ -80,7 +80,7 @@
               cp -r ${./site} book
               chmod -R u+w book
               cp ${./assets}/topology.svg ${./assets}/modules.svg book/src/
-              cp ${./tests/reference}/closures.svg book/src/
+              cp ${./tests/reference}/wiki/src/closures.svg book/src/
               mdbook build book --dest-dir $out
               cp -r --no-preserve=mode ${demo-docs}/wiki/book $out/demo
             '';
@@ -129,115 +129,131 @@
         };
       });
 
-      checks = eachSystem (pkgs: {
-        build = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
-        site = self.packages.${pkgs.stdenv.hostPlatform.system}.site;
-        closures-plumbing =
-          let
-            out =
-              (import ./nix/closures.nix {
-                inherit pkgs;
-                lib = pkgs.lib;
-              }).mkClosures
-                { demo = pkgs.hello; };
-          in
-          pkgs.runCommand "nixdiag-closures-plumbing" { nativeBuildInputs = [ pkgs.jq ]; } ''
-            jq -e '.schema == 1' ${out} > /dev/null
-            jq -e '.hosts.demo.paths | length > 0' ${out} > /dev/null
-            jq -e '.hosts.demo.paths | all(has("path") and has("narSize"))' ${out} > /dev/null
-            jq -e '.hosts.demo.paths == (.hosts.demo.paths | sort_by(.path))' ${out} > /dev/null
-            touch $out
+      checks = eachSystem (
+        pkgs:
+        let
+          # Snapshot list and layout live in tests/reference/MANIFEST, which
+          # `just snapshots` writes from. One source, so adding a snapshot
+          # cannot land in the refresher but not the gate.
+          diffManifest = pkgs.writeShellScript "nixdiag-diff-manifest" ''
+            set -euo pipefail
+            want="$1"; reference="$2"; docs="$3"; seen=0
+            while read -r build path; do
+              case "$build" in "") continue ;; esac
+              # Every line is validated by both checks, so a typo in the build
+              # column fails loudly instead of silently skipping a snapshot.
+              case "$build" in
+                docs|closures) ;;
+                *) echo "MANIFEST: unknown build '$build' for $path"; exit 1 ;;
+              esac
+              [ "$build" = "$want" ] || continue
+              if [ ! -e "$docs/$path" ]; then
+                echo "MANIFEST lists $path, but the build did not write it"; exit 1
+              fi
+              diff -u "$reference/$path" "$docs/$path"
+              seen=$((seen + 1))
+            done < <(sed 's/#.*//' "$reference/MANIFEST")
+            [ "$seen" -gt 0 ] || { echo "no MANIFEST entries for '$want'"; exit 1; }
+            echo "$want: $seen snapshots match"
           '';
 
-        closures-self =
-          let
-            out =
-              (import ./nix/closures.nix {
-                inherit pkgs;
-                lib = pkgs.lib;
-              }).mkClosures
-                { nixdiag = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag; };
-          in
-          pkgs.runCommand "nixdiag-closures-self" { nativeBuildInputs = [ pkgs.jq ]; } ''
-            paths=$(jq '.hosts.nixdiag.paths | length' ${out})
-            bytes=$(jq '[.hosts.nixdiag.paths[].narSize] | add' ${out})
-            echo "nixdiag runtime closure: $((bytes / 1048576)) MiB across $paths paths"
-
-            if jq -e '[.hosts.nixdiag.paths[].path] | any(test("playwright"))' ${out} > /dev/null; then
-              echo "playwright is back in nixdiag's runtime closure -- see nix/d2.nix"
+          # Nix records a reference for every store path in an output, so a
+          # listing of a system closure would make the docs retain it.
+          noStorePaths = ''
+            if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
+              echo "generated docs contain a store path; that would retain Nix references:"
+              grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
               exit 1
             fi
-
-            if [ "$bytes" -gt $((600 * 1024 * 1024)) ]; then
-              echo "runtime closure passed 600 MiB; re-measure and raise the ceiling on purpose"
-              exit 1
-            fi
-            touch $out
           '';
+        in
+        {
+          build = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
+          site = self.packages.${pkgs.stdenv.hostPlatform.system}.site;
+          closures-plumbing =
+            let
+              out =
+                (import ./nix/closures.nix {
+                  inherit pkgs;
+                  lib = pkgs.lib;
+                }).mkClosures
+                  { demo = pkgs.hello; };
+            in
+            pkgs.runCommand "nixdiag-closures-plumbing" { nativeBuildInputs = [ pkgs.jq ]; } ''
+              jq -e '.schema == 1' ${out} > /dev/null
+              jq -e '.hosts.demo.paths | length > 0' ${out} > /dev/null
+              jq -e '.hosts.demo.paths | all(has("path") and has("narSize"))' ${out} > /dev/null
+              jq -e '.hosts.demo.paths == (.hosts.demo.paths | sort_by(.path))' ${out} > /dev/null
+              touch $out
+            '';
 
-        closures =
-          pkgs.runCommand "nixdiag-closures-reference"
-            {
-              docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs-closures;
-              reference = ./tests/reference;
-            }
-            ''
-              diff -u "$reference/closures.md" "$docs/wiki/src/closures.md"
-              for svg in "$docs"/wiki/src/closures*.svg; do
-                diff -u "$reference/$(basename "$svg")" "$svg"
-              done
-              grep -q '| Closure |' "$docs/wiki/src/hosts.md"
-              diff -u "$reference/api/closures.json" "$docs/api/v1/closures.json"
-              if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
-                echo "generated docs contain a store path; that would retain Nix references:"
-                grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
+          closures-self =
+            let
+              out =
+                (import ./nix/closures.nix {
+                  inherit pkgs;
+                  lib = pkgs.lib;
+                }).mkClosures
+                  { nixdiag = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag; };
+            in
+            pkgs.runCommand "nixdiag-closures-self" { nativeBuildInputs = [ pkgs.jq ]; } ''
+              paths=$(jq '.hosts.nixdiag.paths | length' ${out})
+              bytes=$(jq '[.hosts.nixdiag.paths[].narSize] | add' ${out})
+              echo "nixdiag runtime closure: $((bytes / 1048576)) MiB across $paths paths"
+
+              if jq -e '[.hosts.nixdiag.paths[].path] | any(test("playwright"))' ${out} > /dev/null; then
+                echo "playwright is back in nixdiag's runtime closure -- see nix/d2.nix"
+                exit 1
+              fi
+
+              if [ "$bytes" -gt $((600 * 1024 * 1024)) ]; then
+                echo "runtime closure passed 600 MiB; re-measure and raise the ceiling on purpose"
                 exit 1
               fi
               touch $out
             '';
 
-        reference =
-          pkgs.runCommand "nixdiag-reference"
-            {
-              docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs;
-              reference = ./tests/reference;
-              nativeBuildInputs = [ pkgs.jq ];
-            }
-            ''
-              diff -u "$reference/topology.d2" "$docs/topology.d2"
-              diff -u "$reference/modules.d2" "$docs/modules.d2"
-              diff -u "$reference/inputs.d2" "$docs/inputs.d2"
-              diff -u "$reference/hosts.md" "$docs/wiki/src/hosts.md"
-              diff -u "$reference/endpoints.md" "$docs/wiki/src/endpoints.md"
-              diff -u "$reference/inputs.md" "$docs/wiki/src/inputs.md"
-              diff -u "$reference/inputs-timeline.svg" "$docs/wiki/src/inputs-timeline.svg"
+          closures =
+            pkgs.runCommand "nixdiag-closures-reference"
+              {
+                docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs-closures;
+                reference = ./tests/reference;
+              }
+              ''
+                ${diffManifest} closures "$reference" "$docs"
+                grep -q '| Closure |' "$docs/wiki/src/hosts.md"
+                ${noStorePaths}
+                touch $out
+              '';
 
-              # The published API is read by other people's code, where a
-              # renamed key breaks a parser rather than reading oddly.
-              for f in index hosts services topology inputs openapi; do
-                diff -u "$reference/api/$f.json" "$docs/api/v1/$f.json"
-              done
-              # snapshot.json is deliberately not diffed: it carries the
-              # revision, so it is Volatile and out of the drift gate. Its
-              # shape is still asserted.
-              jq -e '.meta.schema and .totals.hosts' "$docs/api/v1/snapshot.json" > /dev/null
+          reference =
+            pkgs.runCommand "nixdiag-reference"
+              {
+                docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs;
+                reference = ./tests/reference;
+                nativeBuildInputs = [ pkgs.jq ];
+              }
+              ''
+                ${diffManifest} docs "$reference" "$docs"
 
-              # Every generated JSON must carry the AUTO marker, or the next
-              # render refuses to overwrite its own output.
-              for f in "$docs"/api/v1/*.json; do
-                grep -q 'Auto-generated' "$f" || { echo "no marker: $f"; exit 1; }
-              done
+                # snapshot.json is deliberately not diffed: it carries the
+                # revision, so it is Volatile and out of the drift gate. Its
+                # shape is still asserted.
+                jq -e '.meta.schema and .totals.hosts' "$docs/api/v1/snapshot.json" > /dev/null
 
-              # `hosts.json` and `services.json` carry defining files, which
-              # arrive from eval as store paths — the one place a Repo
-              # resolution failure would leak one into an installed file.
-              if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
-                echo "generated docs contain a store path; that would retain Nix references:"
-                grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
-                exit 1
-              fi
-              touch $out
-            '';
-      });
+                # Every generated JSON must carry the AUTO marker, or the next
+                # render refuses to overwrite its own output.
+                for f in "$docs"/api/v1/*.json; do
+                  grep -q 'Auto-generated' "$f" || { echo "no marker: $f"; exit 1; }
+                done
+
+                # `hosts.json` and `services.json` carry defining files, which
+                # arrive from eval as store paths — the one place a Repo
+                # resolution failure would leak one into an installed file.
+                ${noStorePaths}
+                touch $out
+              '';
+        }
+      );
     };
 }

@@ -3,6 +3,7 @@
 //! One module per generated page; this file owns the options, the shared
 //! host->services helper, and the order the pages are written in.
 
+mod api;
 mod architecture;
 mod book;
 mod closures;
@@ -11,6 +12,7 @@ mod hosts;
 mod inputs;
 mod services;
 
+use api::page_api;
 use architecture::page_architecture;
 use book::{book_toml, copy_extra_pages, page_index, page_summary};
 use closures::page_closures;
@@ -41,6 +43,9 @@ pub struct WikiData<'a> {
     pub model: &'a Model,
     pub lock: Option<&'a Lock>,
     pub closures: Option<&'a Closures>,
+    /// Whether the `api/` tree was published, so the wiki can point at it
+    /// without ever advertising endpoints that are not there.
+    pub api: bool,
 }
 
 pub struct WikiOpts {
@@ -74,7 +79,14 @@ pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -
     book_toml(out, &wiki, &opts.title)?;
     let mut extra = copy_extra_pages(out, &src, &opts.extra_pages)?;
     extra.extend(opts.extra_links.iter().cloned());
-    page_summary(out, &src, &extra, d.lock.is_some(), d.closures.is_some())?;
+    page_summary(
+        out,
+        &src,
+        &extra,
+        d.lock.is_some(),
+        d.closures.is_some(),
+        d.api,
+    )?;
     page_index(out, &src)?;
     page_architecture(out, &src)?;
     page_hosts(out, &src, d.facts, d.repo, d.docs, d.closures)?;
@@ -85,6 +97,9 @@ pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -
     }
     if let Some(closures) = d.closures {
         page_closures(out, &src, d.facts, closures, style)?;
+    }
+    if d.api {
+        page_api(out, &src, d.lock.is_some(), d.closures.is_some())?;
     }
     Ok(())
 }

@@ -18,8 +18,6 @@ pub(super) fn page_endpoints(
         "".into(),
         "# Endpoints".into(),
         "".into(),
-        "From `#: expose` and named `#: ->` annotations.".into(),
-        "".into(),
         "| Endpoint | Port | Scope | Host | Service |".into(),
         "|---|---|---|---|---|".into(),
     ];

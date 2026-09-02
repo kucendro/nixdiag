@@ -104,11 +104,7 @@ fn to_api_opts(r: &RenderArgs, cfg: &eval::FlakeConfig, grammar: u32) -> Option<
             id,
             time: r.revision_time.or(cfg.revision_time),
         });
-    Some(ApiOpts {
-        grammar,
-        revision,
-        scalar: r.scalar,
-    })
+    Some(ApiOpts { grammar, revision })
 }
 
 fn to_style(r: &RenderArgs, cfg: &eval::FlakeConfig) -> Result<d2::D2Style> {

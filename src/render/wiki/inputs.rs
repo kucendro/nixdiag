@@ -152,9 +152,9 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
         "".into(),
         "# Inputs".into(),
         "".into(),
-        "Read from `flake.lock`. Dashed edges are `follows`, which *removes* a \
-         duplicate rather than adding one."
-            .into(),
+        // The one thing the picture cannot say for itself: a dashed edge is
+        // the opposite of an extra input.
+        "Dashed edges are `follows`, which *removes* a duplicate.".into(),
         "".into(),
         // Emitted whether or not the SVG was rendered: `nixdiag check` runs
         // with --no-svg, and the Markdown must not differ between the two.

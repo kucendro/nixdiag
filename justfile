@@ -19,7 +19,7 @@ wiki: build
     mdbook serve .dev/docs/wiki --open
 
 _site-assets:
-    cp -f assets/topology.svg assets/modules.svg tests/reference/closures.svg site/src/
+    cp -f assets/topology.svg assets/modules.svg tests/reference/wiki/src/closures.svg site/src/
 
 build:
     cargo build
@@ -33,18 +33,13 @@ check:
 snapshots:
     #!/usr/bin/env bash
     set -euo pipefail
-    docs="$(nix build .#fixture-docs --no-link --print-out-paths)"
-    closures="$(nix build .#fixture-docs-closures --no-link --print-out-paths)"
-    cp --no-preserve=mode "$docs"/{topology,modules,inputs}.d2 tests/reference/
-    cp --no-preserve=mode "$docs"/wiki/src/{hosts,endpoints,inputs}.md tests/reference/
-    cp --no-preserve=mode "$docs"/wiki/src/inputs-timeline.svg tests/reference/
-    cp --no-preserve=mode "$closures"/wiki/src/closures.md tests/reference/
-    cp --no-preserve=mode "$closures"/wiki/src/closures*.svg tests/reference/
-    mkdir -p tests/reference/api
-    for f in index hosts services topology inputs openapi; do
-      cp --no-preserve=mode "$docs/api/v1/$f.json" tests/reference/api/
-    done
-    cp --no-preserve=mode "$closures"/api/v1/closures.json tests/reference/api/
+    declare -A out
+    out[docs]="$(nix build .#fixture-docs --no-link --print-out-paths)"
+    out[closures]="$(nix build .#fixture-docs-closures --no-link --print-out-paths)"
+    while read -r build path; do
+      [ -n "$build" ] || continue
+      install -Dm644 "${out[$build]}/$path" "tests/reference/$path"
+    done < <(grep -v '^\s*#' tests/reference/MANIFEST)
     git diff --stat -- tests/reference/
 
 assets: build

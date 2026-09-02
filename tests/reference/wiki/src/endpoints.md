@@ -2,8 +2,6 @@
 
 # Endpoints
 
-From `#: expose` and named `#: ->` annotations.
-
 | Endpoint | Port | Scope | Host | Service |
 |---|---|---|---|---|
 | `grafana.ts.example` | 3000 | mesh | luna | grafana |

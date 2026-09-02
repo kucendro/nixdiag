@@ -1,5 +1,5 @@
-//! The published API tree: `api/v1/*.json`, the OpenAPI document that
-//! describes them, and the Scalar reference shim.
+//! The published API tree: `api/v1/*.json` and the OpenAPI document that
+//! describes them.
 //!
 //! Façade in the shape of `wiki/mod.rs` — submodules are private and each
 //! owns one document. They *build* payloads and never touch `Out`, so the
@@ -10,7 +10,6 @@ mod closures;
 mod hosts;
 mod inputs;
 mod openapi;
-mod scalar;
 mod services;
 mod snapshot;
 mod topology;
@@ -41,9 +40,6 @@ pub struct ApiOpts {
     /// Supplied by the caller — `render` shells out to no git and reads no
     /// clock. `None` in mode A unless CI passes one.
     pub revision: Option<api::Revision>,
-    /// Emit the vendored Scalar reference page. Mode B only: the CLI has no
-    /// bundle to point at and must not fetch one.
-    pub scalar: bool,
 }
 
 /// Every endpoint, in the order the service document lists them.
@@ -120,13 +116,12 @@ pub fn generate(out: &mut Out, opts: &ApiOpts, d: &ApiData) -> Result<()> {
         &snapshot::build(meta(), opts.revision.clone(), d),
         WKind::Volatile,
     )?;
+    // No viewer is bundled: one weighed 3.6 MB against 204 KB of documents,
+    // in a derivation `serve` puts into a host's system closure.
     out.write_json(
         &v.join("openapi.json"),
         &openapi::build(d.lock.is_some(), d.closures.is_some()),
         WKind::Auto,
     )?;
-    if opts.scalar {
-        out.write_auto(&root.join("index.html"), &scalar::page())?;
-    }
     Ok(())
 }

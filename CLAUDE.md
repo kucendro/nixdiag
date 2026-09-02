@@ -96,7 +96,6 @@ src/
       hosts.rs / services.rs / topology.rs / inputs.rs / closures.rs
       snapshot.rs         the small trend document (Volatile)
       openapi.rs          schemars -> OpenAPI 3.1, $defs hoisted to components
-      scalar.rs           the reference shim; mkDocs supplies the bundle
     wiki/                 mdBook source, one module per generated page
       mod.rs              WikiOpts, page order, shared host->services helper
       book.rs             book.toml, SUMMARY, index, extra pages
@@ -145,9 +144,16 @@ Rules that keep it that way:
   closure with `nix/closures.nix`, which is the feature dogfooding itself.
 - The renderer **refuses to overwrite an existing file that lacks the AUTO marker**
   (`<!-- Auto-generated … -->` / `# Auto-generated …`). Safer than the Python.
-- Reference tests: render the fixture flake, snapshot d2 + Markdown, compare in
-  `nix flake check`. Update snapshots deliberately, never automatically —
-  `just snapshots` refreshes them and prints the diff for you to read.
+- Reference tests: render the fixture flake, snapshot d2 + Markdown + the
+  published JSON, compare in `nix flake check`. Update snapshots deliberately,
+  never automatically — `just snapshots` refreshes them and prints the diff for
+  you to read. **`tests/reference/MANIFEST` is the one list**: `<build> <path>`
+  per line, where `tests/reference/` mirrors the output tree so neither the
+  refresher nor the gate maps a path. Before it, the same dozen filenames were
+  spelled out in the justfile *and* in `flake.nix`, so a new page had to be
+  added twice or it was silently ungated. The diff script rejects an unknown
+  build name and fails when a build contributes no snapshots at all, since both
+  mistakes otherwise pass by checking nothing.
   The README's pictures are rendered from the fixture by `just assets`, **in
   both themes**: it renders the fixture twice and writes `assets/<x>.svg`
   (dark) beside `assets/<x>-light.svg`. d2 gets `--theme 200` for the dark
@@ -167,9 +173,10 @@ Rules that keep it that way:
   with the working-tree binary and serve it) and the two deliberate
   regenerations above. The devShell prints `just --list` on entry and starts
   nothing: a server spawned by a `shellHook` outlives the shell, fights the
-  previous one for the port, and fires in CI and editor shells too. Keep each
-  recipe's blurb to the single comment line above it — `just --list` shows only
-  the last one, so a two-line comment renders as its own second half.
+  previous one for the port, and fires in CI and editor shells too. Recipe
+  bodies carry no blurbs, so `just --list` is bare names; if one is ever added
+  back, keep it to a single comment line, since `just --list` shows only the
+  last one and a two-line comment renders as its own second half.
 - User-facing docs live in `site/` (mdBook, `nix build .#site`, `checks.site`),
   published to <https://kucendro.github.io/nixdiag> by
   `.github/workflows/pages.yml` as a Pages artifact — no gh-pages branch, which
@@ -741,8 +748,7 @@ pages.
         opt-in — the lock is a plain file read.
 - [x] **The published API** (`src/api.rs` + `src/render/api/`, decided and built
       2026-09-02). Everything the wiki renders, also emitted as JSON at
-      `api/v1/*.json`, described by a generated OpenAPI 3.1 document and browsable
-      through a vendored Scalar page at `/api/`. Decisions:
+      `api/v1/*.json`, described by a generated OpenAPI 3.1 document. Decisions:
       - **A static API is still an API.** GET-only files at stable versioned
         URLs, served by the existing nginx vhost. This is the only shape that
         fits: a query API means a daemon and mutable state, which contradicts
@@ -782,15 +788,13 @@ pages.
         *contain* `docs/` cannot be known while writing it. `-dirty` in the id
         (what `self.dirtyRev` produces) sets `revision.dirty`, so no second
         field has to be threaded through.
-      - **Scalar is vendored, not a crate and not a CDN.** It is absent from
-        nixpkgs, and both Rust crates (`utoipa-scalar`, `scalar-doc`, ~11 KB
-        each) merely emit a `<script>` pointing at jsDelivr — verified by
-        grepping their published tarballs. Taking one would mean a dependency
-        for a script tag and a reference page that goes blank on a mesh with no
-        route out. `nix/scalar.nix` pins the bundle as a fixed-output
-        derivation instead. It costs ~3.6 MB, most of what a docs derivation
-        weighs, hence `scalar = false`. Never `@latest`: the hash would rot the
-        moment upstream publishes.
+      - **No reference viewer ships.** One was built, confirmed to render
+        offline, and dropped: 3.6 MB of vendored JS against 204 KB of actual
+        documents, in a derivation `serve` puts into the serving host's system
+        closure, and a pinned upstream asset that rots. `openapi.json` is the
+        contract; a viewer is one renderer of it. Don't re-litigate by reaching
+        for a crate — the ones that exist are ~11 KB that emit a `<script>` at
+        a CDN, so the page goes blank on a mesh with no route out.
       - **History belongs to the module, not the derivation.** Accumulating
         snapshots across deploys is mutable state, and a derivation is
         immutable, so `serve.history` is a systemd oneshot on activation —

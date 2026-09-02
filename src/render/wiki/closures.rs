@@ -40,17 +40,7 @@ pub(super) fn page_closures(
         .map(|(n, _)| (n.as_str(), closures.hosts.get(n.as_str())))
         .collect();
 
-    let mut o: Vec<String> = vec![
-        MD_MARKER.into(),
-        "".into(),
-        "# Closures".into(),
-        "".into(),
-        "NixOS hosts only — a darwin system cannot be built from Linux. A host \
-         shown as — was not measured; a host serving these docs cannot measure \
-         itself, since the docs would then depend on a system containing them."
-            .into(),
-        "".into(),
-    ];
+    let mut o: Vec<String> = vec![MD_MARKER.into(), "".into(), "# Closures".into(), "".into()];
     // The chart is nixdiag's own SVG, not d2's, so it is written whatever
     // `--no-svg` says: that flag exists because d2 needs a binary on PATH and
     // its bytes move with its version, and neither is true here. Being an

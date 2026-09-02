@@ -56,6 +56,7 @@ pub(super) fn page_summary(
     extra: &[(String, String)],
     has_inputs: bool,
     has_closures: bool,
+    has_api: bool,
 ) -> Result<()> {
     let mut text = format!(
         "{MD_MARKER}\n\n\
@@ -71,6 +72,9 @@ pub(super) fn page_summary(
     }
     if has_closures {
         text.push_str("- [Closures](./closures.md)\n");
+    }
+    if has_api {
+        text.push_str("- [Data API](./api.md)\n");
     }
     for (title, fname) in extra {
         text.push_str(&format!("- [{title}](./{fname})\n"));

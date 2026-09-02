@@ -2,7 +2,7 @@
 
 # Inputs
 
-Read from `flake.lock`. Dashed edges are `follows`, which *removes* a duplicate rather than adding one.
+Dashed edges are `follows`, which *removes* a duplicate.
 
 ![Input graph](./inputs.svg)
 

@@ -149,6 +149,7 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
             model: &model,
             lock: lock.as_ref(),
             closures: opts.closures.as_ref(),
+            api: opts.api.is_some(),
         },
     )?;
     if let Some(api_opts) = &opts.api {

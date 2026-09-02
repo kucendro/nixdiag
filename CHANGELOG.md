@@ -27,9 +27,9 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 - **A published JSON API** (`api = true`, on by default), so a dashboard can
   read what the wiki renders instead of scraping HTML. `api/v1/` carries
   `hosts`, `services`, `topology`, `inputs`, `closures`, `snapshot` and an
-  OpenAPI 3.1 `openapi.json`, with a Scalar reference page at `/api/`. The
-  version lives in the URL, so a future v2 is served beside v1 rather than
-  replacing it.
+  OpenAPI 3.1 `openapi.json`. The version lives in the URL, so a future v2 is
+  served beside v1 rather than replacing it. No reference viewer is bundled;
+  the spec is a plain OpenAPI document any viewer reads from the URL.
 
   This is a **fourth versioned surface** and it fails unlike the other three.
   The facts schema is fatal on skew because both halves ship from one flake,
@@ -48,11 +48,16 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
   are per package rather than per store path — printing a path would make the
   docs derivation retain the closure it describes.
 
-  The Scalar bundle is vendored as a pinned fixed-output derivation rather than
-  loaded from a CDN, so the reference works with no network at view time and no
-  viewer's browser calls out. It costs ~3.6 MB; `scalar = false` keeps the JSON
-  and the spec without it. The bundled viewer is mode B only — the CLI has no
-  bundle and must not fetch one.
+  Bundling a reference viewer was tried and rejected: 3.6 MB against 204 KB of
+  actual documents, in a derivation `services.nixdiag.serve` puts into the
+  serving host's system closure.
+
+- **A Data API page in the generated wiki**, listing the endpoints this build
+  published and linking to the reference. Without it the API was undiscoverable
+  from the thing people actually open: nothing in a served wiki said `/api/`
+  existed. Present only when `api` is on, and it lists exactly the documents
+  that were written, so it can never advertise an endpoint that is not there.
+  Note this adds a page to every consumer's committed `docs/`.
 
 - **Snapshot history** (`services.nixdiag.serve.history`), a systemd oneshot run
   on activation that files each deployed revision's `snapshot.json` under
@@ -181,14 +186,13 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 
 ### Changed
 
-- **Generated prose trimmed.** The intro paragraphs on the Architecture,
-  Services, Endpoints, Inputs and Closures pages, and the seeded `index.md`,
-  said in a sentence what the table or picture beneath them already showed.
-  What remains is only what a reader would otherwise get wrong: that a dashed
-  input edge *removes* a duplicate, that `lastModified` is a lock value rather
-  than a clock read, and why a darwin or docs-serving host has no closure. Text
-  only — no page, table, column or picture changed. Mode A consumers who commit
-  `docs/` will see `nixdiag check` go red until they re-run `nixdiag gen`.
+- **Generated prose trimmed to nothing on most pages.** These are documents you
+  look at, not read: every page now opens on its picture or its table. The
+  Endpoints and Closures intros are gone entirely, and Inputs keeps one
+  sentence, the only fact no picture can state for itself — that a dashed edge
+  *removes* a duplicate rather than adding one. Text only, no page, table,
+  column or picture changed. Mode A consumers who commit `docs/` will see
+  `nixdiag check` go red until they re-run `nixdiag gen`.
 - Default output gained `inputs.d2`, `inputs.svg`, `wiki/src/inputs.md` and
   `wiki/src/inputs-timeline.svg` plus a SUMMARY entry. Mode A consumers who
   commit `docs/` should run `nixdiag gen` once after upgrading; mode B

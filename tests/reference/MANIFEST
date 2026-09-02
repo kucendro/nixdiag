@@ -1,0 +1,34 @@
+# Snapshots compared by `nix flake check` and refreshed by `just snapshots`.
+#
+# <build> <path>, where <path> is relative to both the build's output and this
+# directory — the tree mirrors the output, so neither side maps paths. Adding a
+# snapshot is one line here plus one `just snapshots`.
+#
+# `docs` is the plain fixture render; `closures` is the same fixture with
+# closure data, which is why a few documents are snapshotted from it instead.
+# The two differ in more than the closures pages: `index.json` and
+# `openapi.json` list the closures endpoint only in the second, so those are
+# taken from `docs` to pin the without-closures shape.
+
+docs      topology.d2
+docs      modules.d2
+docs      inputs.d2
+
+docs      wiki/src/hosts.md
+docs      wiki/src/endpoints.md
+docs      wiki/src/inputs.md
+docs      wiki/src/api.md
+docs      wiki/src/inputs-timeline.svg
+
+docs      api/v1/index.json
+docs      api/v1/hosts.json
+docs      api/v1/services.json
+docs      api/v1/topology.json
+docs      api/v1/inputs.json
+docs      api/v1/openapi.json
+
+closures  wiki/src/closures.md
+closures  wiki/src/closures.svg
+closures  wiki/src/closures-luna.svg
+closures  wiki/src/closures-sol.svg
+closures  api/v1/closures.json

@@ -77,10 +77,6 @@ pub struct RenderArgs {
     /// Unix time of that revision, e.g. the flake's own `lastModified`
     #[arg(long, value_name = "UNIX")]
     revision_time: Option<i64>,
-    /// Emit the Scalar reference page. Needs the vendored bundle beside it,
-    /// which only `mkDocs` supplies — the CLI must not fetch one.
-    #[arg(long)]
-    scalar: bool,
 }
 
 #[derive(Subcommand)]
