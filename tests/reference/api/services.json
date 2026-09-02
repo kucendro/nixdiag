@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "generator": "Auto-generated from the Nix config by nixdiag. Do not edit.",
+    "schema": 1,
+    "api": "v1",
+    "nixdiag": "0.1.0",
+    "grammar": 1,
+    "factsSchema": 2
+  },
+  "services": [
+    {
+      "name": "grafana",
+      "kind": "service",
+      "hosts": [
+        "luna"
+      ],
+      "files": [
+        "modules/monitoring.nix"
+      ]
+    },
+    {
+      "name": "headscale",
+      "kind": "service",
+      "hosts": [
+        "sol"
+      ],
+      "files": [
+        "modules/mesh.nix"
+      ]
+    },
+    {
+      "name": "nginx",
+      "kind": "service",
+      "hosts": [
+        "sol"
+      ],
+      "files": [
+        "modules/web.nix"
+      ]
+    },
+    {
+      "name": "tailscale",
+      "kind": "service",
+      "hosts": [
+        "luna"
+      ],
+      "files": [
+        "hosts/luna/default.nix"
+      ]
+    }
+  ]
+}

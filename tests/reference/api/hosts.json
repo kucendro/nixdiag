@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "generator": "Auto-generated from the Nix config by nixdiag. Do not edit.",
+    "schema": 1,
+    "api": "v1",
+    "nixdiag": "0.1.0",
+    "grammar": 1,
+    "factsSchema": 2
+  },
+  "hosts": [
+    {
+      "name": "luna",
+      "kind": "nixos",
+      "platform": "x86_64-linux",
+      "stateVersion": "24.05",
+      "packages": 124,
+      "users": [
+        "admin"
+      ],
+      "ports": {
+        "tcp": [
+          22,
+          443
+        ],
+        "udp": []
+      },
+      "role": null,
+      "scope": null,
+      "services": [
+        "grafana",
+        "tailscale"
+      ],
+      "programs": []
+    },
+    {
+      "name": "sol",
+      "kind": "nixos",
+      "platform": "x86_64-linux",
+      "stateVersion": "24.05",
+      "packages": 124,
+      "users": [
+        "admin"
+      ],
+      "ports": {
+        "tcp": [
+          22,
+          443
+        ],
+        "udp": []
+      },
+      "role": null,
+      "scope": null,
+      "services": [
+        "headscale",
+        "nginx"
+      ],
+      "programs": []
+    }
+  ]
+}

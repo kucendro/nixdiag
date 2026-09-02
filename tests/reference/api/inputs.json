@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "generator": "Auto-generated from the Nix config by nixdiag. Do not edit.",
+    "schema": 1,
+    "api": "v1",
+    "nixdiag": "0.1.0",
+    "grammar": 1,
+    "factsSchema": 2
+  },
+  "root": "root",
+  "nodes": [
+    {
+      "name": "nixpkgs",
+      "source": "github:nixos/nixpkgs",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "lastModified": 1787498568,
+      "direct": true
+    },
+    {
+      "name": "nixpkgs_2",
+      "source": "github:NixOS/nixpkgs",
+      "rev": "89570f24b6c1a91a5b0b3a1a3a4a4a4a4a4a4a4a",
+      "lastModified": 1780000000,
+      "direct": false
+    },
+    {
+      "name": "stylix",
+      "source": "github:danth/stylix",
+      "rev": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+      "lastModified": 1785000000,
+      "direct": true
+    },
+    {
+      "name": "utils",
+      "source": "github:numtide/flake-utils",
+      "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+      "lastModified": 1770000000,
+      "direct": true
+    },
+    {
+      "name": "utils_2",
+      "source": "github:numtide/flake-utils",
+      "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+      "lastModified": 1770000000,
+      "direct": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "root",
+      "to": "nixpkgs",
+      "input": "nixpkgs",
+      "follows": false
+    },
+    {
+      "from": "root",
+      "to": "stylix",
+      "input": "stylix",
+      "follows": false
+    },
+    {
+      "from": "root",
+      "to": "utils",
+      "input": "utils",
+      "follows": false
+    },
+    {
+      "from": "stylix",
+      "to": "nixpkgs_2",
+      "input": "nixpkgs",
+      "follows": false
+    },
+    {
+      "from": "stylix",
+      "to": "utils",
+      "input": "systems",
+      "follows": true
+    },
+    {
+      "from": "stylix",
+      "to": "utils_2",
+      "input": "utils",
+      "follows": false
+    }
+  ],
+  "duplicates": [
+    {
+      "source": "github:nixos/nixpkgs",
+      "identity": "github:nixos/nixpkgs",
+      "diamond": true,
+      "revisions": [
+        {
+          "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+          "nodes": [
+            "nixpkgs"
+          ]
+        },
+        {
+          "rev": "89570f24b6c1a91a5b0b3a1a3a4a4a4a4a4a4a4a",
+          "nodes": [
+            "nixpkgs_2"
+          ]
+        }
+      ],
+      "followsTarget": "nixpkgs"
+    },
+    {
+      "source": "github:numtide/flake-utils",
+      "identity": "github:numtide/flake-utils",
+      "diamond": false,
+      "revisions": [
+        {
+          "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+          "nodes": [
+            "utils",
+            "utils_2"
+          ]
+        }
+      ],
+      "followsTarget": "utils"
+    }
+  ]
+}

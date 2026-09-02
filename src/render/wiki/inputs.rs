@@ -109,9 +109,9 @@ fn lock_dates(
                 .unwrap_or_else(|| "—".into()),
         })
         .collect();
-    let lo = marks.iter().filter_map(|m| m.at).min();
-    let hi = marks.iter().filter_map(|m| m.at).max();
-    let (Some(lo), Some(hi)) = (lo, hi) else {
+    // Shared with `api/v1/snapshot.json`, so the sentence below and the
+    // number a dashboard plots cannot drift apart.
+    let Some((lo, hi)) = lock.date_span() else {
         return Ok(());
     };
 

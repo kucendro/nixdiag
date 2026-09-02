@@ -70,6 +70,10 @@ annotation fails the build.
 | `grammar` | binary's own | annotation grammar edition your modules are written against, see [editions](./annotations.md#grammar-editions) |
 | `deny` | `[ ]` | warning categories promoted to errors, e.g. `[ "deprecated" ]` |
 | `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **requires those systems built** — see below |
+| `api` | `true` | publish the JSON [data API](./api.md) and its OpenAPI document |
+| `scalar` | `= api` | bundle the Scalar reference page at `/api/`; ~3.6 MB, vendored |
+| `revision` | flake's own | revision recorded in `api/v1/snapshot.json`, for history |
+| `revisionTime` | flake's own | unix time of that revision |
 | `closuresExclude` | `[ ]` | hosts to leave out of `closures = true` |
 
 ### Closure metrics
@@ -247,6 +251,10 @@ wiki ships atomically with every deploy. No daemon, no timer, no checkout.
 | `serve.virtualHost` | required | nginx vhost name |
 | `serve.subpath` | `"wiki/book"` | path inside the derivation used as web root |
 | `serve.virtualHostExtra` | `{ }` | merged into the vhost: TLS, listen addresses |
+| `serve.api` | `true` | serve the [data API](./api.md) at `/api/` |
+| `serve.allowOrigins` | `[ ]` | origins allowed to read this vhost cross-origin |
+| `serve.history` | `false` | keep each deployed revision's snapshot for trends |
+| `serve.historyLimit` | `null` | cap the number of snapshots kept |
 
 nixdiag's own projection reads vhost names, listen addresses and `proxyPass`
 only, never `root` — reading `root` would force the docs derivation during

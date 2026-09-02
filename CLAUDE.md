@@ -57,6 +57,7 @@ consumes the evaluated facts plus what `source/` found.
 src/
   main.rs                 mod decls + dispatch, nothing else
   facts.rs                serde model — THE contract
+  api.rs                  the published wire format — the OTHER contract
   eval.rs                 mode A: spawn `nix eval --json --apply`, parallel
   util.rs
   cli/
@@ -89,6 +90,13 @@ src/
       bar.rs              the fleet closure bar
       timeline.rs         the flake.lock date timeline
       treemap.rs          the closure treemap (squarified)
+    api/                  the published api/v1 tree, one module per document
+      mod.rs              façade: ApiData/ApiOpts, the endpoint list, all
+                          writing (so WKind lives in one place)
+      hosts.rs / services.rs / topology.rs / inputs.rs / closures.rs
+      snapshot.rs         the small trend document (Volatile)
+      openapi.rs          schemars -> OpenAPI 3.1, $defs hoisted to components
+      scalar.rs           the reference shim; mkDocs supplies the bundle
     wiki/                 mdBook source, one module per generated page
       mod.rs              WikiOpts, page order, shared host->services helper
       book.rs             book.toml, SUMMARY, index, extra pages
@@ -284,7 +292,7 @@ and rendering stays text-only: no icon/image assets, ever (contrast nix-topology
 
 ## Versioning and deprecation (policy, decided 2026-08-26)
 
-Three surfaces version independently; they fail differently and must not be
+Four surfaces version independently; they fail differently and must not be
 conflated.
 
 1. **Facts schema** (projection ↔ binary): `SCHEMA` / `schema = 2`, checked in
@@ -297,6 +305,9 @@ conflated.
    Edition model, below.
 3. **Package API**: CLI flags, `mkDocs` args, module options — and the rendered
    output itself, which is an API too (see below).
+4. **Data API** (published JSON ↔ other people's programs): `API_VERSION` in the
+   URL, `API_SCHEMA` in every document's `meta`. Added 2026-09-02; see "The
+   published API" below for why it is never fatal.
 
 **Grammar = editions** (Cargo's model, lighter):
 
@@ -728,6 +739,85 @@ pages.
       - Second picture under `nix flake check` (`checks.reference` diffs the
         SVG) and the first one that is on by default, in both modes, with no
         opt-in — the lock is a plain file read.
+- [x] **The published API** (`src/api.rs` + `src/render/api/`, decided and built
+      2026-09-02). Everything the wiki renders, also emitted as JSON at
+      `api/v1/*.json`, described by a generated OpenAPI 3.1 document and browsable
+      through a vendored Scalar page at `/api/`. Decisions:
+      - **A static API is still an API.** GET-only files at stable versioned
+        URLs, served by the existing nginx vhost. This is the only shape that
+        fits: a query API means a daemon and mutable state, which contradicts
+        declared-state-only, no-daemon, and mode B's sandbox. Filtering is the
+        dashboard's job.
+      - **Versioned by URL prefix**, not only by a schema integer, so a v2 can
+        be served beside v1 instead of replacing it. `meta.schema` still marks
+        compatible growth: adding a key does not bump it, removing or renaming
+        one does.
+      - **Never fatal, unlike the facts schema.** Both halves of the facts
+        contract ship from one flake, so skew means someone crossed revisions
+        and an error is right. An API reader is a third party that cannot
+        "re-run gen" — so nixdiag only ever writes, and the documented reader
+        contract is: tolerate unknown keys, treat an unknown `meta.schema` as
+        newer than you understand.
+      - **`facts.json` is deliberately NOT what gets published.** Two hard
+        blockers, not merely taste: `EnabledUnit.files` are raw store paths, and
+        mode A writes it with `to_string_pretty` while mode B writes it with
+        `builtins.toJSON` (different key order) — publishing it would break the
+        "both modes render identical documents" invariant by construction. A
+        view re-serialised by the renderer cannot.
+      - **Schemas are derived, paths are hand-written.** `schemars` on the same
+        structs that `Serialize`, so the spec cannot describe a field the API
+        does not emit; `$defs` are hoisted into `components/schemas` and the
+        `$ref`s repointed, since OpenAPI 3.1 embeds JSON Schema directly. Only
+        the seven paths are written by hand.
+      - **`WKind::Volatile`** is a new variant for `snapshot.json`, which
+        carries the revision. Not a reuse of `Svg`: that means "d2's bytes move
+        with d2's version", this means "not a function of the repo". Everything
+        else in `api/` is gated by `check`, the spec included. `--no-api` lives
+        in `RenderArgs` so `check` sees it too — otherwise a consumer who
+        disabled the tree would get drift reported forever, the trap `--no-svg`
+        avoids by being forced on in `cmd_check`.
+      - **Revision identity is supplied, never discovered.** `render` invokes no
+        git and reads no clock. Mode B defaults from `flake.rev or dirtyRev`;
+        mode A defaults to null, because the revision of the commit that will
+        *contain* `docs/` cannot be known while writing it. `-dirty` in the id
+        (what `self.dirtyRev` produces) sets `revision.dirty`, so no second
+        field has to be threaded through.
+      - **Scalar is vendored, not a crate and not a CDN.** It is absent from
+        nixpkgs, and both Rust crates (`utoipa-scalar`, `scalar-doc`, ~11 KB
+        each) merely emit a `<script>` pointing at jsDelivr — verified by
+        grepping their published tarballs. Taking one would mean a dependency
+        for a script tag and a reference page that goes blank on a mesh with no
+        route out. `nix/scalar.nix` pins the bundle as a fixed-output
+        derivation instead. It costs ~3.6 MB, most of what a docs derivation
+        weighs, hence `scalar = false`. Never `@latest`: the hash would rot the
+        moment upstream publishes.
+      - **History belongs to the module, not the derivation.** Accumulating
+        snapshots across deploys is mutable state, and a derivation is
+        immutable, so `serve.history` is a systemd oneshot on activation —
+        no daemon, no timer, no database. Idempotent by construction (keyed on
+        revision), index written via rename because nginx may be serving it,
+        and a build with no revision is skipped rather than overwriting
+        anything. nixdiag never reads history back. The index is rebuilt from
+        `find ... ! -name index.json`, not a plain `*.json` glob — the glob
+        sweeps in the index itself and appends a null revision to it on every
+        run, which is exactly what the shell-level idempotence test caught.
+      - **CORS is a list, never a wildcard switch.** The vhost is usually
+        mesh-only, and `*` turns "reachable from my tailnet" into "readable by
+        any page a browser on my tailnet visits". Several origins need an nginx
+        `map` plus `Vary: Origin`, or a cache in front serves one origin's
+        response to another.
+      - The recursion caveat in `module.nix` now covers `locations.*.alias` as
+        well as `root` — it was not in the file at all despite CLAUDE.md
+        describing it, and the `/api/` alias is a second way to force the docs
+        derivation from a projection.
+      - The store-path grep moved into `checks.reference` too. It only ever
+        covered the closures tree, and `hosts.json`/`services.json` are exactly
+        where a `Repo` resolution failure would leak a path. Confirmed to fire
+        by emitting raw paths on purpose before committing it.
+      - `Closures::package_shares` is `path_shares` one level up; `treemap_tiles`
+        was rewritten on it, so the picture and the API cannot disagree about
+        what one package is. `Lock::date_span` does the same for the lock
+        spread shown on the Inputs page and reported in `snapshot.json`.
 - [ ] Open: a **second renderer dependency** is not ruled out, only unjustified
       so far. The bar it must clear is that it draws something the current
       pair cannot — not a second way to draw the same node-link picture, which

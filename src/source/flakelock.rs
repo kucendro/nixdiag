@@ -250,6 +250,21 @@ impl Lock {
             .collect()
     }
 
+    /// Oldest and newest `lastModified` across the dated inputs.
+    ///
+    /// Lock arithmetic, never a clock read — which is the whole reason the
+    /// timeline chart is deterministic and "overdue" is not rendered at all.
+    /// `None` when nothing carries a date (every input a `path:`, or no
+    /// inputs), because a span needs two ends.
+    pub fn date_span(&self) -> Option<(i64, i64)> {
+        let dates: Vec<i64> = self
+            .inputs()
+            .into_iter()
+            .filter_map(|(_, l)| l.last_modified)
+            .collect();
+        Some((*dates.iter().min()?, *dates.iter().max()?))
+    }
+
     /// The root's own input name for this repo, if it has one — the target a
     /// `follows` should point at.
     pub fn root_input_for(&self, identity: &str) -> Option<String> {

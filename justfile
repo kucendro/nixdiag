@@ -40,6 +40,11 @@ snapshots:
     cp --no-preserve=mode "$docs"/wiki/src/inputs-timeline.svg tests/reference/
     cp --no-preserve=mode "$closures"/wiki/src/closures.md tests/reference/
     cp --no-preserve=mode "$closures"/wiki/src/closures*.svg tests/reference/
+    mkdir -p tests/reference/api
+    for f in index hosts services topology inputs openapi; do
+      cp --no-preserve=mode "$docs/api/v1/$f.json" tests/reference/api/
+    done
+    cp --no-preserve=mode "$closures"/api/v1/closures.json tests/reference/api/
     git diff --stat -- tests/reference/
 
 assets: build

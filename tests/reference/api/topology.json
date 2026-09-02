@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "generator": "Auto-generated from the Nix config by nixdiag. Do not edit.",
+    "schema": 1,
+    "api": "v1",
+    "nixdiag": "0.1.0",
+    "grammar": 1,
+    "factsSchema": 2
+  },
+  "nodes": [
+    {
+      "id": "luna/exporter",
+      "host": "luna",
+      "unit": "exporter",
+      "role": null,
+      "scope": null,
+      "exposes": [],
+      "names": []
+    },
+    {
+      "id": "luna/grafana",
+      "host": "luna",
+      "unit": "grafana",
+      "role": "monitor",
+      "scope": "mesh",
+      "exposes": [
+        {
+          "port": 3000,
+          "protocol": "tcp",
+          "scope": "mesh",
+          "name": "grafana.ts.example"
+        }
+      ],
+      "names": []
+    },
+    {
+      "id": "luna/tailscale",
+      "host": "luna",
+      "unit": "tailscale",
+      "role": "mesh-node",
+      "scope": null,
+      "exposes": [],
+      "names": []
+    },
+    {
+      "id": "sol/headscale",
+      "host": "sol",
+      "unit": "headscale",
+      "role": "mesh-control",
+      "scope": null,
+      "exposes": [
+        {
+          "port": 443,
+          "protocol": "tcp",
+          "scope": "public",
+          "name": "hs.ts.example"
+        }
+      ],
+      "names": [
+        "hs.ts.example"
+      ]
+    },
+    {
+      "id": "sol/nginx",
+      "host": "sol",
+      "unit": "nginx",
+      "role": "proxy",
+      "scope": "mesh",
+      "exposes": [],
+      "names": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "luna/grafana",
+      "to": "luna/exporter",
+      "label": "scrapes"
+    },
+    {
+      "from": "luna/tailscale",
+      "to": "lan",
+      "label": "advertise 192.168.1.0/24"
+    },
+    {
+      "from": "luna/tailscale",
+      "to": "sol/headscale",
+      "label": "mesh"
+    },
+    {
+      "from": "sol/nginx",
+      "to": "luna/grafana",
+      "label": "grafana :3000"
+    },
+    {
+      "from": "sol/nginx",
+      "to": "sol/headscale",
+      "label": "hs :8080"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "grafana.ts.example",
+      "port": 3000,
+      "scope": "mesh",
+      "node": "luna/grafana",
+      "target": null
+    },
+    {
+      "name": "grafana.ts.example",
+      "port": 443,
+      "scope": "mesh",
+      "node": "sol/nginx",
+      "target": "luna/grafana"
+    },
+    {
+      "name": "hs.ts.example",
+      "port": 443,
+      "scope": "public",
+      "node": "sol/headscale",
+      "target": null
+    }
+  ]
+}

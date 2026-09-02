@@ -187,6 +187,7 @@
                 diff -u "$reference/$(basename "$svg")" "$svg"
               done
               grep -q '| Closure |' "$docs/wiki/src/hosts.md"
+              diff -u "$reference/api/closures.json" "$docs/api/v1/closures.json"
               if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
                 echo "generated docs contain a store path; that would retain Nix references:"
                 grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
@@ -200,6 +201,7 @@
             {
               docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs;
               reference = ./tests/reference;
+              nativeBuildInputs = [ pkgs.jq ];
             }
             ''
               diff -u "$reference/topology.d2" "$docs/topology.d2"
@@ -209,6 +211,31 @@
               diff -u "$reference/endpoints.md" "$docs/wiki/src/endpoints.md"
               diff -u "$reference/inputs.md" "$docs/wiki/src/inputs.md"
               diff -u "$reference/inputs-timeline.svg" "$docs/wiki/src/inputs-timeline.svg"
+
+              # The published API is read by other people's code, where a
+              # renamed key breaks a parser rather than reading oddly.
+              for f in index hosts services topology inputs openapi; do
+                diff -u "$reference/api/$f.json" "$docs/api/v1/$f.json"
+              done
+              # snapshot.json is deliberately not diffed: it carries the
+              # revision, so it is Volatile and out of the drift gate. Its
+              # shape is still asserted.
+              jq -e '.meta.schema and .totals.hosts' "$docs/api/v1/snapshot.json" > /dev/null
+
+              # Every generated JSON must carry the AUTO marker, or the next
+              # render refuses to overwrite its own output.
+              for f in "$docs"/api/v1/*.json; do
+                grep -q 'Auto-generated' "$f" || { echo "no marker: $f"; exit 1; }
+              done
+
+              # `hosts.json` and `services.json` carry defining files, which
+              # arrive from eval as store paths — the one place a Repo
+              # resolution failure would leak one into an installed file.
+              if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
+                echo "generated docs contain a store path; that would retain Nix references:"
+                grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
+                exit 1
+              fi
               touch $out
             '';
       });

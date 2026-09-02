@@ -1,0 +1,925 @@
+{
+  "components": {
+    "schemas": {
+      "AnnotationTotals": {
+        "properties": {
+          "edges": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "endpoints": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nodes": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "statements": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "statements",
+          "nodes",
+          "edges",
+          "endpoints"
+        ],
+        "type": "object"
+      },
+      "ClosureTotals": {
+        "properties": {
+          "deduplicatedBytes": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hosts": {
+            "additionalProperties": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "description": "host -> total bytes, so a trend line needs only this one file.",
+            "type": "object"
+          },
+          "measured": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "naiveSumBytes": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "measured",
+          "deduplicatedBytes",
+          "naiveSumBytes",
+          "hosts"
+        ],
+        "type": "object"
+      },
+      "Duplicate": {
+        "properties": {
+          "diamond": {
+            "description": "One repo at several revisions — a correctness risk, unlike plain\nredundancy, which is one revision under several node names.",
+            "type": "boolean"
+          },
+          "followsTarget": {
+            "description": "Only suggested when the root actually has an input to point at.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identity": {
+            "type": "string"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/RevGroup"
+            },
+            "type": "array"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "identity",
+          "diamond",
+          "revisions"
+        ],
+        "type": "object"
+      },
+      "Edge": {
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
+      "EndpointRow": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "node": {
+            "description": "The node serving this endpoint.",
+            "type": "string"
+          },
+          "port": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target": {
+            "description": "Present when the row came from `name=` on an edge.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "node"
+        ],
+        "type": "object"
+      },
+      "Expose": {
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "port": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "port",
+          "protocol"
+        ],
+        "type": "object"
+      },
+      "HostEntry": {
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "packages": {
+            "description": "`environment.systemPackages` length; absent on darwin.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "platform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ports": {
+            "$ref": "#/components/schemas/Ports"
+          },
+          "programs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "description": "From a host-level `#: <role>` / `#: scope`, if annotated.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "services": {
+            "description": "Names only — `services.json` carries the defining files.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "stateVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "users": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "users",
+          "ports",
+          "services",
+          "programs"
+        ],
+        "type": "object"
+      },
+      "Hosts": {
+        "properties": {
+          "hosts": {
+            "items": {
+              "$ref": "#/components/schemas/HostEntry"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "meta",
+          "hosts"
+        ],
+        "type": "object"
+      },
+      "Index": {
+        "properties": {
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "meta",
+          "endpoints"
+        ],
+        "type": "object"
+      },
+      "InputEdge": {
+        "properties": {
+          "follows": {
+            "description": "A `follows` *removes* a duplicate rather than adding an input.",
+            "type": "boolean"
+          },
+          "from": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "input",
+          "follows"
+        ],
+        "type": "object"
+      },
+      "InputNode": {
+        "properties": {
+          "direct": {
+            "description": "Declared by the root flake, so `nix flake update` moves it. Everything\nelse moves only when its parent does.",
+            "type": "boolean"
+          },
+          "lastModified": {
+            "description": "A fixed integer in `flake.lock`, never a clock read. Absent for a\n`path:` input, which has no date to place on a scale.",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "rev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source",
+          "direct"
+        ],
+        "type": "object"
+      },
+      "InputTotals": {
+        "properties": {
+          "diamonds": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "direct": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "newest": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "oldest": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "redundant": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "spanDays": {
+            "description": "Oldest to newest, in days. Lock arithmetic, not a clock read.",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "direct",
+          "diamonds",
+          "redundant"
+        ],
+        "type": "object"
+      },
+      "Inputs": {
+        "properties": {
+          "duplicates": {
+            "items": {
+              "$ref": "#/components/schemas/Duplicate"
+            },
+            "type": "array"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/InputEdge"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/InputNode"
+            },
+            "type": "array"
+          },
+          "root": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meta",
+          "root",
+          "nodes",
+          "edges",
+          "duplicates"
+        ],
+        "type": "object"
+      },
+      "Link": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "description"
+        ],
+        "type": "object"
+      },
+      "Meta": {
+        "description": "Carried by every document. `generator` holds the AUTO marker, which is\nwhat lets the writer regenerate over its own output — JSON has no comment\nto put it in.",
+        "properties": {
+          "api": {
+            "type": "string"
+          },
+          "factsSchema": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "generator": {
+            "type": "string"
+          },
+          "grammar": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nixdiag": {
+            "type": "string"
+          },
+          "schema": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generator",
+          "schema",
+          "api",
+          "nixdiag",
+          "grammar",
+          "factsSchema"
+        ],
+        "type": "object"
+      },
+      "Node": {
+        "description": "`id` is spelled the way the user writes it in `#: -> host/service`, not\nthe way d2 needs it — `util::sanitize` is lossy and exists for d2 alone.",
+        "properties": {
+          "exposes": {
+            "items": {
+              "$ref": "#/components/schemas/Expose"
+            },
+            "type": "array"
+          },
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "host",
+          "exposes",
+          "names"
+        ],
+        "type": "object"
+      },
+      "PortTotals": {
+        "properties": {
+          "tcp": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "udp": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tcp",
+          "udp"
+        ],
+        "type": "object"
+      },
+      "Ports": {
+        "properties": {
+          "tcp": {
+            "items": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "udp": {
+            "items": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tcp",
+          "udp"
+        ],
+        "type": "object"
+      },
+      "RevGroup": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rev": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rev",
+          "nodes"
+        ],
+        "type": "object"
+      },
+      "Revision": {
+        "description": "Supplied by the caller, never discovered — `render` shells out to no git\nand reads no clock.",
+        "properties": {
+          "dirty": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "time": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "dirty"
+        ],
+        "type": "object"
+      },
+      "ServiceEntry": {
+        "properties": {
+          "files": {
+            "description": "Repo-relative, never store paths: Nix records a reference for every\nstore path in a build output, so printing one would make the docs\nretain the closure it describes.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "description": "`service` or `program`.",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "hosts",
+          "files"
+        ],
+        "type": "object"
+      },
+      "Services": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "meta",
+          "services"
+        ],
+        "type": "object"
+      },
+      "Snapshot": {
+        "description": "The small document history accumulates. A few hundred bytes plus one\nnumber per host: a trend means fetching many of these, so it is\ndeliberately not a copy of everything above.",
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Revision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totals": {
+            "$ref": "#/components/schemas/Totals"
+          }
+        },
+        "required": [
+          "meta",
+          "totals"
+        ],
+        "type": "object"
+      },
+      "Topology": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/Edge"
+            },
+            "type": "array"
+          },
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointRow"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/Node"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "meta",
+          "nodes",
+          "edges",
+          "endpoints"
+        ],
+        "type": "object"
+      },
+      "Totals": {
+        "properties": {
+          "annotations": {
+            "$ref": "#/components/schemas/AnnotationTotals"
+          },
+          "closures": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClosureTotals"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "darwinHosts": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hosts": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InputTotals"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nixosHosts": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "packages": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ports": {
+            "$ref": "#/components/schemas/PortTotals"
+          },
+          "programs": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "services": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hosts",
+          "nixosHosts",
+          "darwinHosts",
+          "services",
+          "programs",
+          "ports",
+          "packages",
+          "annotations"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Auto-generated from the Nix config by nixdiag. Do not edit.\n\nRead-only static documents describing what a Nix flake declares. Every path is a file: GET only, no parameters, no auth. Readers should tolerate unknown keys and treat an unrecognised `meta.schema` as newer than they understand.",
+    "title": "nixdiag",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/hosts.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Hosts"
+                }
+              }
+            },
+            "description": "Hosts, platforms, open ports and users"
+          }
+        },
+        "summary": "Hosts, platforms, open ports and users"
+      }
+    },
+    "/api/v1/index.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Index"
+                }
+              }
+            },
+            "description": "The endpoints this build published"
+          }
+        },
+        "summary": "The endpoints this build published"
+      }
+    },
+    "/api/v1/inputs.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Inputs"
+                }
+              }
+            },
+            "description": "Flake inputs, lock dates and duplicates"
+          }
+        },
+        "summary": "Flake inputs, lock dates and duplicates"
+      }
+    },
+    "/api/v1/services.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Services"
+                }
+              }
+            },
+            "description": "Services this repo configures and where"
+          }
+        },
+        "summary": "Services this repo configures and where"
+      }
+    },
+    "/api/v1/snapshot.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            },
+            "description": "Totals plus revision identity, for trends"
+          }
+        },
+        "summary": "Totals plus revision identity, for trends"
+      }
+    },
+    "/api/v1/topology.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Topology"
+                }
+              }
+            },
+            "description": "Annotated nodes, edges and endpoints"
+          }
+        },
+        "summary": "Annotated nodes, edges and endpoints"
+      }
+    }
+  }
+}

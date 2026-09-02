@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "generator": "Auto-generated from the Nix config by nixdiag. Do not edit.",
+    "schema": 1,
+    "api": "v1",
+    "nixdiag": "0.1.0",
+    "grammar": 1,
+    "factsSchema": 2
+  },
+  "endpoints": [
+    {
+      "path": "/api/v1/hosts.json",
+      "description": "Hosts, platforms, open ports and users"
+    },
+    {
+      "path": "/api/v1/services.json",
+      "description": "Services this repo configures and where"
+    },
+    {
+      "path": "/api/v1/topology.json",
+      "description": "Annotated nodes, edges and endpoints"
+    },
+    {
+      "path": "/api/v1/inputs.json",
+      "description": "Flake inputs, lock dates and duplicates"
+    },
+    {
+      "path": "/api/v1/snapshot.json",
+      "description": "Totals plus revision identity, for trends"
+    },
+    {
+      "path": "/api/v1/openapi.json",
+      "description": "This API, as an OpenAPI 3.1 document"
+    }
+  ]
+}

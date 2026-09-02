@@ -66,6 +66,21 @@ pub struct RenderArgs {
     /// Promote a warning category to an error; repeatable
     #[arg(long = "deny", value_name = "CATEGORY", value_parser = ["deprecated"])]
     deny: Vec<String>,
+    /// Skip the published api/ tree
+    #[arg(long)]
+    no_api: bool,
+    /// Revision the docs describe, recorded in api/v1/snapshot.json. Never
+    /// discovered: `render` shells out to no git. A `-dirty` suffix (what
+    /// Nix's `self.dirtyRev` produces) marks the tree as unclean.
+    #[arg(long, value_name = "ID")]
+    revision: Option<String>,
+    /// Unix time of that revision, e.g. the flake's own `lastModified`
+    #[arg(long, value_name = "UNIX")]
+    revision_time: Option<i64>,
+    /// Emit the Scalar reference page. Needs the vendored bundle beside it,
+    /// which only `mkDocs` supplies — the CLI must not fetch one.
+    #[arg(long)]
+    scalar: bool,
 }
 
 #[derive(Subcommand)]

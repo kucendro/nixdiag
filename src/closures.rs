@@ -124,6 +124,34 @@ impl Closures {
             .collect()
     }
 
+    /// This host's closure rolled up per package, largest first.
+    ///
+    /// `path_shares` one level up: `util::package_name` folds a package's
+    /// several outputs into one entry, which is what makes a treemap of a real
+    /// closure readable and what keeps the published API free of store paths.
+    /// Keyed on the holder count as well as the name, so an entry never
+    /// averages two sharing bands — one package's outputs are almost always
+    /// held alike, and when they are not, saying so is the honest answer.
+    /// Like `path_shares`, the count comes back raw so the model never learns
+    /// the renderer's vocabulary.
+    pub fn package_shares(&self, host: &str) -> Vec<(String, u64, usize)> {
+        let mut groups: BTreeMap<(&str, usize), u64> = BTreeMap::new();
+        for (path, size, count) in self.path_shares(host) {
+            *groups
+                .entry((
+                    crate::util::package_name(crate::util::store_name(path)),
+                    count,
+                ))
+                .or_default() += size;
+        }
+        let mut v: Vec<(String, u64, usize)> = groups
+            .into_iter()
+            .map(|((name, count), size)| (name.to_string(), size, count))
+            .collect();
+        v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        v
+    }
+
     /// One host's closure split by how widely each path is held: carried by
     /// every measured host, by some of them, or by this host alone.
     ///
@@ -252,6 +280,49 @@ mod tests {
             vec![("libc", 100, 2), ("bash", 50, 2), ("nginx", 10, 1)]
         );
         assert_eq!(c.path_shares("nope"), vec![]);
+    }
+
+    #[test]
+    fn package_shares_fold_outputs_and_keep_the_holder_count() {
+        let path = |n: &str, name: &str, size| ClosurePath {
+            path: format!("/nix/store/0000000000000000000000000000000{n}-{name}"),
+            nar_size: size,
+        };
+        let mut hosts = IndexMap::new();
+        hosts.insert(
+            "luna".to_string(),
+            HostClosure {
+                paths: vec![
+                    path("a", "glibc-2.42-67", 100),
+                    path("b", "glibc-2.42-67-bin", 40),
+                    path("c", "nginx-1.28", 10),
+                ],
+            },
+        );
+        hosts.insert(
+            "sol".to_string(),
+            HostClosure {
+                paths: vec![path("a", "glibc-2.42-67", 100)],
+            },
+        );
+        let c = Closures { schema: 1, hosts };
+        // Two outputs of glibc are one 140-byte entry, largest first. Their
+        // holder counts differ (the -bin output is luna's alone), so they are
+        // deliberately *not* merged into one averaged row.
+        assert_eq!(
+            c.package_shares("luna"),
+            vec![
+                ("glibc".to_string(), 100, 2),
+                ("glibc".to_string(), 40, 1),
+                ("nginx".to_string(), 10, 1),
+            ]
+        );
+        // Never a store path: what reaches the published API and the treemap
+        // is the package name alone.
+        assert!(c
+            .package_shares("luna")
+            .iter()
+            .all(|(n, ..)| !n.contains("/nix/store")));
     }
 
     #[test]

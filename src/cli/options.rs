@@ -2,9 +2,10 @@
 //! declared `nixdiag` output first, CLI flags on top.
 
 use super::RenderArgs;
+use crate::api;
 use crate::closures::Closures;
 use crate::eval;
-use crate::render::{d2, RenderOpts, WikiOpts};
+use crate::render::{d2, ApiOpts, RenderOpts, WikiOpts};
 use crate::source::annotations;
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
@@ -62,6 +63,7 @@ pub(super) fn to_render_opts(
     }
     let mut deny = cfg.deny.clone();
     deny.extend(r.deny.iter().cloned());
+    let grammar = annotations::resolve_edition(r.grammar.or(cfg.grammar))?;
     Ok(RenderOpts {
         repo,
         out,
@@ -77,9 +79,35 @@ pub(super) fn to_render_opts(
         svg: !r.no_svg,
         style: to_style(r, cfg)?,
         domains,
-        grammar: annotations::resolve_edition(r.grammar.or(cfg.grammar))?,
+        grammar,
         deny,
         closures,
+        api: to_api_opts(r, cfg, grammar),
+    })
+}
+
+/// The `api/` tree is on unless something turns it off; a flag beats the
+/// flake, like every other setting.
+fn to_api_opts(r: &RenderArgs, cfg: &eval::FlakeConfig, grammar: u32) -> Option<ApiOpts> {
+    if r.no_api || cfg.api == Some(false) {
+        return None;
+    }
+    let revision = r
+        .revision
+        .clone()
+        .or_else(|| cfg.revision.clone())
+        .map(|id| api::Revision {
+            // `self.dirtyRev` spells an unclean tree `<rev>-dirty`, so the
+            // flag is already in the identifier; a dashboard can drop those
+            // points from a trend without a second field to thread through.
+            dirty: id.ends_with("-dirty"),
+            id,
+            time: r.revision_time.or(cfg.revision_time),
+        });
+    Some(ApiOpts {
+        grammar,
+        revision,
+        scalar: r.scalar,
     })
 }
 

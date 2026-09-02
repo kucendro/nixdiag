@@ -1,5 +1,6 @@
 //! facts + annotations -> the full docs tree (topology, module tree, wiki).
 
+mod api;
 mod chart;
 pub mod d2;
 mod inputs;
@@ -8,6 +9,7 @@ pub mod out;
 mod topology;
 mod wiki;
 
+pub use api::ApiOpts;
 pub use out::{Out, WKind};
 pub use wiki::WikiOpts;
 
@@ -74,6 +76,8 @@ pub struct RenderOpts {
     /// Per-host closure sizes, when `mkDocs { closures = true; }` supplied
     /// them. Absent in every other case, including all of mode A.
     pub closures: Option<Closures>,
+    /// The published `api/` tree. `None` disables it entirely.
+    pub api: Option<ApiOpts>,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
@@ -147,5 +151,18 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
             closures: opts.closures.as_ref(),
         },
     )?;
+    if let Some(api_opts) = &opts.api {
+        api::generate(
+            &mut out,
+            api_opts,
+            &api::ApiData {
+                facts,
+                repo: &repo,
+                model: &model,
+                lock: lock.as_ref(),
+                closures: opts.closures.as_ref(),
+            },
+        )?;
+    }
     Ok(out)
 }

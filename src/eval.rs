@@ -29,6 +29,15 @@ pub struct FlakeConfig {
     pub grammar: Option<u32>,
     /// Warning categories promoted to errors, e.g. `[ "deprecated" ]`.
     pub deny: Vec<String>,
+    /// Publish the `api/` tree. Unset means yes: the data is already computed
+    /// and reads nothing new, the same reason the lock timeline ships on by
+    /// default.
+    pub api: Option<bool>,
+    /// Revision the docs describe. A flake output may reference `self`, so a
+    /// mode A consumer can write `nixdiag.revision = self.rev or null;` and
+    /// nixdiag still never invokes git.
+    pub revision: Option<String>,
+    pub revision_time: Option<i64>,
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -9,9 +9,8 @@ use super::super::d2::D2Style;
 use super::super::out::{Out, MD_MARKER};
 use crate::closures::{Closures, HostClosure};
 use crate::facts::Facts;
-use crate::util::{human_count, human_size, package_name, sanitize, store_name};
+use crate::util::{human_count, human_size, sanitize, store_name};
 use anyhow::Result;
-use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Biggest contributors listed per host. Enough to see what dominates without
@@ -196,28 +195,20 @@ fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
         _ => Band::Partial,
     };
 
-    // Keyed on the holder count as well as the name, so a tile never averages
-    // two bands: one package's outputs are almost always held alike, and when
-    // they are not, saying so is the honest answer.
-    let mut groups: BTreeMap<(&str, usize), u64> = BTreeMap::new();
-    for (path, size, count) in closures.path_shares(host) {
-        *groups
-            .entry((package_name(store_name(path)), count))
-            .or_default() += size;
-    }
-    let mut v: Vec<((&str, usize), u64)> = groups.into_iter().collect();
-    v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    // The grouping lives on `Closures` so the picture and the published API
+    // cannot disagree about what one package is.
+    let v = closures.package_shares(host);
 
     let mut tiles: Vec<Tile> = v
         .iter()
         .take(TREEMAP_TILES)
-        .map(|((name, count), size)| Tile {
-            label: (*name).to_string(),
+        .map(|(name, size, count)| Tile {
+            label: name.clone(),
             value: *size,
             band: band(*count),
         })
         .collect();
-    let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|(_, s)| s).sum();
+    let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|(_, s, _)| s).sum();
     if rest > 0 {
         tiles.push(Tile {
             label: format!("{} more", human_count(v.len() - TREEMAP_TILES)),

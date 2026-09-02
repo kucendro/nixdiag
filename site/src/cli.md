@@ -71,6 +71,10 @@ Render flags, accepted by `render`, `gen` and `check`:
 | `--domain home=home.example.com` | `@key` suffix for annotation fqdns, repeatable |
 | `--grammar 1` | annotation grammar edition your modules are written against |
 | `--deny deprecated` | promote deprecation warnings to errors, repeatable |
+| `--no-api` | skip the published [`api/`](./api.md) tree |
+| `--revision REV` | revision recorded in `api/v1/snapshot.json`; never discovered |
+| `--revision-time UNIX` | unix time of that revision |
+| `--scalar` | emit the API reference page; needs the bundle only `mkDocs` supplies |
 
 Flags override the flake's `nixdiag` output for the same setting.
 

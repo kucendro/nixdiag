@@ -1,0 +1,111 @@
+{
+  "meta": {
+    "generator": "Auto-generated from the Nix config by nixdiag. Do not edit.",
+    "schema": 1,
+    "api": "v1",
+    "nixdiag": "0.1.0",
+    "grammar": 1,
+    "factsSchema": 2
+  },
+  "fleet": {
+    "measuredHosts": 2,
+    "sharedBytes": 303836232,
+    "sharedPaths": 5,
+    "deduplicatedBytes": 496774216,
+    "deduplicatedPaths": 8,
+    "naiveSumBytes": 800610448
+  },
+  "hosts": [
+    {
+      "name": "luna",
+      "measured": true,
+      "totalBytes": 308030536,
+      "paths": 6,
+      "split": {
+        "sharedBytes": 303836232,
+        "partialBytes": 0,
+        "uniqueBytes": 4194304
+      },
+      "packages": [
+        {
+          "name": "linux",
+          "bytes": 149225472,
+          "holders": 2
+        },
+        {
+          "name": "systemd",
+          "bytes": 89128960,
+          "holders": 2
+        },
+        {
+          "name": "glibc",
+          "bytes": 35073096,
+          "holders": 2
+        },
+        {
+          "name": "coreutils",
+          "bytes": 21495808,
+          "holders": 2
+        },
+        {
+          "name": "bash",
+          "bytes": 8912896,
+          "holders": 2
+        },
+        {
+          "name": "nginx",
+          "bytes": 4194304,
+          "holders": 1
+        }
+      ]
+    },
+    {
+      "name": "sol",
+      "measured": true,
+      "totalBytes": 492579912,
+      "paths": 7,
+      "split": {
+        "sharedBytes": 303836232,
+        "partialBytes": 0,
+        "uniqueBytes": 188743680
+      },
+      "packages": [
+        {
+          "name": "linux",
+          "bytes": 149225472,
+          "holders": 2
+        },
+        {
+          "name": "prometheus",
+          "bytes": 125829120,
+          "holders": 1
+        },
+        {
+          "name": "systemd",
+          "bytes": 89128960,
+          "holders": 2
+        },
+        {
+          "name": "postgresql",
+          "bytes": 62914560,
+          "holders": 1
+        },
+        {
+          "name": "glibc",
+          "bytes": 35073096,
+          "holders": 2
+        },
+        {
+          "name": "coreutils",
+          "bytes": 21495808,
+          "holders": 2
+        },
+        {
+          "name": "bash",
+          "bytes": 8912896,
+          "holders": 2
+        }
+      ]
+    }
+  ]
+}

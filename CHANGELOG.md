@@ -20,9 +20,58 @@ immune — nothing is committed and the input is pinned.
 
 ## Unreleased
 
-Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
+Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 
 ### Added
+
+- **A published JSON API** (`api = true`, on by default), so a dashboard can
+  read what the wiki renders instead of scraping HTML. `api/v1/` carries
+  `hosts`, `services`, `topology`, `inputs`, `closures`, `snapshot` and an
+  OpenAPI 3.1 `openapi.json`, with a Scalar reference page at `/api/`. The
+  version lives in the URL, so a future v2 is served beside v1 rather than
+  replacing it.
+
+  This is a **fourth versioned surface** and it fails unlike the other three.
+  The facts schema is fatal on skew because both halves ship from one flake,
+  but an API reader is a third party that can only take what it is handed — so
+  nixdiag never validates it, and the reader's contract is to tolerate unknown
+  keys and treat an unrecognised `meta.schema` as newer than it understands.
+  Adding a key does not bump the schema; removing or renaming one does. The bar
+  is higher than for a page: a reworded heading reads oddly, a renamed key
+  breaks a parser.
+
+  Schemas in `openapi.json` are *derived* from the same structs that serialise
+  the payloads, so the document cannot describe a field the API does not emit.
+  Every document except `snapshot.json` takes part in `nixdiag check`.
+  `topology.json` is the one a reader could not compute for itself, since
+  resolving `#:` annotations needs rnix over the repo source. Closure figures
+  are per package rather than per store path — printing a path would make the
+  docs derivation retain the closure it describes.
+
+  The Scalar bundle is vendored as a pinned fixed-output derivation rather than
+  loaded from a CDN, so the reference works with no network at view time and no
+  viewer's browser calls out. It costs ~3.6 MB; `scalar = false` keeps the JSON
+  and the spec without it. The bundled viewer is mode B only — the CLI has no
+  bundle and must not fetch one.
+
+- **Snapshot history** (`services.nixdiag.serve.history`), a systemd oneshot run
+  on activation that files each deployed revision's `snapshot.json` under
+  `/var/lib/nixdiag/history` and serves it at `/api/v1/history/`. No daemon, no
+  timer, no database, and nixdiag never reads it back. It lives in the module
+  rather than the docs because a derivation is immutable and cannot accumulate
+  across deploys. `historyLimit` bounds it.
+
+  Revision identity is always **supplied, never discovered**: `render` invokes
+  no git and reads no clock. `mkDocs` defaults it from the flake; mode A takes
+  `--revision` or a `nixdiag.revision` flake attr, since the revision of the
+  commit that will contain `docs/` cannot be known while writing it.
+
+- `services.nixdiag.serve.allowOrigins` for cross-origin dashboards.
+  Deliberately a list rather than a wildcard: this vhost is usually mesh-only,
+  and `*` would turn "reachable from my tailnet" into "readable by any page a
+  browser on my tailnet visits". More than one origin generates an nginx `map`
+  plus `Vary: Origin`, without which a cache in front would serve one origin's
+  response to another.
 
 - **Closure metrics** (opt-in, `lib.mkDocs { closures = true; }`). A Closures
   wiki page with per-host totals, the largest contributing packages, and a

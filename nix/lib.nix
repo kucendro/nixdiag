@@ -46,6 +46,15 @@ rec {
       deny ? [ ],
       closures ? false,
       closuresExclude ? [ ],
+      api ? true,
+      scalar ? api,
+      # Identity for api/v1/snapshot.json, so accumulated snapshots can be
+      # told apart. `self.rev` on a clean tree, `self.dirtyRev` otherwise,
+      # neither on a plain directory — guarded with `or` so eval never throws.
+      # nixdiag itself never invokes git; the value is always passed in.
+      revision ? (flake.rev or flake.dirtyRev or null),
+      # A fixed integer Nix computes from the source, not a clock read.
+      revisionTime ? (flake.lastModified or null),
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -123,7 +132,15 @@ rec {
         ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains
         ++ lib.optional (grammar != null) "--grammar ${toString grammar}"
         ++ map (d: "--deny ${lib.escapeShellArg d}") deny
-        ++ lib.optional (closureFile != null) "--closures ${closureFile}";
+        ++ lib.optional (closureFile != null) "--closures ${closureFile}"
+        # `cmd_render` uses FlakeConfig::default(), so mode B never sees the
+        # documented flake's `nixdiag` attr — every setting must be passed.
+        ++ lib.optional (!api) "--no-api"
+        ++ lib.optional (api && scalar) "--scalar"
+        ++ lib.optional (api && revision != null) "--revision ${lib.escapeShellArg revision}"
+        ++ lib.optional (api && revisionTime != null) "--revision-time ${toString revisionTime}";
+
+      scalarBundle = import ./scalar.nix { inherit (pkgs) fetchurl; };
     in
     pkgs.runCommand "nixdiag-docs"
       {
@@ -142,6 +159,11 @@ rec {
         ''}
         ${lib.optionalString (bookToml != null) ''
           install -m 644 ${bookToml} $out/wiki/book.toml
+        ''}
+        ${lib.optionalString (api && scalar) ''
+          # The shim nixdiag emitted loads this by relative path, so the
+          # reference works with no network at view time.
+          install -m 644 ${scalarBundle} $out/api/scalar.js
         ''}
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (dest: src: ''
