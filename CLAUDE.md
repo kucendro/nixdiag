@@ -512,6 +512,19 @@ pages.
         word and never filtered — needed because serving one build while
         measuring another is legitimate and has no cycle, and nixdiag cannot
         tell the two apart without forcing `serve.docs`.
+      - `closuresExclude` (added 2026-09-02) subtracts from `true`, because an
+        allow-list is the wrong shape for a fleet: it re-lists what the flake
+        already declares and a host added later is silently unmeasured until
+        someone remembers it. The deny-list inverts both. It also fixes the
+        warning's advice — "ask for the hosts by name" pushed the one user
+        who hit it (~/os, where `edge` serves the wiki) into an allow-list
+        that happened to equal what `true` computes; naming a serving host in
+        `closuresExclude` silences the warning instead, since the warning
+        exists to prevent the cycle and the exclusion already has. Rejected
+        beside an explicit `closures` list rather than silently ignored.
+        Validated against the *unfiltered* `nixosConfigurations` so a
+        `hosts`-narrowed render cannot turn a standing exclusion into an
+        unknown-host error, while a typo still is one.
       - **Never print a store path into generated output.** Nix scans build
         outputs for store-path strings and records each as a real reference:
         measured, a 367-byte markdown table listing five paths had a 36 MiB

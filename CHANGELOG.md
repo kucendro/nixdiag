@@ -35,14 +35,18 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
   built from Linux. The data arrives as a separate `closures.json` with its own
   schema, so `facts.json` stays schema 2 and `mkFacts` stays a pure eval.
   `closures` takes `true` (every NixOS host that does not serve nixdiag docs)
-  or an explicit list of host names. Serving hosts are skipped under `true`
-  because `services.nixdiag.serve` roots an nginx vhost at a docs derivation,
-  so measuring such a host would make the docs depend on a system that
-  contains them (`docs -> toplevel -> docs`) — which Nix reports only as
-  infinite recursion. The skip is announced by a warning naming the hosts. An
-  explicit list is never filtered. NixOS hosts that were not measured are
-  still listed, with `—` for their numbers, so an opt-in list cannot read as
-  though it covered the whole fleet.
+  or an explicit list of host names, and `closuresExclude` subtracts from
+  `true` so a fleet can be described by its exceptions instead of re-listed
+  whole — a host added later is then measured the day it lands. Serving hosts
+  are skipped under `true` because `services.nixdiag.serve` roots an nginx
+  vhost at a docs derivation, so measuring such a host would make the docs
+  depend on a system that contains them (`docs -> toplevel -> docs`) — which
+  Nix reports only as infinite recursion. The skip is announced by a warning
+  naming the hosts; naming them in `closuresExclude` silences it, since the
+  warning exists to prevent that cycle and the exclusion already has. An
+  explicit list is never filtered, and rejects `closuresExclude` outright.
+  NixOS hosts that were not measured are still listed, with `—` for their
+  numbers, so an opt-in list cannot read as though it covered the whole fleet.
 
   The measurement is not a way to build a fleet: the pages carry no store
   paths, so the docs hold no references to the systems they describe and a

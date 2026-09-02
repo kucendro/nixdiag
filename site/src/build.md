@@ -70,6 +70,7 @@ annotation fails the build.
 | `grammar` | binary's own | annotation grammar edition your modules are written against, see [editions](./annotations.md#grammar-editions) |
 | `deny` | `[ ]` | warning categories promoted to errors, e.g. `[ "deprecated" ]` |
 | `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **requires those systems built** — see below |
+| `closuresExclude` | `[ ]` | hosts to leave out of `closures = true` |
 
 ### Closure metrics
 
@@ -102,6 +103,17 @@ system closure.
 | `false` | nothing (default) |
 | `true` | every NixOS host that does not serve nixdiag docs |
 | `[ "nas" "luna" ]` | exactly those hosts, taken at your word |
+
+`closuresExclude` subtracts from `true`, so the fleet is described by its
+exceptions and a host added later is measured the day it lands:
+
+```nix
+closures = true;
+closuresExclude = [ "vps" ];
+```
+
+It is an error beside an explicit `closures` list, which already names the
+whole set.
 
 Nar sizes exist only for *realised* store paths, so each measured host's
 `system.build.toplevel` becomes a build input: the docs build gets as expensive
@@ -161,6 +173,10 @@ trace that points nowhere useful.
 `closures = true` detects this and skips those hosts, naming them in a warning.
 The detection is safe because reading `serve.enable` does not force
 `serve.docs`; it is forcing `serve.docs` that closes the loop.
+
+Name a serving host in `closuresExclude` and the warning stops while every
+other host stays automatic: it exists to prevent the cycle, and the exclusion
+already has.
 
 Serve one build and measure another and there is no cycle, so you can ask for
 every host by name:

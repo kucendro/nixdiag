@@ -29,70 +29,26 @@ rec {
         // project "darwin" (flake.darwinConfigurations or { });
     };
 
-  # flake -> docs derivation. `nix build .#docs` stays pure and cached;
-  # this replaces committing generated docs back from CI.
   mkDocs =
     {
       pkgs,
       flake,
       title ? "Infrastructure wiki",
-      # User-owned index page; replaces the seeded wiki/src/index.md.
       indexPage ? null,
-      # User-owned mdBook config; replaces the seeded wiki/book.toml.
       bookToml ? null,
       extraPages ? { },
       extraLinks ? { },
-      # Static files/dirs copied into wiki/src (path under src -> source),
-      # e.g. images referenced by extra pages. Copied before mdbook runs.
       extraAssets ? { },
       hosts ? null,
       buildWiki ? true,
-      # theme "dark" (default) or "light"; background any fill (default
-      # "transparent"); colors overrides palette names from the d2 vars
-      # block, e.g. { public = "#ff5555"; }.
       theme ? null,
       background ? null,
       colors ? { },
-      # `@key` -> domain suffix for fqdn positions in annotations, e.g.
-      # { home = "home.example.com"; } lets `name=vault@home` render as
-      # vault.home.example.com without the literal appearing in the repo.
       domains ? { },
-      # Annotation grammar edition the flake's modules are written against.
-      # null means "whatever the nixdiag binary implements"; a declaration
-      # newer than the binary implements is a hard error.
       grammar ? null,
-      # Warning categories promoted to errors, e.g. [ "deprecated" ].
       deny ? [ ],
-      # Per-host system closure sizes, adding a Closures wiki page and a row
-      # on each host. Requires every measured host's system to be BUILT (or
-      # substituted), so this makes `nix build .#docs` as expensive as
-      # building those systems. NixOS hosts only: darwin cannot be built
-      # from Linux.
-      #
-      #   false          off (default)
-      #   true           every NixOS host that does not serve nixdiag docs
-      #   [ "nas" … ]    exactly these hosts, taken at your word
-      #
-      # This MEASURES; it is not a way to build a fleet. Nothing here keeps
-      # what it realises alive: the pages carry no store paths (printing one
-      # would make the docs retain the closure they describe), so the docs
-      # hold no references to those systems and the next garbage collection
-      # removes anything your own pipeline did not root. Build and root the
-      # systems first -- a deploy step, a CI job, `nix build
-      # .#nixosConfigurations.<h>.config.system.build.toplevel --out-link ...`
-      # -- and enable this on a docs build that runs after. Everything is then
-      # already realised and the measurement costs a few seconds of jq.
-      #
-      # Run that docs build on the machine that holds the systems: the
-      # per-host derivation is preferLocalBuild, so invoking it elsewhere
-      # copies every measured closure to the invoking machine.
-      #
-      # A host running services.nixdiag.serve is skipped under `true` because
-      # its system closure contains an nginx vhost rooted at a docs
-      # derivation. Measuring it would make these docs depend on a system
-      # that contains docs, and Nix reports that as infinite recursion rather
-      # than anything legible. See `serving` below.
       closures ? false,
+      closuresExclude ? [ ],
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -101,35 +57,51 @@ rec {
         flake.nixosConfigurations or { }
       );
 
-      # Reading `serve.enable` is safe; reading `serve.docs` is not. The
-      # latter is the vhost root, and forcing it from within a docs build is
-      # precisely the cycle. Verified: `serve.enable` evaluates without
-      # forcing `serve.docs`, while `system.build.toplevel` does force it.
       serving = builtins.attrNames (
         lib.filterAttrs (_: cfg: cfg.config.services.nixdiag.serve.enable or false) nixosConfigs
       );
 
+      excluded =
+        let
+          known = builtins.attrNames (flake.nixosConfigurations or { });
+          unknown = builtins.filter (n: !(builtins.elem n known)) closuresExclude;
+        in
+        if unknown != [ ] then
+          throw "nixdiag: closuresExclude names unknown host(s): ${lib.concatStringsSep ", " unknown}"
+        else
+          closuresExclude;
+
       closureHosts =
         if lib.isList closures then
-          let
-            unknown = builtins.filter (n: !(nixosConfigs ? ${n})) closures;
-          in
-          if unknown != [ ] then
-            throw "nixdiag: closures names unknown host(s): ${lib.concatStringsSep ", " unknown}"
+          if closuresExclude != [ ] then
+            throw ''
+              nixdiag: closuresExclude has nothing to subtract from an explicit closures list.
+              The list already names exactly what to measure; drop one of the two.
+            ''
           else
-            closures
+            let
+              unknown = builtins.filter (n: !(nixosConfigs ? ${n})) closures;
+            in
+            if unknown != [ ] then
+              throw "nixdiag: closures names unknown host(s): ${lib.concatStringsSep ", " unknown}"
+            else
+              closures
         else if closures then
           let
-            kept = builtins.filter (n: !(builtins.elem n serving)) (builtins.attrNames nixosConfigs);
+            wanted = builtins.filter (n: !(builtins.elem n excluded)) (builtins.attrNames nixosConfigs);
+            cyclic = builtins.filter (n: builtins.elem n serving) wanted;
+            kept = builtins.filter (n: !(builtins.elem n cyclic)) wanted;
           in
-          if serving == [ ] then
+          if cyclic == [ ] then
             kept
           else
             lib.warn ''
-              nixdiag: skipping closure metrics for ${lib.concatStringsSep ", " serving}.
+              nixdiag: skipping closure metrics for ${lib.concatStringsSep ", " cyclic}.
               Those hosts run services.nixdiag.serve, so their system closure contains an
               nginx vhost rooted at a docs derivation; measuring them would make these docs
               depend on a system that contains docs, which Nix reports as infinite recursion.
+              Say so and this warning stops, everything else stays automatic:
+                closuresExclude = [ ${lib.concatMapStringsSep " " (n: ''"${n}"'') cyclic} ];
               If this build is not the one being served, ask for the hosts by name:
                 closures = [ ${lib.concatMapStringsSep " " (n: ''"${n}"'') (builtins.attrNames nixosConfigs)} ];
             '' kept
