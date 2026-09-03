@@ -28,7 +28,7 @@ pub fn generate(lock: &Lock, out: &mut Out, render_svg: bool, style: &D2Style) -
     o.push(String::new());
 
     o.push(format!(
-        "{}: \"this flake\" {{ shape: cloud; style.fill: ${{hostCloud}}; style.bold: true }}",
+        "{}: \"this flake\" {{ style.fill: ${{hostCloud}}; style.bold: true }}",
         sanitize(&lock.root)
     ));
     for (name, locked) in lock.inputs() {

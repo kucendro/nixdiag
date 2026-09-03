@@ -186,6 +186,12 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 
 ### Changed
 
+- The `this flake` root of `inputs.d2` is a rectangle, no longer a cloud. d2
+  draws a cloud by scaling one fixed outline to the node's box, and elk makes
+  that box as tall as the root's edge anchors demand — on a flake with a dozen
+  direct inputs the cloud came out as an unrecognisable blob. The hosts on the
+  modules diagram keep their clouds: their fan-out is a handful of files, not
+  every input in the lock.
 - **Generated prose trimmed to nothing on most pages.** These are documents you
   look at, not read: every page now opens on its picture or its table. The
   Endpoints and Closures intros are gone entirely, and Inputs keeps one
