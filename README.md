@@ -31,3 +31,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 - [Build and serve](https://kucendro.github.io/nixdiag/build.html): `lib.mkDocs` as a pure derivation, the nginx module
 - [CLI](https://kucendro.github.io/nixdiag/cli.html): `facts`, `render`, `gen`, `check`
 - [Live demo](https://kucendro.github.io/nixdiag/demo/): the wiki this repo's test fixture renders
+
+---
+
+<a href="https://www.buymeacoffee.com/kucendro"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a matcha&emoji=&slug=kucendro&button_colour=5f5ca7&font_colour=ffffff&font_family=Cookie&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
