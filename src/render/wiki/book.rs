@@ -5,7 +5,15 @@ use super::super::out::{Out, MD_MARKER};
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
-pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str) -> Result<()> {
+/// The seeded mdBook theme follows the diagram palette: navy for a dark
+/// render, mdBook's light theme (coal for viewers who prefer dark) for a
+/// light one, so the page chrome and the pictures on it agree.
+pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str, dark: bool) -> Result<()> {
+    let (default, preferred_dark) = if dark {
+        ("navy", "navy")
+    } else {
+        ("light", "coal")
+    };
     out.write_once(
         &wiki.join("book.toml"),
         &format!(
@@ -13,8 +21,8 @@ pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str) -> Result<()> {
              title = \"{title}\"\n\
              src = \"src\"\n\n\
              [output.html]\n\
-             default-theme = \"navy\"\n\
-             preferred-dark-theme = \"navy\"\n\
+             default-theme = \"{default}\"\n\
+             preferred-dark-theme = \"{preferred_dark}\"\n\
              no-section-label = true\n"
         ),
     )

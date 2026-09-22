@@ -8,8 +8,8 @@ src = "src"
 create-missing = false
 
 [output.html]
-default-theme = "navy"
-preferred-dark-theme = "navy"
+default-theme = "light"
+preferred-dark-theme = "coal"
 no-section-label = true
 git-repository-url = "https://github.com/kucendro/nixdiag"
 site-url = "/nixdiag/"

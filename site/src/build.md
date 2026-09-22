@@ -185,6 +185,10 @@ colors = { public = "#ff5555"; mesh = "#7fa7e8"; };
 An unknown name is an error listing the palette. Output is text only, no icon
 or image assets, ever.
 
+`theme` also picks the mdBook theme the seeded `book.toml` starts with: `navy`
+for dark, mdBook's `light` with `coal` for dark-preferring viewers otherwise.
+A `bookToml` of your own replaces that file entirely.
+
 ## What you may edit
 
 `wiki/src/index.md` and `wiki/book.toml` are written once and never

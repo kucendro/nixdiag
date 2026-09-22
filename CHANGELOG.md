@@ -191,6 +191,11 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 
 ### Changed
 
+- **`--theme light` also seeds a light `book.toml`**: mdBook's `light` theme
+  with `coal` for viewers who prefer dark, where it used to be `navy` for both,
+  which put a light diagram palette on a navy page. The file stays write-once,
+  so an existing wiki keeps whatever it has. The docs site and the live demo
+  now render light.
 - The `this flake` root of `inputs.d2` is a rectangle, no longer a cloud. d2
   draws a cloud by scaling one fixed outline to the node's box, and elk makes
   that box as tall as the root's edge anchors demand — on a flake with a dozen

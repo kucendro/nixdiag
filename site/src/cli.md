@@ -75,7 +75,7 @@ Render flags, accepted by `render`, `gen` and `check`:
 | `--extra-page Runbooks=./runbooks.md` | copy a hand-written page in and link it, repeatable |
 | `--extra-link Termux=termux.md` | SUMMARY entry for a page another tool writes, repeatable |
 | `--no-svg` | write `.d2` only, skip d2 |
-| `--theme light` | `light` or `dark`, default `dark` |
+| `--theme light` | `light` or `dark`, default `dark`; also picks the theme the seeded `book.toml` starts with |
 | `--background "#ffffff"` | diagram canvas fill, default transparent |
 | `--color public=#ff5555` | palette override, repeatable, see [styling](./build.md#diagram-styling) |
 | `--domain home=home.example.com` | `@key` suffix for annotation fqdns, repeatable |

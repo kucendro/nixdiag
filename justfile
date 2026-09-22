@@ -19,7 +19,9 @@ wiki: build
     mdbook serve .dev/docs/wiki --open
 
 _site-assets:
-    cp -f assets/topology.svg assets/modules.svg tests/reference/wiki/src/closures.svg site/src/
+    cp -f assets/topology-light.svg site/src/topology.svg
+    cp -f assets/modules-light.svg site/src/modules.svg
+    cp -f assets/closures-light.svg site/src/closures.svg
     cp -f SYNTAX.md site/src/syntax.md
 
 build:

@@ -76,7 +76,7 @@ pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -
     let wiki = PathBuf::from("wiki");
     let src = wiki.join("src");
 
-    book_toml(out, &wiki, &opts.title)?;
+    book_toml(out, &wiki, &opts.title, style.dark)?;
     let mut extra = copy_extra_pages(out, &src, &opts.extra_pages)?;
     extra.extend(opts.extra_links.iter().cloned());
     page_summary(
