@@ -63,7 +63,7 @@ src/
   cli/
     mod.rs                clap types (Cli, Cmd, FlakeArgs, RenderArgs) + run()
     options.rs            flake `nixdiag` output + flags -> RenderOpts/D2Style
-    commands.rs           facts / render / gen / check
+    commands.rs           facts / render / gen / check / syntax
   source/                 static analysis of the documented repo's own .nix files
     repo.rs               store path -> repo-relative (the `-source/` marker)
     doccomment.rs         leading RFC 145 /** */ via rnix
@@ -103,6 +103,8 @@ src/
 nix/projections/core.nix  shared via include_str! AND exported in flake lib
 nix/lib.nix               mkFacts / mkDocs
 nix/module.nix            serve / timer
+SYNTAX.md                 the grammar on one page: include_str! behind `nixdiag
+                          syntax`, copied into site/ as the cheat sheet page
 templates/default/        `nix flake init -t` consumer scaffold
 justfile                  preview loops + the deliberate regenerations
 tests/fixture/            mini flake with 2 fake hosts

@@ -79,6 +79,7 @@
             ''
               cp -r ${./site} book
               chmod -R u+w book
+              cp ${./SYNTAX.md} book/src/syntax.md
               cp ${./assets}/topology.svg ${./assets}/modules.svg book/src/
               cp ${./tests/reference}/wiki/src/closures.svg book/src/
               mdbook build book --dest-dir $out

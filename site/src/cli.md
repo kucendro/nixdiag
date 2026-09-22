@@ -47,6 +47,16 @@ nixdiag render --facts facts.json --repo . --out docs
 nixdiag facts | nixdiag render --facts - --repo .
 ```
 
+## `syntax`
+
+Print the annotation [cheat sheet](./syntax.md), `SYNTAX.md` from the repo,
+as compiled into this binary. Needs neither `nix` nor a flake, so it works
+anywhere: `nix run github:kucendro/nixdiag -- syntax`.
+
+```sh
+nixdiag syntax
+```
+
 ## Flags
 
 `--flake DIR` on `facts`, `gen`, `check`, default `.`.

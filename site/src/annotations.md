@@ -7,6 +7,10 @@ with rnix, in both modes.
 The grammar is frozen since 2026-08-26. New statements and optional tokens may
 be added, existing ones keep their meaning.
 
+The [cheat sheet](./syntax.md) is the same grammar on one page, and
+`nixdiag syntax` prints it. Hand that to a coding assistant before it writes
+`#:` lines for you.
+
 ```nix
 {
   #: mesh-control

@@ -24,6 +24,11 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 
 ### Added
 
+- **`nixdiag syntax`** prints `SYNTAX.md`, the annotation grammar on one page,
+  from the binary itself, so the text a coding assistant is handed is the
+  grammar this build parses. The same file is the site's cheat sheet page,
+  and the template's `AGENTS.md` points at it.
+
 - **A published JSON API** (`api = true`, on by default), so a dashboard can
   read what the wiki renders instead of scraping HTML. `api/v1/` carries
   `hosts`, `services`, `topology`, `inputs`, `closures`, `snapshot` and an

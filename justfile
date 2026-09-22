@@ -20,6 +20,7 @@ wiki: build
 
 _site-assets:
     cp -f assets/topology.svg assets/modules.svg tests/reference/wiki/src/closures.svg site/src/
+    cp -f SYNTAX.md site/src/syntax.md
 
 build:
     cargo build

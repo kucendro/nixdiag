@@ -3,7 +3,7 @@
 mod commands;
 mod options;
 
-use commands::{cmd_check, cmd_facts, cmd_gen, cmd_render};
+use commands::{cmd_check, cmd_facts, cmd_gen, cmd_render, cmd_syntax};
 
 use crate::source::annotations;
 use clap::{Args, Parser, Subcommand};
@@ -126,6 +126,8 @@ enum Cmd {
         #[command(flatten)]
         render: RenderArgs,
     },
+    /// Print the annotation cheat sheet (SYNTAX.md) this binary parses
+    Syntax,
 }
 
 /// Parse argv and run the requested subcommand.
@@ -151,5 +153,9 @@ pub fn run() -> anyhow::Result<()> {
             closures,
             render,
         } => cmd_check(flake, out, closures, render),
+        Cmd::Syntax => {
+            cmd_syntax();
+            Ok(())
+        }
     }
 }
