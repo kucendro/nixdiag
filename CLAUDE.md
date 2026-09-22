@@ -138,10 +138,13 @@ Rules that keep it that way:
   its default meant 2.2 GiB of Chromium/Firefox/WebKit — 2308 MiB and 363
   paths of runtime closure against 228 MiB and 69 — for a tool that only ever
   runs `d2 --layout elk in.d2 out.svg`. SVG output is byte-identical (checked
-  against all three reference diagrams and the committed `assets/`). It is a
-  named upstream argument, so a nixpkgs rename makes `.override` throw at eval
-  naming the argument — loud, not silent rot. Found by measuring nixdiag's own
-  closure with `nix/closures.nix`, which is the feature dogfooding itself.
+  against all three reference diagrams and the committed `assets/`). Current
+  nixpkgs (d2 0.9.0) no longer takes the argument and no longer pulls in
+  playwright, so `nix/d2.nix` passes it only when `d2.override.__functionArgs`
+  still lists it and returns `d2` untouched otherwise; the closure check in
+  `flake.nix` is what fails if playwright ever comes back. Found by measuring
+  nixdiag's own closure with `nix/closures.nix`, which is the feature
+  dogfooding itself.
 - The renderer **refuses to overwrite an existing file that lacks the AUTO marker**
   (`<!-- Auto-generated … -->` / `# Auto-generated …`). Safer than the Python.
 - Reference tests: render the fixture flake, snapshot d2 + Markdown + the
