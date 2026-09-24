@@ -56,12 +56,11 @@ assets: build
         --facts "$facts" --repo tests/fixture \
         --closures tests/fixture/closures.json \
         --domain ts=ts.example --title 'Example fleet' \
-        --theme "$theme" --out "$out" --no-svg
+        --theme "$theme" --out "$out"
       suffix=""
-      d2theme="--theme 200"
-      if [ "$theme" = light ]; then suffix="-light"; d2theme=""; fi
+      if [ "$theme" = light ]; then suffix="-light"; fi
       for d in topology modules inputs; do
-        d2 --layout elk $d2theme "$out/$d.d2" "assets/$d$suffix.svg"
+        cp "$out/$d.svg" "assets/$d$suffix.svg"
       done
       for c in inputs-timeline closures closures-sol; do
         cp "$out/wiki/src/$c.svg" "assets/$c$suffix.svg"

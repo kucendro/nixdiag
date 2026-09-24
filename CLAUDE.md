@@ -81,7 +81,7 @@ src/
   render/
     mod.rs                RenderOpts, render_all
     out.rs                Out/WKind — the AUTO-marker guarded writer
-    d2.rs                 palette, vars block, spawn `d2 --layout elk`
+    d2.rs                 palette, vars block, spawn `d2 --layout elk`, unmask
     topology.rs           the data-flow diagram
     modules.rs            the module-tree diagram
     inputs.rs             the flake input graph
@@ -842,6 +842,32 @@ pages.
         preprocessor plus vendored JS, against the no-assets rule.
       - Anything needing node/JS at build time (vega-lite, plotly) is out on
         mode B purity and closure size.
+- [x] **d2's label mask becomes a `clipPath`** (`d2::unmask`, 2026-09-24).
+      Found by taking apart a 6.4 MB print of the ~/os wiki: 5 MB of it was
+      460 near-empty 300 dpi bitmaps, two per edge. d2 puts `mask="url(#…)"`
+      on every connection path (one white canvas rect, one black rect per
+      edge label — present even with no labels), and a mask has no vector
+      form in PDF, so Chrome's print backend rasterises each masked path
+      into a page-wide layer. The same region as a clip is a plain PDF
+      clip. Decisions:
+      - Rewrite in the renderer, right after d2 runs, not a d2 flag: there
+        is none, and the mask is d2's only mechanism for the label gap.
+      - One `<path>` child of disjoint rectangles (canvas minus the union
+        of label boxes), never many `<rect>` children and never even-odd:
+        Chrome falls back to mask-based clipping past a few dozen clip
+        children, and even-odd flips an overlap of two labels back to
+        visible. Rectangle subtraction is exact and ~20 lines.
+      - Conservative by construction: a mask that is not exactly d2's
+        pattern is left alone, so an upstream change degrades to today's
+        output, never to a wrong picture.
+      - PNG was the user's proposal and is the wrong fix twice over: it is
+        a rasterisation, which is what made the PDF big, and d2's PNG path
+        is the playwright closure `nix/d2.nix` removed. It also does
+        nothing for density — a page-wide diagram is illegible on A4 in
+        any format; that is a page-size problem for the PDF item below.
+      - `just assets` now copies nixdiag's own SVGs instead of calling d2
+        itself, so the README pictures carry every rewrite the renderer
+        does. The pictures were still d2 0.8.1 output; they are 0.9.0 now.
 - [ ] **PDF export** (before the nixpkgs PR). The wiki as one PDF, SUMMARY
       order, diagrams and charts embedded. Constraints, in the order they will
       kill candidates:
@@ -854,6 +880,9 @@ pages.
         PDF is not gated.
       - It is a second upstream promise, so it answers to the bar in the item
         above.
+      Interim: mdBook's print page through Chrome now yields a vector PDF
+      (the mask rewrite above); what it cannot do is a landscape or larger
+      page for the dense diagrams.
       Leading candidate **typst**: one static binary, small closure, embeds
       SVG natively, reproducible with a pinned timestamp. Runner-up pandoc +
       context. Anything needing node/JS at build time is already out on mode B

@@ -244,3 +244,10 @@ services.nixdiag.timer = {
   flags = [ "--no-svg" ];
 };
 ```
+
+## Printing
+
+mdBook's print icon lays the whole book out on one page, and the browser's
+"Save as PDF" turns that into a vector PDF, diagrams included. A diagram is
+scaled to the page width, so choose landscape or a larger paper size where a
+dense one has to stay legible.

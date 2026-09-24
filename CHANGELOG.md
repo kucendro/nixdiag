@@ -22,6 +22,20 @@ immune — nothing is committed and the input is pinned.
 
 Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
 
+### Fixed
+
+- **Printing the wiki to PDF no longer rasterises every edge.** d2 hides
+  each edge line under its label with an SVG `mask`, referenced from every
+  connection path. A mask has no vector form in PDF, so Chrome's print
+  backend turned each masked edge into a page-wide 300 dpi bitmap: a
+  24-page fleet wiki came out at 6.4 MB, 5 MB of it 460 near-empty images.
+  The renderer now rewrites d2's mask into an equivalent `clipPath` (the
+  canvas minus the label boxes, as one path of disjoint rectangles), which
+  prints as a plain vector clip. The fixture's print page fell from 541 KB
+  to 235 KB with no images left; the diagrams render pixel-identically.
+  Mode A consumers see their committed `*.svg` change on the next `gen`;
+  `check` does not gate SVG, so nothing turns red.
+
 ### Added
 
 - **`nixdiag syntax`** prints `SYNTAX.md`, the annotation grammar on one page,
