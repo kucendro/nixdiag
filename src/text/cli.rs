@@ -7,6 +7,7 @@ pub const CLOSURES: &str =
     "closures.json from `mkDocs { closures = true; }`, adding the Closures page";
 pub const OUT: &str = "Output directory";
 pub const TITLE: &str = "Wiki title (used only when seeding book.toml)";
+pub const DEFAULT_TITLE: &str = "Infrastructure wiki";
 pub const EXTRA_PAGE: &str = "Extra hand-written wiki page as TITLE=FILE; repeatable";
 pub const EXTRA_LINK: &str =
     "SUMMARY entry as TITLE=NAME.md for a page written into wiki/src by another tool; repeatable";

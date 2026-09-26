@@ -2,6 +2,7 @@ use super::{abs, RenderArgs};
 use crate::closures::Closures;
 use crate::render::{d2, RenderOpts, WikiOpts};
 use crate::source::annotations;
+use crate::text::cli::DEFAULT_TITLE;
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::path::PathBuf;
@@ -28,10 +29,7 @@ pub(super) fn to_render_opts(r: &RenderArgs, closures: Option<Closures>) -> Resu
         repo: abs(&r.repo),
         out: abs(&r.out),
         wiki: WikiOpts {
-            title: r
-                .title
-                .clone()
-                .unwrap_or_else(|| "Infrastructure wiki".into()),
+            title: r.title.clone().unwrap_or_else(|| DEFAULT_TITLE.into()),
             extra_pages,
             extra_links: pairs(&r.extra_links, "--extra-link", "TITLE=NAME.md")?,
         },
