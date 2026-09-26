@@ -6,37 +6,13 @@ pub const MARKER_WORD: &str = "Auto-generated";
 
 pub const MD_MARKER: &str = "<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->";
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum WKind {
-    Auto,
-    Once,
-    Svg,
-    Extra,
-}
-
-pub struct Written {
-    pub rel: PathBuf,
-    pub kind: WKind,
-}
-
 pub struct Out {
     pub root: PathBuf,
-    pub manifest: Vec<Written>,
 }
 
 impl Out {
     pub fn new(root: PathBuf) -> Self {
-        Out {
-            root,
-            manifest: Vec::new(),
-        }
-    }
-
-    fn record(&mut self, rel: &Path, kind: WKind) {
-        self.manifest.push(Written {
-            rel: rel.to_path_buf(),
-            kind,
-        });
+        Out { root }
     }
 
     pub fn guard(&self, rel: &Path) -> Result<PathBuf> {
@@ -55,27 +31,15 @@ impl Out {
     }
 
     pub fn write_auto(&mut self, rel: &Path, text: &str) -> Result<()> {
-        let path = self.guard(rel)?;
-        write_text(&path, text)?;
-        self.record(rel, WKind::Auto);
-        Ok(())
+        write_text(&self.guard(rel)?, text)
     }
 
     pub fn write_once(&mut self, rel: &Path, text: &str) -> Result<()> {
         let path = self.root.join(rel);
-        self.record(rel, WKind::Once);
         if path.exists() {
             return Ok(());
         }
         write_text(&path, text)
-    }
-
-    pub fn record_svg(&mut self, rel: &Path) {
-        self.record(rel, WKind::Svg);
-    }
-
-    pub fn record_extra(&mut self, rel: &Path) {
-        self.record(rel, WKind::Extra);
     }
 }
 

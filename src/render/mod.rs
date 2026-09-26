@@ -7,7 +7,7 @@ mod topology;
 mod unmask;
 mod wiki;
 
-pub use out::{Out, WKind};
+pub use out::Out;
 pub use wiki::WikiOpts;
 
 use crate::closures::{Closures, CLOSURES_SCHEMA};
@@ -66,7 +66,7 @@ pub struct RenderOpts {
     pub closures: Option<Closures>,
 }
 
-pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
+pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
     if facts.schema != SCHEMA {
         bail!(
             "facts.json declares schema {}, but nixdiag {} implements schema {SCHEMA} — \
@@ -132,6 +132,5 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
             lock: lock.as_ref(),
             closures: opts.closures.as_ref(),
         },
-    )?;
-    Ok(out)
+    )
 }

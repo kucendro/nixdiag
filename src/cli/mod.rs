@@ -1,11 +1,13 @@
-mod commands;
 mod options;
 
-use commands::{cmd_check, cmd_facts, cmd_gen, cmd_render, cmd_syntax};
-
+use crate::closures::Closures;
+use crate::facts::Facts;
+use crate::render::render_all;
 use crate::source::annotations;
+use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
-use std::path::PathBuf;
+use serde::de::DeserializeOwned;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(
@@ -19,16 +21,19 @@ struct Cli {
 }
 
 #[derive(Args)]
-pub struct FlakeArgs {
-    /// Flake directory to evaluate
-    #[arg(long, default_value = ".")]
-    flake: PathBuf,
-    /// Restrict to these hosts (default: all discovered)
-    hosts: Vec<String>,
-}
-
-#[derive(Args)]
 pub struct RenderArgs {
+    /// facts.json path, or - for stdin
+    #[arg(long)]
+    facts: PathBuf,
+    /// Repo source the facts refer to
+    #[arg(long, default_value = ".")]
+    repo: PathBuf,
+    /// closures.json from `mkDocs { closures = true; }`, adding the
+    /// Closures page
+    #[arg(long)]
+    closures: Option<PathBuf>,
+    #[arg(long, default_value = "docs")]
+    out: PathBuf,
     /// Wiki title (used only when seeding book.toml)
     #[arg(long)]
     title: Option<String>,
@@ -68,80 +73,43 @@ pub struct RenderArgs {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Evaluate flake configurations into facts.json on stdout
-    Facts(FlakeArgs),
-    /// Render docs from an existing facts.json (needs the repo source, not nix)
-    Render {
-        /// facts.json path, or - for stdin
-        #[arg(long)]
-        facts: PathBuf,
-        /// Repo source the facts refer to
-        #[arg(long, default_value = ".")]
-        repo: PathBuf,
-        /// closures.json from `mkDocs { closures = true; }`, adding the
-        /// Closures page
-        #[arg(long)]
-        closures: Option<PathBuf>,
-        #[arg(long, default_value = "docs")]
-        out: PathBuf,
-        #[command(flatten)]
-        render: RenderArgs,
-    },
-    /// facts + render in one step
-    Gen {
-        #[command(flatten)]
-        flake: FlakeArgs,
-        /// Output directory (default: <flake>/docs)
-        #[arg(long)]
-        out: Option<PathBuf>,
-        /// Not available in mode A — see the error it prints
-        #[arg(long)]
-        closures: bool,
-        #[command(flatten)]
-        render: RenderArgs,
-    },
-    /// Regenerate to a temp dir and diff against committed docs (CI gate)
-    Check {
-        #[command(flatten)]
-        flake: FlakeArgs,
-        /// Committed docs directory to compare against (default: <flake>/docs)
-        #[arg(long)]
-        out: Option<PathBuf>,
-        /// Not available in mode A — see the error it prints
-        #[arg(long)]
-        closures: bool,
-        #[command(flatten)]
-        render: RenderArgs,
-    },
+    /// Render docs from facts.json (needs the repo source, not nix)
+    Render(Box<RenderArgs>),
     /// Print the annotation cheat sheet (SYNTAX.md) this binary parses
     Syntax,
 }
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run() -> Result<()> {
     match Cli::parse().cmd {
-        Cmd::Facts(f) => cmd_facts(f),
-        Cmd::Render {
-            facts,
-            repo,
-            out,
-            closures,
-            render,
-        } => cmd_render(facts, repo, out, closures, render),
-        Cmd::Gen {
-            flake,
-            out,
-            closures,
-            render,
-        } => cmd_gen(flake, out, closures, render).map(|_| ()),
-        Cmd::Check {
-            flake,
-            out,
-            closures,
-            render,
-        } => cmd_check(flake, out, closures, render),
+        Cmd::Render(r) => {
+            let mut facts: Facts = read_json(&r.facts).context("parsing facts.json")?;
+            let closures: Option<Closures> = r
+                .closures
+                .as_deref()
+                .map(|p| read_json(p).context("parsing closures.json"))
+                .transpose()?;
+            render_all(&mut facts, &options::to_render_opts(&r, closures)?)
+        }
         Cmd::Syntax => {
-            cmd_syntax();
+            print!("{}", include_str!("../../SYNTAX.md"));
             Ok(())
         }
+    }
+}
+
+fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    let text = if path == Path::new("-") {
+        std::io::read_to_string(std::io::stdin())?
+    } else {
+        std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?
+    };
+    Ok(serde_json::from_str(&text)?)
+}
+
+fn abs(p: &Path) -> PathBuf {
+    if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        std::env::current_dir().unwrap_or_default().join(p)
     }
 }

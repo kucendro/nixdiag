@@ -9,7 +9,6 @@ pub(super) fn page_architecture(out: &mut Out, src: &Path) -> Result<()> {
             let rel = src.join(svg);
             std::fs::create_dir_all(out.root.join(src))?;
             std::fs::copy(&from, out.root.join(&rel))?;
-            out.record_svg(&rel);
         }
     }
     out.write_auto(

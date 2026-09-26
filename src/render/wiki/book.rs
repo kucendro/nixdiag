@@ -46,7 +46,6 @@ pub(super) fn copy_extra_pages(
         }
         std::fs::copy(source, &dest)?;
         println!("wrote {}", dest.display());
-        out.record_extra(&dest_rel);
         links.push((title.clone(), fname));
     }
     Ok(links)

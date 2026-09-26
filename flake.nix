@@ -50,7 +50,19 @@
       apps = eachSystem (pkgs: {
         default = {
           type = "app";
-          program = nixpkgs.lib.getExe (packagesOf pkgs).nixdiag;
+          program = nixpkgs.lib.getExe (
+            pkgs.writeShellApplication {
+              name = "nixdiag-docs";
+              runtimeInputs = [ pkgs.nix ];
+              text = ''
+                nix build --impure --print-out-paths --expr '
+                  (builtins.getFlake "${self}").lib.mkDocs {
+                    pkgs = import "${nixpkgs}" { system = "${pkgs.stdenv.hostPlatform.system}"; };
+                    flake = builtins.getFlake (toString ./.);
+                  }' "$@"
+              '';
+            }
+          );
         };
       });
 

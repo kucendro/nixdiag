@@ -128,7 +128,6 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
         let rel = src.join("inputs.svg");
         std::fs::create_dir_all(out.root.join(src))?;
         std::fs::copy(&from, out.root.join(&rel))?;
-        out.record_svg(&rel);
     }
 
     let mut o: Vec<String> = vec![

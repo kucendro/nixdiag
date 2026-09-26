@@ -5,10 +5,7 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub const D2_HEADER: [&str; 2] = [
-    "# Auto-generated from the Nix config by nixdiag. Do not edit.",
-    "# Regenerate: nixdiag gen",
-];
+pub const D2_HEADER: [&str; 1] = ["# Auto-generated from the Nix config by nixdiag. Do not edit."];
 
 #[derive(Default)]
 pub struct D2Style {
@@ -100,7 +97,6 @@ pub fn write_and_render(
             let svg = std::fs::read_to_string(&svg_path)?;
             std::fs::write(&svg_path, unmask(&svg))?;
             println!("wrote {}", svg_path.display());
-            out.record_svg(&svg_rel);
         }
     }
     Ok(())
