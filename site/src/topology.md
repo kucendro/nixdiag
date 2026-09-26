@@ -1,9 +1,5 @@
 # Topology
 
-Every node, connection and endpoint is the value of a `nixdiag.*` option in
-your NixOS configuration. Adapters fill those options from the options you
-already set; you override them with plain Nix.
-
 ```nix
 {
   services.headscale = {
@@ -18,56 +14,40 @@ already set; you override them with plain Nix.
 }
 ```
 
-No nixdiag line in there, and the diagram shows headscale on port 8080,
-nginx as a proxy exposing `hs.ts.example` on 443 to the internet, and a
-connection labelled `hs :8080` from the proxy into headscale. Rendered in
-full as the [live demo](./demo.md).
-
-`mkFacts` evaluates each configuration with the nixdiag module added through
-`extendModules`, or uses your copy when the flake imports
-`nixosModules.default`. A connection that cannot be resolved fails
-`nix build .#docs`.
+Adapters turn that into headscale on 8080, a proxy exposing `hs.ts.example`
+on 443 to the internet, and the connection between them. Override with
+`nixdiag.*` options in plain Nix.
 
 ## Adapters
 
-One file per service under `nix/adapters/`, each a list of the options it
-reads and a function from their values to topology. A unit appears when its
-service is enabled.
-
 | Adapter | Reads | Gives |
 |---|---|---|
-| `nginx` | per vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `locations.*.proxyPass`; `defaultListenAddresses`; the firewall | `names` from vhosts, `ports` from listens. A literal `proxyPass` is a connection labelled `<vhost> :<upstream port>`, any other vhost an expose |
-| `headscale` | `port`, `settings.server_url` or `serverUrl` | `ports`, the url's host as a name unless loopback |
-| `tailscale` | `extraUpFlags`, `extraSetFlags` | `--login-server=URL` is a connection labelled `mesh` to that url, otherwise to `internet`; each `--advertise-routes` a connection to `lan` |
-| `grafana` | `settings.server.http_port` or `port`, `settings.server.domain` | `ports`, the domain as a name unless loopback |
+| `nginx` | vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `proxyPass`; firewall | names, ports; a literal `proxyPass` is a connection, any other vhost an expose |
+| `headscale` | `port`, `settings.server_url` | port, name |
+| `tailscale` | `extraUpFlags`, `extraSetFlags` | `--login-server` is a connection to it, else `internet`; `--advertise-routes` to `lan` |
+| `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
 
-Scope comes from listen addresses: `100.64.0.0/10` and `fd7a:115c:a1e0::/48`
-are `mesh`, RFC 1918 and `fc00::/7` are `lan`, loopback has none, and anything
-else is `public` when the firewall opens the port. All four adapters draw as
-infrastructure.
+Scope from listen addresses: `100.64.0.0/10` is `mesh`, RFC 1918 is `lan`,
+anything else `public` when the firewall opens the port.
 
 ## Options
 
-Per unit, under `nixdiag.units.<unit>`:
+`nixdiag.units.<unit>`:
 
 | Option | Type | Effect |
 |---|---|---|
-| `role` | string | second line of the node label, `proxy` say |
-| `kind` | `infra` or `app` | node style; adapters set `infra`, a unit of yours is `app` |
-| `scope` | `public`, `mesh`, `lan` | default for the unit's exposes and connections |
-| `description` | lines | a section on the Services page |
-| `names` | list of fqdn | what this unit answers to; connection targets resolve against them |
-| `ports` | list of port | what it listens on; a url target resolves to the unit on its port |
-| `expose` | list of `{ port, udp, scope, name }` | an Endpoints row each; `public` and `lan` draw an edge from that cloud |
-| `connections` | list of `{ to, label, name, port, scope }` | outbound edges; `name` makes an Endpoints row this unit fronts |
+| `role` | string | node label, `proxy` say |
+| `kind` | `infra`, `app` | node style, adapters set `infra` |
+| `scope` | `public`, `mesh`, `lan` | default for exposes and connections |
+| `description` | lines | Services page section |
+| `names` | fqdns | what the unit answers to |
+| `ports` | ports | what it listens on |
+| `expose` | `{ port, udp, scope, name }` | Endpoints row; `public` and `lan` draw the cloud edge |
+| `connections` | `{ to, label, name, port, scope }` | outbound edges; `name` adds an Endpoints row |
 
-Per host, under `nixdiag`: `description` for the Hosts page, `scope`,
-`names` and `expose` as above, on the host itself.
+`nixdiag.description`, `scope`, `names`, `expose`: the same for the host.
 
 ## Overriding
-
-Adapters set `role`, `kind` and `scope` with `mkDefault`, lists at normal
-priority. A plain assignment wins, list entries append, `mkForce` replaces.
 
 ```nix
 { lib, ... }:
@@ -83,20 +63,22 @@ priority. A plain assignment wins, list entries append, `mkForce` replaces.
 }
 ```
 
-`exporter` is a raw systemd unit no adapter knows; the empty attrset declares
-it as a node.
+Assignment wins over an adapter, lists append, `mkForce` replaces. An empty
+attrset declares a unit no adapter knows.
 
 ## Targets
 
 | `to` | Resolves to |
 |---|---|
 | `internet`, `lan` | that cloud |
-| `nas` | that host |
-| `nas/grafana` | that unit on that host |
-| `grafana` | that unit, when exactly one host has it |
-| `hs.ts.example` | the unit whose `names`, `expose` or `connections` carry that fqdn |
-| `http://127.0.0.1:8080` | the unit on the same host with 8080 in `ports` or `expose` |
-| `http://luna.ts.example:3000` | the host named by the first label, then its unit on 3000 |
+| `nas` | host |
+| `nas/grafana` | unit on host |
+| `grafana` | unit, when one host has it |
+| `hs.ts.example` | unit with that fqdn in `names`, `expose` or `connections` |
+| `http://127.0.0.1:8080` | unit on the same host with that port |
+| `http://luna.ts.example:3000` | host `luna`, its unit on 3000 |
+
+Unresolved fails the build.
 
 ## Adding an adapter
 
@@ -106,22 +88,17 @@ it as a node.
   role = "monitor";
   kind = "infra";
   maintainers = [ "you" ];
-  reads = {
-    port = [
-      "services.foo.settings.port"
-      "services.foo.port"
-    ];
-  };
+  reads.port = [
+    "services.foo.settings.port"
+    "services.foo.port"
+  ];
   topology = { port }: { ports = lib.optional (port != null) port; };
 }
 ```
 
-Drop it in as `nix/adapters/foo.nix`. Each read is a list of candidate option
-paths, first present wins, so the list is also the rename history. A `<name>`
-segment walks an `attrsOf` and hands the function an attrset per name. Reads
-are forced under `tryEval`, so a missing or throwing option reads as `null`.
-`enable` defaults to `services.foo.enable`; set `enable = [ "programs.foo.enable" ]`
-when the predicate lives elsewhere.
+`nix/adapters/foo.nix`. First candidate present wins, a missing one reads
+`null`, `<name>` walks an `attrsOf`. Enabled by `services.foo.enable` unless
+`enable` says otherwise.
 
 ## Audit
 
@@ -129,13 +106,6 @@ when the predicate lives elsewhere.
 nix run github:kucendro/nixdiag#audit
 ```
 
-Fetches `options.json` for `nixos-unstable` and `nixos-25.05`, without
-evaluating anything, and prints one row per read: `ok`, `renamed` when a
-later candidate matched, `unaudited` under a freeform `settings` option,
-`broken` when none exists. Channels are positional arguments. A weekly
-workflow files the table as the "adapter audit" issue and fails on `broken`.
-
-## Zero topology
-
-The topology renders hosts with their firewall ports and no edges, plus a
-note on stderr pointing here. Every other page is unaffected.
+Checks every read against `options.json` of `nixos-unstable` and
+`nixos-25.05`: `ok`, `renamed`, `unaudited`, `broken`. Weekly on GitHub as
+the "adapter audit" issue.
