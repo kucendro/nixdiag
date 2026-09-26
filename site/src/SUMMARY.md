@@ -2,7 +2,7 @@
 
 - [Overview](./index.md)
 - [Quickstart](./quickstart.md)
-- [Annotations](./annotations.md)
+- [Topology](./topology.md)
 - [Build and serve](./build.md)
 - [CLI](./cli.md)
 - [Live demo](./demo.md)
