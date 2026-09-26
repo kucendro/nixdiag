@@ -103,9 +103,11 @@ Unresolved fails the build.
 ## Audit
 
 ```sh
-nix run github:kucendro/nixdiag#audit
+nix run github:kucendro/nixdiag#audit -- nixos-unstable github:NixOS/nixpkgs/master
 ```
 
-Checks every read against `options.json` of `nixos-unstable` and
-`nixos-25.05`: `ok`, `renamed`, `unaudited`, `broken`. Weekly on GitHub as
-the "adapter audit" issue.
+Checks every read against `options.json`, downloaded for a channel or built
+for any nixpkgs ref: `ok`, `renamed`, `unaudited`, `broken`; `--json` for
+rows. Every Monday the monitor workflow runs it and the fixture render
+against `master`, `nixos-unstable` and `nixos-25.05`, and records both on
+the `data` branch.

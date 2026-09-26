@@ -16,4 +16,5 @@ to_entries[]
 | to_entries[]
 | .key as $read
 | (.value | status) as [$status, $path]
-| "| \($adapter) | \($read) | \($channel) | \($status) | `\($path)` |"
+| if $format == "json" then { adapter: $adapter, read: $read, ref: $ref, status: $status, path: $path }
+  else "| \($adapter) | \($read) | \($ref) | \($status) | `\($path)` |" end
