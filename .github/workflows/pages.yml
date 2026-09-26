@@ -2,7 +2,10 @@ name: pages
 
 on:
   push:
-    branches: [main, data]
+    branches: [main]
+  workflow_run:
+    workflows: [monitor]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
