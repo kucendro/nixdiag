@@ -1,8 +1,5 @@
 name: pages
 
-# Gitea is canonical; this runs on the GitHub mirror to publish site/ plus the
-# fixture's demo wiki. Artifact upload, so there is no gh-pages branch for the
-# push mirror to prune.
 on:
   push:
     branches: [main]
