@@ -4,67 +4,33 @@
 
 ```sh
 cd ~/my-nix-config
-nix run github:kucendro/nixdiag -- gen --flake .
+nix run github:kucendro/nixdiag
 ```
 
-That writes `docs/` next to your flake. Nothing is required in the flake
-itself: with zero annotations you still get host boxes with their open ports,
-the module tree and the whole wiki.
-
-Build the book with mdbook, or let [mkDocs](./build.md) do it in a derivation:
-
-```sh
-nix run nixpkgs#mdbook -- serve docs/wiki
-```
+Prints the store path of the docs. Open `wiki/book/index.html` in it.
 
 ## Start a new flake
 
 ```sh
 nix flake init -t github:kucendro/nixdiag
+nix build .#docs
 ```
 
-The template flake has a `nixdiag` output for CLI defaults and a
-`packages.x86_64-linux.docs` built with `nixdiag.lib.mkDocs`.
-
-## Add the first annotation
-
-Edges and endpoints come from comments in your own module files:
+## First override
 
 ```nix
 {
-  #: mesh-control
-  #: name hs.example.com
-  #: expose 443 public name=hs.example.com
-  services.headscale = {
-    enable = true;
-    port = 8080;
-  };
+  nixdiag.units.nginx.role = "gateway";
+  nixdiag.units.exporter.connections = [ { to = "grafana"; label = "metrics"; } ];
 }
 ```
 
-Headscale is now a node in the topology, linked to the internet cloud, with a
-row on the Endpoints page. Point something at it:
-
-```nix
-{
-  #: proxy
-  services.nginx = {
-    enable = true;
-    #: -> headscale hs :8080
-    virtualHosts."hs.example.com".locations."/".proxyPass = "http://127.0.0.1:8080";
-  };
-}
-```
-
-Full grammar: [Annotations](./annotations.md).
+More in [Topology](./topology.md).
 
 ## Keep it honest in CI
 
-```sh
-nixdiag check --flake .
+```nix
+checks.x86_64-linux.docs = self.packages.x86_64-linux.docs;
 ```
 
-`check` re-renders to a temp dir and diffs against the committed output, so a
-config change that outdates the docs fails the build. To skip committing
-generated files at all, build the docs as a derivation instead and drop
-`check`: see [Build and serve](./build.md).
+An unresolved connection fails `nix flake check`.

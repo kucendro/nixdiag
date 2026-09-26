@@ -1,39 +1,21 @@
 # nixdiag
 
-Static infrastructure docs from any Nix flake. nixdiag reads your
-`nixosConfigurations` and `darwinConfigurations` and renders a data-flow
-topology diagram, a module tree and an mdBook wiki.
+Static infrastructure docs from any Nix flake: topology, module tree, flake
+inputs and an mdBook wiki from `nixosConfigurations` and
+`darwinConfigurations`.
 
 ```sh
-nix run github:kucendro/nixdiag -- gen --flake .
+nix run github:kucendro/nixdiag
 ```
 
-The topology comes from `#:` comments in your own module files, so it records
-intent ("this is my proxy, it fronts grafana") instead of guessing from option
-shapes that nixpkgs reshapes every month. There are no service adapters and no
-built-in knowledge of tailscale, nginx or prometheus.
+Topology comes from the NixOS module system. Adapters read the options you
+already set, `nixdiag.*` options override them.
 
 ![Data-flow topology](./topology.svg)
 
-The module tree follows `imports` lists and plain `import ./x.nix` expressions
-alike:
-
 ![Module tree](./modules.svg)
 
-Both are the two-host test fixture, published in full as the
-[live demo](./demo.md). It happens to run headscale and tailscale; its mesh
-node is `services.tailscale.enable = true` plus three comment lines, so the
-same graph comes out for wireguard, nebula or a mesh of your own. Roles are any
-word you like, and only the scope vocabulary (`public`, `mesh`, `lan`) is
-fixed.
-
-## What it reads
-
-From eval, via a single generic projection: enabled services and programs with
-their defining files, firewall ports, users, platform, stateVersion, package
-count. From the repo source: `#:` annotations, `/** */` doc comments, and
-`flake.lock` — a plain file read, so the input graph costs no eval and no
-build.
+Both are the two-host fixture, the [live demo](./demo.md).
 
 ## What you get
 
@@ -52,7 +34,7 @@ build.
 
 ## Next
 
-- [Quickstart](./quickstart.md): first render in two commands.
-- [Annotations](./annotations.md): the `#:` grammar, frozen since 2026-08-26.
-- [Build and serve](./build.md): `mkDocs` as a pure derivation, nginx module.
-- [CLI](./cli.md): `facts`, `render`, `gen`, `check`.
+- [Quickstart](./quickstart.md)
+- [Topology](./topology.md): adapters, `nixdiag.*` options, overrides
+- [Build and serve](./build.md): `mkDocs`, the nginx module
+- [CLI](./cli.md): `render`
