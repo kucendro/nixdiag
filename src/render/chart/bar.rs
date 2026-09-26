@@ -170,16 +170,16 @@ mod tests {
             )],
             &D2Style::default(),
         );
-        assert!(two_hosts.contains("shared by every host"));
-        assert!(two_hosts.contains("unique to this host"));
-        assert!(!two_hosts.contains("shared by some"), "{two_hosts}");
+        assert!(two_hosts.contains(Band::Shared.legend()));
+        assert!(two_hosts.contains(Band::Unique.legend()));
+        assert!(!two_hosts.contains(Band::Partial.legend()), "{two_hosts}");
 
         let alone = bars(
             "t",
             &[row("a", vec![(Band::Solid, 10)], "10 B")],
             &D2Style::default(),
         );
-        assert!(!alone.contains("closure<"), "{alone}");
+        assert!(!alone.contains(Band::Solid.legend()), "{alone}");
     }
 
     #[test]

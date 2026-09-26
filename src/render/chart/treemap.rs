@@ -225,12 +225,8 @@ mod tests {
             ],
             &D2Style::default(),
         );
-        for key in [
-            "unique to this host",
-            "shared by every host",
-            "everything smaller",
-        ] {
-            assert!(svg.contains(key), "missing {key} in {svg}");
+        for key in [Band::Unique, Band::Shared, Band::Rest] {
+            assert!(svg.contains(key.legend()), "missing {key:?} in {svg}");
         }
     }
 

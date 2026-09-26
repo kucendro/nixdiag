@@ -1,3 +1,4 @@
+pub mod chart;
 pub mod d2;
 pub mod wiki;
 

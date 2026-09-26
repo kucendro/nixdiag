@@ -1,4 +1,5 @@
 use super::{color, gutter, legend, rect, svg_open, text, D2Style, Key, LEGEND_H, PAD, W};
+use crate::text::chart as t;
 use std::cmp::Ordering;
 
 const ROW_H: u64 = 20;
@@ -7,11 +8,11 @@ const TICK_H: u64 = 11;
 
 const DIRECT: Key = Key {
     color: ("chartMark", "#4a76c4", "#7fa7e8"),
-    label: "declared by this flake",
+    label: t::DIRECT,
 };
 const TRANSITIVE: Key = Key {
     color: ("chartMuted", "#777777", "#8b949e"),
-    label: "pulled in by an input",
+    label: t::TRANSITIVE,
 };
 
 pub struct Mark {
@@ -214,18 +215,15 @@ mod tests {
             &[mark("a", Some(1), true), mark("b", Some(2), false)],
             &D2Style::default(),
         );
-        assert!(mixed.contains("declared by this flake"), "{mixed}");
-        assert!(mixed.contains("pulled in by an input"), "{mixed}");
+        assert!(mixed.contains(t::DIRECT), "{mixed}");
+        assert!(mixed.contains(t::TRANSITIVE), "{mixed}");
 
         let all_direct = timeline(
             "t",
             &[mark("a", Some(1), true), mark("b", Some(2), true)],
             &D2Style::default(),
         );
-        assert!(
-            !all_direct.contains("declared by this flake"),
-            "{all_direct}"
-        );
+        assert!(!all_direct.contains(t::DIRECT), "{all_direct}");
     }
 
     #[test]

@@ -8,6 +8,7 @@ pub use treemap::{treemap, Tile};
 
 use super::d2::{color, D2Style};
 use super::out::MD_MARKER;
+use crate::text::chart as t;
 
 const W: u64 = 720;
 const PAD: u64 = 8;
@@ -33,11 +34,11 @@ pub enum Band {
 impl Band {
     fn legend(self) -> &'static str {
         match self {
-            Band::Solid => "closure",
-            Band::Shared => "shared by every host",
-            Band::Partial => "shared by some",
-            Band::Unique => "unique to this host",
-            Band::Rest => "everything smaller",
+            Band::Solid => t::CLOSURE,
+            Band::Shared => t::SHARED,
+            Band::Partial => t::PARTIAL,
+            Band::Unique => t::UNIQUE,
+            Band::Rest => t::REST,
         }
     }
 
