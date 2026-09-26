@@ -26,9 +26,10 @@ jobs:
       - run: |
           nixpkgs="github:NixOS/nixpkgs/${{ matrix.ref }}"
           rev=$(nix flake metadata --json "$nixpkgs" | jq -r .revision)
-          facts=$(nix build .#fixture-facts --override-input nixpkgs "$nixpkgs" --no-write-lock-file --no-link --print-out-paths)
-          nix run .#nixdiag -- render --facts "$facts" --repo tests/fixture --out out --no-svg
-          if diff tests/reference/topology.d2 out/topology.d2; then eval=ok; else eval=changed; fi
+          topology() {
+            jq -S '.hosts | map_values(.topology)' "$(nix build .#fixture-facts "$@" --no-write-lock-file --no-link --print-out-paths)"
+          }
+          if diff <(topology) <(topology --override-input nixpkgs "$nixpkgs"); then eval=ok; else eval=changed; fi
           nix run .#audit -- --json "$nixpkgs" > audit.json || true
           jq -n --arg ref "${{ matrix.ref }}" --arg rev "$rev" --arg date "$(date -u +%F)" --arg eval "$eval" \
             --slurpfile audit audit.json '{ ref: $ref, rev: $rev, date: $date, eval: $eval, audit: $audit }' > record.json
@@ -48,10 +49,10 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: records
+          path: ${{ runner.temp }}/records
 
       - run: |
-          for f in records/*/record.json; do
+          for f in "$RUNNER_TEMP"/records/*/record.json; do
             ref=$(jq -r .ref "$f")
             mkdir -p "$ref"
             cp "$f" "$ref/$(jq -r .date "$f").json"
@@ -62,4 +63,4 @@ jobs:
           git commit -m "monitor $(date -u +%F)"
           git push
 
-      - run: jq -es 'all(.[]; .eval == "ok" and all(.audit[]; .status != "broken"))' records/*/record.json
+      - run: jq -es 'all(.[]; .eval == "ok" and all(.audit[]; .status != "broken"))' "$RUNNER_TEMP"/records/*/record.json
