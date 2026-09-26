@@ -7,23 +7,17 @@ rec {
     }:
     let
       pick = names: if hosts == null then names else builtins.filter (n: builtins.elem n hosts) names;
-      project =
-        kind: cfgs:
-        builtins.listToAttrs (
-          map (n: {
-            name = n;
-            value = import ./projections/core.nix {
-              host = cfgs.${n};
-              inherit kind;
-            };
-          }) (pick (builtins.attrNames cfgs))
-        );
+      factsOf =
+        cfg:
+        if cfg.options ? nixdiag then
+          cfg.config.nixdiag.facts
+        else
+          (cfg.extendModules { modules = [ ./module/facts.nix ]; }).config.nixdiag.facts;
+      project = cfgs: lib.genAttrs (pick (builtins.attrNames cfgs)) (n: factsOf cfgs.${n});
     in
     {
       schema = 2;
-      hosts =
-        project "nixos" (flake.nixosConfigurations or { })
-        // project "darwin" (flake.darwinConfigurations or { });
+      hosts = project (flake.nixosConfigurations or { }) // project (flake.darwinConfigurations or { });
     };
 
   mkDocs =

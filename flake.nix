@@ -40,7 +40,7 @@
 
       overlays.default = final: prev: { nixdiag = (packagesOf final).nixdiag; };
 
-      nixosModules.default = ./nix/module.nix;
+      nixosModules.default = ./nix/module;
 
       templates.default = {
         path = ./templates/default;
