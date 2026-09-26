@@ -16,7 +16,6 @@ use services::page_services;
 
 use super::d2::D2Style;
 use super::out::{Out, MD_MARKER};
-use super::DocComments;
 use crate::closures::Closures;
 use crate::facts::{Facts, NixosHost};
 use crate::source::flakelock::Lock;
@@ -29,7 +28,6 @@ use std::path::{Path, PathBuf};
 pub struct WikiData<'a> {
     pub facts: &'a Facts,
     pub repo: &'a Repo,
-    pub docs: &'a DocComments,
     pub model: &'a Model,
     pub lock: Option<&'a Lock>,
     pub closures: Option<&'a Closures>,
@@ -66,8 +64,8 @@ pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -
     page_summary(out, &src, &extra, d.lock.is_some(), d.closures.is_some())?;
     page_index(out, &src)?;
     page_architecture(out, &src)?;
-    page_hosts(out, &src, d.facts, d.repo, d.docs, d.closures)?;
-    page_services(out, &src, d.facts, d.repo, d.docs)?;
+    page_hosts(out, &src, d.facts, d.repo, d.closures)?;
+    page_services(out, &src, d.facts, d.repo)?;
     page_endpoints(out, &src, d.facts, d.model)?;
     if let Some(lock) = d.lock {
         page_inputs(out, &src, lock, style)?;

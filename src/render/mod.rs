@@ -11,48 +11,12 @@ pub use out::Out;
 pub use wiki::WikiOpts;
 
 use crate::closures::{Closures, CLOSURES_SCHEMA};
-use crate::facts::{Facts, Host, SCHEMA};
+use crate::facts::{Facts, SCHEMA};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
-use crate::source::{doccomment, imports};
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
-use std::collections::HashMap;
 use std::path::PathBuf;
-
-#[derive(Default)]
-pub struct DocComments {
-    pub hosts: HashMap<String, String>,
-    pub files: HashMap<String, String>,
-}
-
-fn collect_docs(facts: &Facts, repo: &Repo) -> DocComments {
-    let mut docs = DocComments::default();
-    let flake_text = std::fs::read_to_string(repo.root.join("flake.nix")).unwrap_or_default();
-    for (host, f) in &facts.hosts {
-        for entry in imports::host_entry_modules(host, &flake_text, repo) {
-            if let Some(doc) = doccomment::from_file(&entry) {
-                docs.hosts.insert(host.clone(), doc);
-                break;
-            }
-        }
-        let (services, programs) = match f {
-            Host::Nixos(n) => (&n.services, &n.programs),
-            Host::Darwin(d) => (&d.services, &d.programs),
-        };
-        for unit in services.iter().chain(programs) {
-            for rel in repo.repo_files(&unit.files) {
-                if let std::collections::hash_map::Entry::Vacant(e) = docs.files.entry(rel.clone())
-                {
-                    if let Some(doc) = doccomment::from_file(&repo.root.join(&rel)) {
-                        e.insert(doc);
-                    }
-                }
-            }
-        }
-    }
-    docs
-}
 
 pub struct RenderOpts {
     pub repo: PathBuf,
@@ -101,7 +65,6 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
     if let Some(lock) = &lock {
         inputs::generate(lock, &mut out, opts.svg, &opts.style)?;
     }
-    let docs = collect_docs(facts, &repo);
     wiki::generate(
         &mut out,
         &opts.wiki,
@@ -109,7 +72,6 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
         &wiki::WikiData {
             facts,
             repo: &repo,
-            docs: &docs,
             model: &model,
             lock: lock.as_ref(),
             closures: opts.closures.as_ref(),

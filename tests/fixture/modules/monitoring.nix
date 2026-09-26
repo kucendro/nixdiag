@@ -9,6 +9,7 @@
   };
 
   nixdiag.units.grafana = {
+    description = "Dashboards over the exporter's metrics.";
     scope = "mesh";
     expose = [
       {

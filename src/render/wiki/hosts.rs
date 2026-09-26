@@ -1,7 +1,7 @@
+use super::super::out::Out;
 use super::{page, repo_services};
 use crate::closures::Closures;
 use crate::facts::{DarwinHost, Facts, Host, NixosHost};
-use crate::render::DocComments;
 use crate::source::repo::Repo;
 use crate::text::fill;
 use crate::text::wiki::{hosts as t, NONE};
@@ -22,14 +22,13 @@ pub(super) fn page_hosts(
     src: &Path,
     facts: &Facts,
     repo: &Repo,
-    docs: &DocComments,
     closures: Option<&Closures>,
 ) -> Result<()> {
     let mut o = vec![t::TITLE.to_string()];
     for (host, f) in &facts.hosts {
         match f {
-            Host::Nixos(n) => host_nixos(&mut o, host, n, repo, docs.hosts.get(host), closures),
-            Host::Darwin(d) => host_darwin(&mut o, host, d, docs.hosts.get(host)),
+            Host::Nixos(n) => host_nixos(&mut o, host, n, repo, closures),
+            Host::Darwin(d) => host_darwin(&mut o, host, d),
         }
     }
     page(out, &src.join("hosts.md"), &o)
@@ -40,13 +39,12 @@ fn host_nixos(
     host: &str,
     f: &NixosHost,
     repo: &Repo,
-    doc: Option<&String>,
     closures: Option<&Closures>,
 ) {
     let svcs = repo_services(f, repo);
     let ports = |ps: &[u32]| join_or_dash(&ps.iter().map(u32::to_string).collect::<Vec<_>>());
     o.push(fill(t::NIXOS, &[("host", host)]));
-    o.extend(doc.cloned());
+    o.extend(f.description.clone());
 
     let platform = if f.platform.is_empty() {
         t::UNKNOWN_PLATFORM
@@ -95,9 +93,13 @@ fn host_nixos(
     }
 }
 
-fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost, doc: Option<&String>) {
+fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
     o.push(fill(t::DARWIN, &[("host", host)]));
-    o.push(doc.cloned().unwrap_or_else(|| t::DARWIN_INTRO.into()));
+    o.push(
+        f.description
+            .clone()
+            .unwrap_or_else(|| t::DARWIN_INTRO.into()),
+    );
     for (title, items) in [
         (t::DAEMONS, &f.daemons),
         (t::AGENTS, &f.user_agents),
@@ -113,5 +115,3 @@ fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost, doc: Option<&Str
         }
     }
 }
-
-use super::super::out::Out;
