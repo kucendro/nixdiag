@@ -78,7 +78,11 @@ pub mod endpoints {
     pub const TITLE: &str = "# Endpoints";
     pub const TABLE: &str =
         "| Endpoint | Port | Scope | Host | Service |\n|---|---|---|---|---|\n{rows}";
-    pub const ROW: &str = "| `{endpoint}` | {port} | {scope} | {host} | {service} |";
+    pub const ROW: &str = "| {endpoint} | {port} | {scope} | {host} | {service} |";
+    pub const NAME: &str = "`{name}`";
+    pub const LINK: &str = "[`{name}`]({scheme}://{name}{port})";
+    pub const HTTP: &str = "http";
+    pub const HTTPS: &str = "https";
     pub const EMPTY: &str = "| — | — | — | — | — |";
     pub const UNNAMED: &str = "{host}:{port}";
     pub const UDP: &str = "/udp";
