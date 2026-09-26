@@ -5,6 +5,7 @@ mod inputs;
 mod modules;
 pub mod out;
 mod topology;
+mod unmask;
 mod wiki;
 
 pub use api::ApiOpts;
