@@ -5,6 +5,5 @@
 - [Annotations](./annotations.md)
 - [Cheat sheet](./syntax.md)
 - [Build and serve](./build.md)
-- [Data API](./api.md)
 - [CLI](./cli.md)
 - [Live demo](./demo.md)

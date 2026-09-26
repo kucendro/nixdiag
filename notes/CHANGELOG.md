@@ -20,7 +20,7 @@ immune — nothing is committed and the input is pinned.
 
 ## Unreleased
 
-Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
+Facts schema 2. Annotation grammar 1, frozen 2026-08-26.
 
 ### Fixed
 
@@ -42,60 +42,6 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
   from the binary itself, so the text a coding assistant is handed is the
   grammar this build parses. The same file is the site's cheat sheet page,
   and the template's `AGENTS.md` points at it.
-
-- **A published JSON API** (`api = true`, on by default), so a dashboard can
-  read what the wiki renders instead of scraping HTML. `api/v1/` carries
-  `hosts`, `services`, `topology`, `inputs`, `closures`, `snapshot` and an
-  OpenAPI 3.1 `openapi.json`. The version lives in the URL, so a future v2 is
-  served beside v1 rather than replacing it. No reference viewer is bundled;
-  the spec is a plain OpenAPI document any viewer reads from the URL.
-
-  This is a **fourth versioned surface** and it fails unlike the other three.
-  The facts schema is fatal on skew because both halves ship from one flake,
-  but an API reader is a third party that can only take what it is handed — so
-  nixdiag never validates it, and the reader's contract is to tolerate unknown
-  keys and treat an unrecognised `meta.schema` as newer than it understands.
-  Adding a key does not bump the schema; removing or renaming one does. The bar
-  is higher than for a page: a reworded heading reads oddly, a renamed key
-  breaks a parser.
-
-  Schemas in `openapi.json` are *derived* from the same structs that serialise
-  the payloads, so the document cannot describe a field the API does not emit.
-  Every document except `snapshot.json` takes part in `nixdiag check`.
-  `topology.json` is the one a reader could not compute for itself, since
-  resolving `#:` annotations needs rnix over the repo source. Closure figures
-  are per package rather than per store path — printing a path would make the
-  docs derivation retain the closure it describes.
-
-  Bundling a reference viewer was tried and rejected: 3.6 MB against 204 KB of
-  actual documents, in a derivation `services.nixdiag.serve` puts into the
-  serving host's system closure.
-
-- **A Data API page in the generated wiki**, listing the endpoints this build
-  published and linking to the reference. Without it the API was undiscoverable
-  from the thing people actually open: nothing in a served wiki said `/api/`
-  existed. Present only when `api` is on, and it lists exactly the documents
-  that were written, so it can never advertise an endpoint that is not there.
-  Note this adds a page to every consumer's committed `docs/`.
-
-- **Snapshot history** (`services.nixdiag.serve.history`), a systemd oneshot run
-  on activation that files each deployed revision's `snapshot.json` under
-  `/var/lib/nixdiag/history` and serves it at `/api/v1/history/`. No daemon, no
-  timer, no database, and nixdiag never reads it back. It lives in the module
-  rather than the docs because a derivation is immutable and cannot accumulate
-  across deploys. `historyLimit` bounds it.
-
-  Revision identity is always **supplied, never discovered**: `render` invokes
-  no git and reads no clock. `mkDocs` defaults it from the flake; mode A takes
-  `--revision` or a `nixdiag.revision` flake attr, since the revision of the
-  commit that will contain `docs/` cannot be known while writing it.
-
-- `services.nixdiag.serve.allowOrigins` for cross-origin dashboards.
-  Deliberately a list rather than a wildcard: this vhost is usually mesh-only,
-  and `*` would turn "reachable from my tailnet" into "readable by any page a
-  browser on my tailnet visits". More than one origin generates an nginx `map`
-  plus `Vary: Origin`, without which a cache in front would serve one origin's
-  response to another.
 
 - **Closure metrics** (opt-in, `lib.mkDocs { closures = true; }`). A Closures
   wiki page with per-host totals, the largest contributing packages, and a
@@ -246,6 +192,10 @@ Facts schema 2. Annotation grammar 1, frozen 2026-08-26. Data API v1, schema 1.
   `--suffix`.
 
 ### Removed
+
+- The JSON API, its snapshot history, CORS and the `services.nixdiag.timer`
+  module. Mode B serves a derivation, so nothing needed a scheduled checkout,
+  and no reader of the API existed.
 
 - All service-specific extraction and the Rust topology heuristics: nginx
   upstream resolution, the headscale address book, and the
