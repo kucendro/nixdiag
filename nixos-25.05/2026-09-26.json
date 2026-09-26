@@ -1,0 +1,113 @@
+{
+  "ref": "nixos-25.05",
+  "rev": "ac62194c3917d5f474c1a844b6fd6da2db95077d",
+  "date": "2026-09-26",
+  "eval": "changed",
+  "audit": [
+    {
+      "adapter": "grafana",
+      "read": "domain",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.grafana.settings.server.domain"
+    },
+    {
+      "adapter": "grafana",
+      "read": "port",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.grafana.settings.server.http_port"
+    },
+    {
+      "adapter": "headscale",
+      "read": "port",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.headscale.port"
+    },
+    {
+      "adapter": "headscale",
+      "read": "url",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.headscale.settings.server_url"
+    },
+    {
+      "adapter": "nginx",
+      "read": "addSSL",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.virtualHosts.<name>.addSSL"
+    },
+    {
+      "adapter": "nginx",
+      "read": "defaultListenAddresses",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.defaultListenAddresses"
+    },
+    {
+      "adapter": "nginx",
+      "read": "firewall",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "networking.firewall.enable"
+    },
+    {
+      "adapter": "nginx",
+      "read": "forceSSL",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.virtualHosts.<name>.forceSSL"
+    },
+    {
+      "adapter": "nginx",
+      "read": "listen",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.virtualHosts.<name>.listen"
+    },
+    {
+      "adapter": "nginx",
+      "read": "listenAddresses",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.virtualHosts.<name>.listenAddresses"
+    },
+    {
+      "adapter": "nginx",
+      "read": "onlySSL",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.virtualHosts.<name>.onlySSL"
+    },
+    {
+      "adapter": "nginx",
+      "read": "proxyPass",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.nginx.virtualHosts.<name>.locations.<name>.proxyPass"
+    },
+    {
+      "adapter": "nginx",
+      "read": "tcp",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "networking.firewall.allowedTCPPorts"
+    },
+    {
+      "adapter": "tailscale",
+      "read": "set",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.tailscale.extraSetFlags"
+    },
+    {
+      "adapter": "tailscale",
+      "read": "up",
+      "ref": "github:NixOS/nixpkgs/nixos-25.05",
+      "status": "ok",
+      "path": "services.tailscale.extraUpFlags"
+    }
+  ]
+}
