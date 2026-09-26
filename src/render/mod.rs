@@ -16,6 +16,7 @@ use crate::source::annotations::{self, Sev};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use crate::source::{doccomment, imports};
+use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -67,24 +68,26 @@ pub struct RenderOpts {
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
+    let mismatch = |template: &str, found: u32, expected: u32| {
+        fill(
+            template,
+            &[
+                ("found", &found.to_string()),
+                ("version", env!("CARGO_PKG_VERSION")),
+                ("expected", &expected.to_string()),
+            ],
+        )
+    };
     if facts.schema != SCHEMA {
-        bail!(
-            "facts.json declares schema {}, but nixdiag {} implements schema {SCHEMA} — \
-             the projection that produced these facts comes from a different nixdiag \
-             revision; pin `lib` and the binary to the same one",
-            facts.schema,
-            env!("CARGO_PKG_VERSION")
-        );
+        bail!(mismatch(m::SCHEMA_MISMATCH, facts.schema, SCHEMA));
     }
     if let Some(c) = &opts.closures {
         if c.schema != CLOSURES_SCHEMA {
-            bail!(
-                "closures.json declares schema {}, but nixdiag {} implements schema \
-                 {CLOSURES_SCHEMA} — the derivation that produced it comes from a \
-                 different nixdiag revision; pin `lib` and the binary to the same one",
+            bail!(mismatch(
+                m::CLOSURES_SCHEMA_MISMATCH,
                 c.schema,
-                env!("CARGO_PKG_VERSION")
-            );
+                CLOSURES_SCHEMA
+            ));
         }
     }
     facts.normalize();
@@ -95,22 +98,22 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
     let deny_deprecated = opts.deny.iter().any(|d| d == "deprecated");
     let mut errors = 0;
     for d in &diags {
-        if d.sev == Sev::Error || deny_deprecated {
+        let template = if d.sev == Sev::Error || deny_deprecated {
             errors += 1;
-            eprintln!("error: {d}");
+            m::ERROR
         } else {
-            eprintln!("warning: {d}");
-        }
+            m::WARNING
+        };
+        eprintln!("{}", fill(template, &[("message", &d.to_string())]));
     }
     if errors > 0 {
-        bail!("{errors} annotation error(s)");
+        bail!(fill(
+            m::ANNOTATION_ERRORS,
+            &[("count", &errors.to_string())]
+        ));
     }
     if model.total == 0 {
-        eprintln!(
-            "note: no `#:` annotations found — the topology shows hosts and \
-             firewall ports only. Annotate your modules to draw the data flow \
-             (see the Annotations section of the nixdiag README)."
-        );
+        eprintln!("{}", m::NO_ANNOTATIONS);
     }
 
     topology::generate(facts, &model, &mut out, opts.svg, &opts.style)?;

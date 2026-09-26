@@ -2,6 +2,7 @@ use super::{abs, RenderArgs};
 use crate::closures::Closures;
 use crate::render::{d2, RenderOpts, WikiOpts};
 use crate::source::annotations;
+use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::path::PathBuf;
 
@@ -10,7 +11,10 @@ fn pairs(specs: &[String], flag: &str, shape: &str) -> Result<Vec<(String, Strin
         .iter()
         .map(|s| match s.split_once('=') {
             Some((k, v)) if !k.is_empty() && !v.is_empty() => Ok((k.to_string(), v.to_string())),
-            _ => bail!("{flag} expects {shape}, got: {s}"),
+            _ => bail!(fill(
+                m::BAD_PAIR,
+                &[("flag", flag), ("shape", shape), ("value", s)]
+            )),
         })
         .collect()
 }
@@ -47,7 +51,10 @@ fn to_style(r: &RenderArgs) -> Result<d2::D2Style> {
     for (n, _) in &colors {
         if !d2::PALETTE.iter().any(|(p, ..)| p == n) {
             let known: Vec<&str> = d2::PALETTE.iter().map(|(p, ..)| *p).collect();
-            bail!("unknown color {n}; palette: {}", known.join(", "));
+            bail!(fill(
+                m::UNKNOWN_COLOR,
+                &[("name", n), ("palette", &known.join(", "))]
+            ));
         }
     }
     Ok(d2::D2Style {

@@ -1,6 +1,7 @@
 use super::unmask::unmask;
 use crate::render::out::Out;
 use crate::text::d2::{DIRECTION, HEADER};
+use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -83,20 +84,25 @@ pub fn write_and_render(
     }
     let run = cmd.arg(&d2_path).arg(&svg_path).output();
     match run {
-        Err(e) if e.kind() == ErrorKind::NotFound => {
-            println!("(d2 binary not on PATH -- skipped SVG render)");
-        }
-        Err(e) => bail!("d2 render of {stem}.d2 failed: {e}"),
-        Ok(o) if !o.status.success() => {
-            bail!(
-                "d2 render of {stem}.d2 failed:\n{}",
-                String::from_utf8_lossy(&o.stderr)
-            );
-        }
+        Err(e) if e.kind() == ErrorKind::NotFound => println!("{}", m::NO_D2),
+        Err(e) => bail!(fill(
+            m::D2_FAILED,
+            &[("stem", stem), ("error", &e.to_string())]
+        )),
+        Ok(o) if !o.status.success() => bail!(fill(
+            m::D2_FAILED_OUTPUT,
+            &[
+                ("stem", stem),
+                ("stderr", &String::from_utf8_lossy(&o.stderr))
+            ]
+        )),
         Ok(_) => {
             let svg = std::fs::read_to_string(&svg_path)?;
             std::fs::write(&svg_path, unmask(&svg))?;
-            println!("wrote {}", svg_path.display());
+            println!(
+                "{}",
+                fill(m::WROTE, &[("path", &svg_path.display().to_string())])
+            );
         }
     }
     Ok(())

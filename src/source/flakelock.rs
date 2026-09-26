@@ -4,6 +4,7 @@ mod tests;
 
 pub use dups::Dup;
 
+use crate::text::{fill, messages as m};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -88,14 +89,14 @@ impl Lock {
             Ok(lock) => {
                 if lock.version != 0 && lock.version != 7 {
                     eprintln!(
-                        "note: flake.lock is version {}, expected 7 — reading it anyway",
-                        lock.version
+                        "{}",
+                        fill(m::LOCK_VERSION, &[("version", &lock.version.to_string())])
                     );
                 }
                 Some(lock)
             }
             Err(e) => {
-                eprintln!("  ! flake.lock is not readable as a lock file, skipping: {e}");
+                eprintln!("{}", fill(m::LOCK_UNREADABLE, &[("error", &e.to_string())]));
                 None
             }
         }

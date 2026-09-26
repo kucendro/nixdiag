@@ -4,7 +4,7 @@ use crate::facts::{Facts, Host};
 use crate::source::imports::{build_import_graph, host_entry_modules, rel_str};
 use crate::source::repo::{rel_from_store, Repo};
 use crate::text::d2::modules as t;
-use crate::text::fill;
+use crate::text::{fill, messages as m};
 use crate::util::sanitize;
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet};
@@ -83,7 +83,7 @@ pub fn generate(
     let mut import_edges: BTreeSet<(String, String)> = BTreeSet::new();
     let flake_path = repo.root.join("flake.nix");
     let flake_text = std::fs::read_to_string(&flake_path)
-        .with_context(|| format!("reading {}", flake_path.display()))?;
+        .with_context(|| fill(m::READING, &[("path", &flake_path.display().to_string())]))?;
 
     for (host, f) in &facts.hosts {
         let entries = host_entry_modules(host, &flake_text, repo);

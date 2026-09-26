@@ -1,7 +1,7 @@
 use super::super::out::Out;
 use super::page;
-use crate::text::fill;
 use crate::text::wiki::{summary as t, BOOK, INDEX};
+use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
@@ -36,18 +36,24 @@ pub(super) fn copy_extra_pages(
             .map(|f| f.to_string_lossy().into_owned())
             .unwrap_or_default();
         if fname.is_empty() {
-            bail!("--extra-page {title}: source has no file name");
+            bail!(fill(m::EXTRA_PAGE_NO_NAME, &[("title", title)]));
         }
         let dest_rel = src.join(&fname);
         let dest = out.root.join(&dest_rel);
         if !source.exists() {
-            bail!("--extra-page {title}: {} not found", source.display());
+            bail!(fill(
+                m::EXTRA_PAGE_MISSING,
+                &[("title", title), ("path", &source.display().to_string())]
+            ));
         }
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent)?;
         }
         std::fs::copy(source, &dest)?;
-        println!("wrote {}", dest.display());
+        println!(
+            "{}",
+            fill(m::WROTE, &[("path", &dest.display().to_string())])
+        );
         links.push((title.clone(), fname));
     }
     Ok(links)

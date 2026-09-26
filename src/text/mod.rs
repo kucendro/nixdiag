@@ -1,5 +1,7 @@
 pub mod chart;
+pub mod cli;
 pub mod d2;
+pub mod messages;
 pub mod wiki;
 
 pub fn fill(template: &str, vars: &[(&str, &str)]) -> String {

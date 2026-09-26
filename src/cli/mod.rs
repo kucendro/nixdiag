@@ -4,17 +4,14 @@ use crate::closures::Closures;
 use crate::facts::Facts;
 use crate::render::render_all;
 use crate::source::annotations;
+use crate::text::{cli as t, fill, messages as m};
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(
-    name = "nixdiag",
-    version = annotations::VERSION,
-    about = "Static infrastructure docs from any Nix flake"
-)]
+#[command(name = "nixdiag", version = annotations::VERSION, about = t::ABOUT)]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -22,71 +19,52 @@ struct Cli {
 
 #[derive(Args)]
 pub struct RenderArgs {
-    /// facts.json path, or - for stdin
-    #[arg(long)]
+    #[arg(long, help = t::FACTS)]
     facts: PathBuf,
-    /// Repo source the facts refer to
-    #[arg(long, default_value = ".")]
+    #[arg(long, default_value = ".", help = t::REPO)]
     repo: PathBuf,
-    /// closures.json from `mkDocs { closures = true; }`, adding the
-    /// Closures page
-    #[arg(long)]
+    #[arg(long, help = t::CLOSURES)]
     closures: Option<PathBuf>,
-    #[arg(long, default_value = "docs")]
+    #[arg(long, default_value = "docs", help = t::OUT)]
     out: PathBuf,
-    /// Wiki title (used only when seeding book.toml)
-    #[arg(long)]
+    #[arg(long, help = t::TITLE)]
     title: Option<String>,
-    /// Extra hand-written wiki page as TITLE=FILE; repeatable
-    #[arg(long = "extra-page", value_name = "TITLE=FILE")]
+    #[arg(long = "extra-page", value_name = "TITLE=FILE", help = t::EXTRA_PAGE)]
     extra_pages: Vec<String>,
-    /// SUMMARY entry as TITLE=NAME.md for a page written into wiki/src by
-    /// another tool; repeatable
-    #[arg(long = "extra-link", value_name = "TITLE=NAME.md")]
+    #[arg(long = "extra-link", value_name = "TITLE=NAME.md", help = t::EXTRA_LINK)]
     extra_links: Vec<String>,
-    /// Skip SVG rendering (d2)
-    #[arg(long)]
+    #[arg(long, help = t::NO_SVG)]
     no_svg: bool,
-    /// Color theme: dark (default) or light
-    #[arg(long, value_parser = ["light", "dark"])]
+    #[arg(long, value_parser = ["light", "dark"], help = t::THEME)]
     theme: Option<String>,
-    /// Diagram canvas fill (default transparent)
-    #[arg(long)]
+    #[arg(long, help = t::BACKGROUND)]
     background: Option<String>,
-    /// Palette override as NAME=#HEX (names: the vars block in the d2 output,
-    /// plus chartShared/chartPartial/chartUnique/chartInk/chartMuted/
-    /// chartTrack for the SVG charts); repeatable
-    #[arg(long = "color", value_name = "NAME=#HEX")]
+    #[arg(long = "color", value_name = "NAME=#HEX", help = t::COLOR)]
     colors: Vec<String>,
-    /// Domain suffix for `@KEY` in annotation fqdns, as KEY=DOMAIN;
-    /// repeatable
-    #[arg(long = "domain", value_name = "KEY=DOMAIN")]
+    #[arg(long = "domain", value_name = "KEY=DOMAIN", help = t::DOMAIN)]
     domains: Vec<String>,
-    /// Annotation grammar edition the repo is written against (default: the
-    /// edition this binary implements)
-    #[arg(long, value_name = "N")]
+    #[arg(long, value_name = "N", help = t::GRAMMAR)]
     grammar: Option<u32>,
-    /// Promote a warning category to an error; repeatable
-    #[arg(long = "deny", value_name = "CATEGORY", value_parser = ["deprecated"])]
+    #[arg(long = "deny", value_name = "CATEGORY", value_parser = ["deprecated"], help = t::DENY)]
     deny: Vec<String>,
 }
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Render docs from facts.json (needs the repo source, not nix)
+    #[command(about = t::RENDER)]
     Render(Box<RenderArgs>),
-    /// Print the annotation cheat sheet (SYNTAX.md) this binary parses
+    #[command(about = t::SYNTAX)]
     Syntax,
 }
 
 pub fn run() -> Result<()> {
     match Cli::parse().cmd {
         Cmd::Render(r) => {
-            let mut facts: Facts = read_json(&r.facts).context("parsing facts.json")?;
+            let mut facts: Facts = read_json(&r.facts).context(m::PARSING_FACTS)?;
             let closures: Option<Closures> = r
                 .closures
                 .as_deref()
-                .map(|p| read_json(p).context("parsing closures.json"))
+                .map(|p| read_json(p).context(m::PARSING_CLOSURES))
                 .transpose()?;
             render_all(&mut facts, &options::to_render_opts(&r, closures)?)
         }
@@ -101,7 +79,8 @@ fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
     let text = if path == Path::new("-") {
         std::io::read_to_string(std::io::stdin())?
     } else {
-        std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?
+        std::fs::read_to_string(path)
+            .with_context(|| fill(m::READING, &[("path", &path.display().to_string())]))?
     };
     Ok(serde_json::from_str(&text)?)
 }

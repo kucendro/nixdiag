@@ -1,3 +1,4 @@
+use crate::text::{fill, messages as m};
 use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,11 +21,13 @@ impl Out {
         if path.exists() {
             let existing = fs::read_to_string(&path).unwrap_or_default();
             if !existing.contains(MARKER_WORD) {
-                bail!(
-                    "refusing to overwrite {}: it exists but has no '{MARKER_WORD}' marker \
-                     (looks hand-written); delete or move it first",
-                    path.display()
-                );
+                bail!(fill(
+                    m::HAND_WRITTEN,
+                    &[
+                        ("path", &path.display().to_string()),
+                        ("marker", MARKER_WORD)
+                    ]
+                ));
             }
         }
         Ok(path)
@@ -49,7 +52,10 @@ pub fn write_text(path: &Path, text: &str) -> Result<()> {
     }
     let body = format!("{}\n", text.trim_end());
     fs::write(path, body).with_context(|| format!("writing {}", path.display()))?;
-    println!("wrote {}", path.display());
+    println!(
+        "{}",
+        fill(m::WROTE, &[("path", &path.display().to_string())])
+    );
     Ok(())
 }
 
