@@ -13,24 +13,8 @@
         "aarch64-darwin"
       ];
       eachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
-
-      fixtureSrc = builtins.path {
-        path = ./tests/fixture;
-        name = "source";
-      };
-
-      fixtureFlake = {
-        outPath = fixtureSrc;
-        nixosConfigurations = nixpkgs.lib.genAttrs [ "luna" "sol" ] (
-          name:
-          nixpkgs.lib.nixosSystem {
-            modules = [
-              "${fixtureSrc}/hosts/${name}"
-              { nixpkgs.hostPlatform = "x86_64-linux"; }
-            ];
-          }
-        );
-      };
+      packagesOf = pkgs: self.packages.${pkgs.stdenv.hostPlatform.system};
+      fixture = import ./nix/fixture.nix { inherit self nixpkgs; };
     in
     {
       lib = import ./nix/lib.nix {
@@ -38,62 +22,23 @@
         lib = nixpkgs.lib;
       };
 
-      packages = eachSystem (pkgs: rec {
-        default = nixdiag;
+      packages = eachSystem (
+        pkgs:
+        let
+          nixdiag = pkgs.callPackage ./nix/package.nix { };
+        in
+        {
+          default = nixdiag;
+          inherit nixdiag;
+        }
+        // fixture.packages { inherit pkgs nixdiag; }
+        // import ./nix/site.nix {
+          inherit pkgs self;
+          fixtureFlake = fixture.flake;
+        }
+      );
 
-        fixture-docs = self.lib.mkDocs {
-          inherit pkgs;
-          flake = fixtureFlake;
-          buildWiki = false;
-          domains.ts = "ts.example";
-        };
-
-        fixture-facts = pkgs.writeText "facts.json" (
-          builtins.toJSON (self.lib.mkFacts { flake = fixtureFlake; })
-        );
-
-        fixture-docs-closures =
-          pkgs.runCommand "nixdiag-fixture-closures"
-            {
-              nativeBuildInputs = [ nixdiag ];
-              facts = fixture-facts;
-            }
-            ''
-              nixdiag render --facts "$facts" --repo ${fixtureSrc} \
-                --closures ${fixtureSrc}/closures.json \
-                --domain ts=ts.example --out $out --no-svg
-            '';
-
-        demo-docs = self.lib.mkDocs {
-          inherit pkgs;
-          flake = fixtureFlake;
-          title = "Example fleet";
-          domains.ts = "ts.example";
-          theme = "light";
-        };
-
-        site =
-          pkgs.runCommand "nixdiag-site"
-            {
-              nativeBuildInputs = [ pkgs.mdbook ];
-            }
-            ''
-              cp -r ${./site} book
-              chmod -R u+w book
-              cp ${./SYNTAX.md} book/src/syntax.md
-              cp ${./assets}/topology-light.svg book/src/topology.svg
-              cp ${./assets}/modules-light.svg book/src/modules.svg
-              cp ${./assets}/closures-light.svg book/src/closures.svg
-              mdbook build book --dest-dir $out
-              cp -r --no-preserve=mode ${demo-docs}/wiki/book $out/demo
-            '';
-
-        nixdiag = pkgs.callPackage ./nix/package.nix { };
-      });
-
-      overlays.default = final: prev: {
-        nixdiag = self.packages.${final.stdenv.hostPlatform.system}.nixdiag;
-      };
+      overlays.default = final: prev: { nixdiag = (packagesOf final).nixdiag; };
 
       nixosModules.default = import ./nix/module.nix { inherit self; };
 
@@ -105,142 +50,19 @@
       apps = eachSystem (pkgs: {
         default = {
           type = "app";
-          program = nixpkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
+          program = nixpkgs.lib.getExe (packagesOf pkgs).nixdiag;
         };
       });
 
       devShells = eachSystem (pkgs: {
-        default = pkgs.mkShell {
-          packages = with pkgs; [
-            cargo
-            rustc
-            rustfmt
-            clippy
-            rust-analyzer
-            (import ./nix/d2.nix d2)
-            mdbook
-            just
-            lefthook
-            nixfmt
-          ];
-          shellHook = ''
-            if [ -t 1 ]; then
-              echo
-              just --list --unsorted
-            fi
-          '';
-        };
+        default = import ./nix/shell.nix { inherit pkgs; };
       });
 
       checks = eachSystem (
         pkgs:
-        let
-          diffManifest = pkgs.writeShellScript "nixdiag-diff-manifest" ''
-            set -euo pipefail
-            want="$1"; reference="$2"; docs="$3"; seen=0
-            while read -r build path; do
-              case "$build" in "") continue ;; esac
-              case "$build" in
-                docs|closures) ;;
-                *) echo "MANIFEST: unknown build '$build' for $path"; exit 1 ;;
-              esac
-              [ "$build" = "$want" ] || continue
-              if [ ! -e "$docs/$path" ]; then
-                echo "MANIFEST lists $path, but the build did not write it"; exit 1
-              fi
-              diff -u "$reference/$path" "$docs/$path"
-              seen=$((seen + 1))
-            done < <(sed 's/#.*//' "$reference/MANIFEST")
-            [ "$seen" -gt 0 ] || { echo "no MANIFEST entries for '$want'"; exit 1; }
-            echo "$want: $seen snapshots match"
-          '';
-
-          noStorePaths = ''
-            if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
-              echo "generated docs contain a store path; that would retain Nix references:"
-              grep -rIoE '/nix/store/[a-z0-9]{32}-[^ `"]*' "$docs" | head
-              exit 1
-            fi
-          '';
-        in
-        {
-          build = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
-          site = self.packages.${pkgs.stdenv.hostPlatform.system}.site;
-          closures-plumbing =
-            let
-              out =
-                (import ./nix/closures.nix {
-                  inherit pkgs;
-                  lib = pkgs.lib;
-                }).mkClosures
-                  { demo = pkgs.hello; };
-            in
-            pkgs.runCommand "nixdiag-closures-plumbing" { nativeBuildInputs = [ pkgs.jq ]; } ''
-              jq -e '.schema == 1' ${out} > /dev/null
-              jq -e '.hosts.demo.paths | length > 0' ${out} > /dev/null
-              jq -e '.hosts.demo.paths | all(has("path") and has("narSize"))' ${out} > /dev/null
-              jq -e '.hosts.demo.paths == (.hosts.demo.paths | sort_by(.path))' ${out} > /dev/null
-              touch $out
-            '';
-
-          closures-self =
-            let
-              out =
-                (import ./nix/closures.nix {
-                  inherit pkgs;
-                  lib = pkgs.lib;
-                }).mkClosures
-                  { nixdiag = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag; };
-            in
-            pkgs.runCommand "nixdiag-closures-self" { nativeBuildInputs = [ pkgs.jq ]; } ''
-              paths=$(jq '.hosts.nixdiag.paths | length' ${out})
-              bytes=$(jq '[.hosts.nixdiag.paths[].narSize] | add' ${out})
-              echo "nixdiag runtime closure: $((bytes / 1048576)) MiB across $paths paths"
-
-              if jq -e '[.hosts.nixdiag.paths[].path] | any(test("playwright"))' ${out} > /dev/null; then
-                echo "playwright is back in nixdiag's runtime closure -- see nix/d2.nix"
-                exit 1
-              fi
-
-              if [ "$bytes" -gt $((600 * 1024 * 1024)) ]; then
-                echo "runtime closure passed 600 MiB; re-measure and raise the ceiling on purpose"
-                exit 1
-              fi
-              touch $out
-            '';
-
-          closures =
-            pkgs.runCommand "nixdiag-closures-reference"
-              {
-                docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs-closures;
-                reference = ./tests/reference;
-              }
-              ''
-                ${diffManifest} closures "$reference" "$docs"
-                grep -q '| Closure |' "$docs/wiki/src/hosts.md"
-                ${noStorePaths}
-                touch $out
-              '';
-
-          reference =
-            pkgs.runCommand "nixdiag-reference"
-              {
-                docs = self.packages.${pkgs.stdenv.hostPlatform.system}.fixture-docs;
-                reference = ./tests/reference;
-                nativeBuildInputs = [ pkgs.jq ];
-              }
-              ''
-                ${diffManifest} docs "$reference" "$docs"
-
-                jq -e '.meta.schema and .totals.hosts' "$docs/api/v1/snapshot.json" > /dev/null
-
-                for f in "$docs"/api/v1/*.json; do
-                  grep -q 'Auto-generated' "$f" || { echo "no marker: $f"; exit 1; }
-                done
-
-                ${noStorePaths}
-                touch $out
-              '';
+        import ./nix/checks.nix {
+          inherit pkgs;
+          packages = packagesOf pkgs;
         }
       );
     };
