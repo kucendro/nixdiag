@@ -15,7 +15,7 @@ use inputs::page_inputs;
 use services::page_services;
 
 use super::d2::D2Style;
-use super::out::Out;
+use super::out::{Out, MD_MARKER};
 use super::DocComments;
 use crate::closures::Closures;
 use crate::facts::{Facts, NixosHost};
@@ -24,7 +24,7 @@ use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use anyhow::Result;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct WikiData<'a> {
     pub facts: &'a Facts,
@@ -39,6 +39,10 @@ pub struct WikiOpts {
     pub title: String,
     pub extra_pages: Vec<(String, PathBuf)>,
     pub extra_links: Vec<(String, String)>,
+}
+
+pub(super) fn page(out: &mut Out, rel: &Path, sections: &[String]) -> Result<()> {
+    out.write_auto(rel, &format!("{MD_MARKER}\n\n{}", sections.join("\n\n")))
 }
 
 pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<String>> {

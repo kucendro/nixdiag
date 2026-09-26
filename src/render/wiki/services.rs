@@ -1,8 +1,10 @@
-use super::super::out::{Out, MD_MARKER};
-use super::repo_services;
+use super::super::out::Out;
+use super::{page, repo_services};
 use crate::facts::Facts;
 use crate::render::DocComments;
 use crate::source::repo::Repo;
+use crate::text::fill;
+use crate::text::wiki::services as t;
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -23,34 +25,35 @@ pub(super) fn page_services(
             e.1.extend(files);
         }
     }
-    let mut o: Vec<String> = vec![
-        MD_MARKER.into(),
-        "".into(),
-        "# Services".into(),
-        "".into(),
-        "| Service | Hosts | Defined in |".into(),
-        "|---|---|---|".into(),
+    let mut rows: Vec<String> = index
+        .iter()
+        .map(|(name, (hosts, files))| {
+            let hosts = hosts.iter().cloned().collect::<Vec<_>>().join(", ");
+            let files: Vec<String> = files
+                .iter()
+                .map(|f| fill(t::FILE, &[("file", f)]))
+                .collect();
+            fill(
+                t::ROW,
+                &[
+                    ("name", name),
+                    ("hosts", &hosts),
+                    ("files", &files.join(" ")),
+                ],
+            )
+        })
+        .collect();
+    if rows.is_empty() {
+        rows.push(t::EMPTY.into());
+    }
+    let mut o = vec![
+        t::TITLE.to_string(),
+        fill(t::TABLE, &[("rows", &rows.join("\n"))]),
     ];
-    for (name, (hosts, files)) in &index {
-        let hosts = hosts.iter().cloned().collect::<Vec<_>>().join(", ");
-        let files = files
-            .iter()
-            .map(|x| format!("`{x}`"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        o.push(format!("| **{name}** | {hosts} | {files} |"));
-    }
-    if index.is_empty() {
-        o.push("| — | — | — |".into());
-    }
     for (name, (_, files)) in &index {
-        let Some(doc) = files.iter().find_map(|f| docs.files.get(f)) else {
-            continue;
-        };
-        o.push("".into());
-        o.push(format!("## {name}"));
-        o.push("".into());
-        o.push(doc.clone());
+        if let Some(doc) = files.iter().find_map(|f| docs.files.get(f)) {
+            o.push(fill(t::UNIT, &[("name", name), ("description", doc)]));
+        }
     }
-    out.write_auto(&src.join("services.md"), &o.join("\n"))
+    page(out, &src.join("services.md"), &o)
 }

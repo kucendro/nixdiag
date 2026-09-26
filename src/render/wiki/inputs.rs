@@ -1,7 +1,10 @@
 use super::super::chart::{self, Mark};
 use super::super::d2::D2Style;
-use super::super::out::{Out, MD_MARKER};
+use super::super::out::Out;
+use super::page;
 use crate::source::flakelock::{Dup, Lock};
+use crate::text::fill;
+use crate::text::wiki::{inputs as t, NONE};
 use crate::util::human_date;
 use anyhow::Result;
 use std::path::Path;
@@ -9,17 +12,17 @@ use std::path::Path;
 fn pulled_in_by(lock: &Lock, node: &str) -> String {
     let parents = lock.parents_of(node);
     if parents.is_empty() {
-        return "—".into();
+        return NONE.into();
     }
     parents
         .iter()
         .map(|(parent, input)| {
             if *parent == lock.root {
-                "this flake".to_string()
+                t::THIS_FLAKE.to_string()
             } else if parent == input {
-                format!("`{parent}`")
+                fill(t::PARENT, &[("parent", parent)])
             } else {
-                format!("`{parent}` (as `{input}`)")
+                fill(t::PARENT_AS, &[("parent", parent), ("input", input)])
             }
         })
         .collect::<Vec<_>>()
@@ -27,22 +30,28 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
 }
 
 fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
-    o.push(format!(
-        "`{}` is locked at **{} revisions**, so every copy is fetched and \
-         evaluated separately:",
-        d.source,
-        d.revs.len()
-    ));
-    o.push("".into());
-    o.push("| Rev | Node | Pulled in by |".into());
-    o.push("|---|---|---|".into());
+    let mut rows = Vec::new();
     for (rev, nodes) in &d.revs {
         let short: String = rev.chars().take(7).collect();
         for n in nodes {
-            o.push(format!("| `{short}` | `{n}` | {} |", pulled_in_by(lock, n)));
+            rows.push(fill(
+                t::DIAMOND_ROW,
+                &[
+                    ("rev", &short),
+                    ("node", n),
+                    ("parents", &pulled_in_by(lock, n)),
+                ],
+            ));
         }
     }
-    o.push("".into());
+    o.push(fill(
+        t::DIAMOND,
+        &[
+            ("source", &d.source),
+            ("revisions", &d.revs.len().to_string()),
+            ("rows", &rows.join("\n")),
+        ],
+    ));
 
     let Some(target) = lock.root_input_for(&d.identity) else {
         return;
@@ -56,8 +65,9 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
             if parent == lock.root {
                 continue;
             }
-            fixes.push(format!(
-                "inputs.{parent}.inputs.{input}.follows = \"{target}\";"
+            fixes.push(fill(
+                t::FIX_LINE,
+                &[("parent", &parent), ("input", &input), ("target", &target)],
             ));
         }
     }
@@ -66,12 +76,10 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     }
     fixes.sort();
     fixes.dedup();
-    o.push(format!("Point the extra copies at `{target}`:"));
-    o.push("".into());
-    o.push("```nix".into());
-    o.extend(fixes);
-    o.push("```".into());
-    o.push("".into());
+    o.push(fill(
+        t::FIX,
+        &[("target", &target), ("lines", &fixes.join("\n"))],
+    ));
 }
 
 fn lock_dates(
@@ -92,32 +100,20 @@ fn lock_dates(
             note: locked
                 .last_modified
                 .map(human_date)
-                .unwrap_or_else(|| "—".into()),
+                .unwrap_or_else(|| NONE.into()),
         })
         .collect();
     let Some((lo, hi)) = lock.date_span() else {
         return Ok(());
     };
 
-    let svg = chart::timeline("Locked inputs by date, oldest first", &marks, style);
+    let svg = chart::timeline(t::DATES_CAPTION, &marks, style);
     out.write_auto(&src.join("inputs-timeline.svg"), &svg)?;
 
-    o.push("## Lock dates".into());
-    o.push("".into());
-    o.push("![Input dates](./inputs-timeline.svg)".into());
-    o.push("".into());
-    o.push(
-        "`lastModified` is a fixed integer in the lock, not a clock read: this \
-         is the *spread*, not a claim about today."
-            .into(),
-    );
-    o.push("".into());
+    o.push(t::DATES.into());
     let days = (hi - lo) / 86_400;
     if days > 0 {
-        o.push(format!(
-            "**{days} days** separate the oldest input from the newest."
-        ));
-        o.push("".into());
+        o.push(fill(t::SPAN, &[("days", &days.to_string())]));
     }
     Ok(())
 }
@@ -130,33 +126,33 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
         std::fs::copy(&from, out.root.join(&rel))?;
     }
 
-    let mut o: Vec<String> = vec![
-        MD_MARKER.into(),
-        "".into(),
-        "# Inputs".into(),
-        "".into(),
-        "Dashed edges are `follows`, which *removes* a duplicate.".into(),
-        "".into(),
-        "![Input graph](./inputs.svg)".into(),
-        "".into(),
-        "| Input | Source | Rev | Locked |".into(),
-        "|---|---|---|---|".into(),
+    let mut rows: Vec<String> = lock
+        .inputs()
+        .into_iter()
+        .map(|(name, locked)| {
+            let date = locked
+                .last_modified
+                .map(human_date)
+                .unwrap_or_else(|| NONE.into());
+            fill(
+                t::ROW,
+                &[
+                    ("name", name),
+                    ("source", &locked.source()),
+                    ("rev", &locked.short_rev()),
+                    ("date", &date),
+                ],
+            )
+        })
+        .collect();
+    if rows.is_empty() {
+        rows.push(t::EMPTY.into());
+    }
+    let mut o = vec![
+        t::TITLE.to_string(),
+        t::INTRO.to_string(),
+        fill(t::TABLE, &[("rows", &rows.join("\n"))]),
     ];
-    for (name, locked) in lock.inputs() {
-        let date = locked
-            .last_modified
-            .map(human_date)
-            .unwrap_or_else(|| "—".into());
-        o.push(format!(
-            "| `{name}` | `{}` | `{}` | {date} |",
-            locked.source(),
-            locked.short_rev()
-        ));
-    }
-    if lock.inputs().is_empty() {
-        o.push("| — | — | — | — |".into());
-    }
-    o.push("".into());
 
     lock_dates(&mut o, out, src, lock, style)?;
 
@@ -164,33 +160,29 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
     let (diamonds, redundant): (Vec<&Dup>, Vec<&Dup>) = dups.iter().partition(|d| d.is_diamond());
 
     if !diamonds.is_empty() {
-        o.push("## Duplicate inputs".into());
-        o.push("".into());
+        o.push(t::DIAMONDS.into());
         for d in diamonds {
             diamond(&mut o, lock, d);
         }
     }
 
     if !redundant.is_empty() {
-        o.push("## Redundant inputs".into());
-        o.push("".into());
-        o.push(
-            "One revision under several node names. Harmless; a `follows` drops \
-             the extra fetch."
-                .into(),
-        );
-        o.push("".into());
-        for d in redundant {
-            let nodes = d
-                .nodes()
-                .iter()
-                .map(|n| format!("`{n}`"))
-                .collect::<Vec<_>>()
-                .join(", ");
-            o.push(format!("- `{}` — {nodes}", d.source));
-        }
-        o.push("".into());
+        let rows: Vec<String> = redundant
+            .iter()
+            .map(|d| {
+                let nodes: Vec<String> = d
+                    .nodes()
+                    .iter()
+                    .map(|n| fill(t::NODE, &[("node", n)]))
+                    .collect();
+                fill(
+                    t::REDUNDANT_ROW,
+                    &[("source", &d.source), ("nodes", &nodes.join(", "))],
+                )
+            })
+            .collect();
+        o.push(fill(t::REDUNDANT, &[("rows", &rows.join("\n"))]));
     }
 
-    out.write_auto(&src.join("inputs.md"), &o.join("\n"))
+    page(out, &src.join("inputs.md"), &o)
 }

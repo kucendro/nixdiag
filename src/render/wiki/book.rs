@@ -1,4 +1,7 @@
-use super::super::out::{Out, MD_MARKER};
+use super::super::out::Out;
+use super::page;
+use crate::text::fill;
+use crate::text::wiki::{summary as t, BOOK, INDEX};
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
@@ -10,14 +13,13 @@ pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str, dark: bool) -> 
     };
     out.write_once(
         &wiki.join("book.toml"),
-        &format!(
-            "[book]\n\
-             title = \"{title}\"\n\
-             src = \"src\"\n\n\
-             [output.html]\n\
-             default-theme = \"{default}\"\n\
-             preferred-dark-theme = \"{preferred_dark}\"\n\
-             no-section-label = true\n"
+        &fill(
+            BOOK,
+            &[
+                ("title", title),
+                ("default", default),
+                ("dark", preferred_dark),
+            ],
         ),
     )
 }
@@ -58,33 +60,23 @@ pub(super) fn page_summary(
     has_inputs: bool,
     has_closures: bool,
 ) -> Result<()> {
-    let mut text = format!(
-        "{MD_MARKER}\n\n\
-         # Summary\n\n\
-         - [Overview](./index.md)\n\
-         - [Architecture](./architecture.md)\n\
-         - [Hosts](./hosts.md)\n\
-         - [Services](./services.md)\n\
-         - [Endpoints](./endpoints.md)\n"
-    );
+    let mut entries = vec![t::FIXED.to_string()];
     if has_inputs {
-        text.push_str("- [Inputs](./inputs.md)\n");
+        entries.push(t::INPUTS.into());
     }
     if has_closures {
-        text.push_str("- [Closures](./closures.md)\n");
+        entries.push(t::CLOSURES.into());
     }
-    for (title, fname) in extra {
-        text.push_str(&format!("- [{title}](./{fname})\n"));
+    for (title, file) in extra {
+        entries.push(fill(t::EXTRA, &[("title", title), ("file", file)]));
     }
-    out.write_auto(&src.join("SUMMARY.md"), &text)
+    page(
+        out,
+        &src.join("SUMMARY.md"),
+        &[t::TITLE.to_string(), entries.join("\n")],
+    )
 }
 
 pub(super) fn page_index(out: &mut Out, src: &Path) -> Result<()> {
-    out.write_once(
-        &src.join("index.md"),
-        "# Infrastructure wiki\n\n\
-         _Hand-written overview goes here_ — the big picture, and *why* things \
-         are the way they are. Every other page is generated from the Nix \
-         configuration; this is the one you edit.\n",
-    )
+    out.write_once(&src.join("index.md"), INDEX)
 }

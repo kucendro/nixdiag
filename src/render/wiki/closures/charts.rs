@@ -1,5 +1,7 @@
 use crate::closures::{Closures, HostClosure};
 use crate::render::chart::{Band, Row, Tile};
+use crate::text::fill;
+use crate::text::wiki::closures as t;
 use crate::util::{human_count, human_size};
 
 pub(super) const TREEMAP_TILES: usize = 24;
@@ -29,7 +31,7 @@ pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>
             None => Row {
                 label: (*host).to_string(),
                 bands: Vec::new(),
-                note: "not measured".into(),
+                note: t::NOT_MEASURED.into(),
             },
         })
         .collect()
@@ -58,7 +60,7 @@ pub(super) fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
     let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|(_, s, _)| s).sum();
     if rest > 0 {
         tiles.push(Tile {
-            label: format!("{} more", human_count(v.len() - TREEMAP_TILES)),
+            label: fill(t::MORE, &[("count", &human_count(v.len() - TREEMAP_TILES))]),
             value: rest,
             band: Band::Rest,
         });

@@ -1,4 +1,6 @@
-use super::super::out::{Out, MD_MARKER};
+use super::super::out::Out;
+use super::page;
+use crate::text::wiki::ARCHITECTURE;
 use anyhow::Result;
 use std::path::Path;
 
@@ -11,15 +13,5 @@ pub(super) fn page_architecture(out: &mut Out, src: &Path) -> Result<()> {
             std::fs::copy(&from, out.root.join(&rel))?;
         }
     }
-    out.write_auto(
-        &src.join("architecture.md"),
-        &format!(
-            "{MD_MARKER}\n\n\
-             # Architecture\n\n\
-             ## Data-flow topology\n\n\
-             ![Data-flow topology](./topology.svg)\n\n\
-             ## Module tree\n\n\
-             ![Module tree](./modules.svg)\n"
-        ),
-    )
+    page(out, &src.join("architecture.md"), &[ARCHITECTURE.into()])
 }

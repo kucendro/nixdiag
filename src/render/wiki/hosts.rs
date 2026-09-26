@@ -1,28 +1,17 @@
-use super::super::out::{Out, MD_MARKER};
-use super::repo_services;
+use super::{page, repo_services};
 use crate::closures::Closures;
 use crate::facts::{DarwinHost, Facts, Host, NixosHost};
 use crate::render::DocComments;
 use crate::source::repo::Repo;
+use crate::text::fill;
+use crate::text::wiki::{hosts as t, NONE};
 use crate::util::{human_count, human_size};
 use anyhow::Result;
 use std::path::Path;
 
-fn fmt_ports(ports: &[u32]) -> String {
-    if ports.is_empty() {
-        "—".into()
-    } else {
-        ports
-            .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
-
 fn join_or_dash(items: &[String]) -> String {
     if items.is_empty() {
-        "—".into()
+        NONE.into()
     } else {
         items.join(", ")
     }
@@ -36,14 +25,14 @@ pub(super) fn page_hosts(
     docs: &DocComments,
     closures: Option<&Closures>,
 ) -> Result<()> {
-    let mut o: Vec<String> = vec![MD_MARKER.into(), "".into(), "# Hosts".into(), "".into()];
+    let mut o = vec![t::TITLE.to_string()];
     for (host, f) in &facts.hosts {
         match f {
             Host::Nixos(n) => host_nixos(&mut o, host, n, repo, docs.hosts.get(host), closures),
             Host::Darwin(d) => host_darwin(&mut o, host, d, docs.hosts.get(host)),
         }
     }
-    out.write_auto(&src.join("hosts.md"), &o.join("\n"))
+    page(out, &src.join("hosts.md"), &o)
 }
 
 fn host_nixos(
@@ -55,73 +44,74 @@ fn host_nixos(
     closures: Option<&Closures>,
 ) {
     let svcs = repo_services(f, repo);
-    o.push(format!("## 🖥️ {host}"));
-    o.push("".into());
-    if let Some(doc) = doc {
-        o.push(doc.clone());
-        o.push("".into());
-    }
-    o.push("| | |".into());
-    o.push("|---|---|".into());
+    let ports = |ps: &[u32]| join_or_dash(&ps.iter().map(u32::to_string).collect::<Vec<_>>());
+    o.push(fill(t::NIXOS, &[("host", host)]));
+    o.extend(doc.cloned());
+
     let platform = if f.platform.is_empty() {
-        "?"
+        t::UNKNOWN_PLATFORM
     } else {
         &f.platform
     };
-    o.push(format!("| Platform | `{platform}` |"));
+    let mut rows = vec![fill(t::PLATFORM, &[("platform", platform)])];
     if !f.state_version.is_empty() {
-        o.push(format!("| State version | `{}` |", f.state_version));
+        rows.push(fill(t::STATE, &[("state", &f.state_version)]));
     }
-    o.push(format!("| Users | {} |", join_or_dash(&f.users)));
-    o.push(format!("| System packages | {} |", f.pkg_count));
+    rows.push(fill(t::USERS, &[("users", &join_or_dash(&f.users))]));
+    rows.push(fill(t::PACKAGES, &[("count", &f.pkg_count.to_string())]));
     if let Some(cs) = closures {
-        match cs.hosts.get(host) {
-            Some(c) => o.push(format!(
-                "| Closure | {} ({} paths) |",
-                human_size(c.total()),
-                human_count(c.len())
-            )),
-            None => o.push("| Closure | not measured |".into()),
-        }
+        let closure = match cs.hosts.get(host) {
+            Some(c) => fill(
+                t::CLOSURE_SIZE,
+                &[
+                    ("size", &human_size(c.total())),
+                    ("paths", &human_count(c.len())),
+                ],
+            ),
+            None => t::NOT_MEASURED.into(),
+        };
+        rows.push(fill(t::CLOSURE, &[("closure", &closure)]));
     }
-    o.push(format!("| Open TCP ports | {} |", fmt_ports(&f.tcp)));
-    o.push(format!("| Open UDP ports | {} |", fmt_ports(&f.udp)));
-    o.push(format!("| Repo-configured services | {} |", svcs.len()));
-    o.push("".into());
+    rows.push(fill(t::TCP, &[("ports", &ports(&f.tcp))]));
+    rows.push(fill(t::UDP, &[("ports", &ports(&f.udp))]));
+    rows.push(fill(
+        t::SERVICES_COUNT,
+        &[("count", &svcs.len().to_string())],
+    ));
+    o.push(fill(t::TABLE, &[("rows", &rows.join("\n"))]));
+
     if !svcs.is_empty() {
-        o.push("**Services:**".into());
-        o.push("".into());
-        for (name, files) in &svcs {
-            let files = files
-                .iter()
-                .map(|x| format!("`{x}`"))
-                .collect::<Vec<_>>()
-                .join(" ");
-            o.push(format!("- **{name}** — {files}"));
-        }
-        o.push("".into());
+        let rows: Vec<String> = svcs
+            .iter()
+            .map(|(name, files)| {
+                let files: Vec<String> = files
+                    .iter()
+                    .map(|f| fill(t::FILE, &[("file", f)]))
+                    .collect();
+                fill(t::SERVICE, &[("name", name), ("files", &files.join(" "))])
+            })
+            .collect();
+        o.push(fill(t::SERVICES, &[("rows", &rows.join("\n"))]));
     }
 }
 
 fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost, doc: Option<&String>) {
-    o.push(format!("## 🍏 {host}"));
-    o.push("".into());
-    if let Some(doc) = doc {
-        o.push(doc.clone());
-    } else {
-        o.push("_nix-darwin host._".into());
-    }
-    o.push("".into());
+    o.push(fill(t::DARWIN, &[("host", host)]));
+    o.push(doc.cloned().unwrap_or_else(|| t::DARWIN_INTRO.into()));
     for (title, items) in [
-        ("LaunchDaemons", &f.daemons),
-        ("User agents", &f.user_agents),
-        ("Homebrew casks", &f.casks),
+        (t::DAEMONS, &f.daemons),
+        (t::AGENTS, &f.user_agents),
+        (t::CASKS, &f.casks),
     ] {
         if !items.is_empty() {
             let mut sorted = items.clone();
             sorted.sort();
-            o.push(format!("**{title}:** {}", sorted.join(", ")));
-            o.push("".into());
+            o.push(fill(
+                t::LIST,
+                &[("title", title), ("items", &sorted.join(", "))],
+            ));
         }
     }
 }
+
+use super::super::out::Out;

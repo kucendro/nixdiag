@@ -4,9 +4,12 @@ mod tests;
 
 use super::super::chart;
 use super::super::d2::D2Style;
-use super::super::out::{Out, MD_MARKER};
+use super::super::out::Out;
+use super::page;
 use crate::closures::{Closures, HostClosure};
 use crate::facts::Facts;
+use crate::text::fill;
+use crate::text::wiki::closures as t;
 use crate::util::{human_count, human_size, sanitize, store_name};
 use anyhow::Result;
 use charts::{bar_rows, treemap_tiles};
@@ -28,20 +31,16 @@ pub(super) fn page_closures(
         .map(|(n, _)| (n.as_str(), closures.hosts.get(n.as_str())))
         .collect();
 
-    let mut o: Vec<String> = vec![MD_MARKER.into(), "".into(), "# Closures".into(), "".into()];
+    let mut o = vec![t::TITLE.to_string()];
     if !hosts.is_empty() {
-        let svg = chart::bars(
-            "System closure size by host",
-            &bar_rows(closures, &hosts),
-            style,
-        );
+        let svg = chart::bars(t::CHART_CAPTION, &bar_rows(closures, &hosts), style);
         out.write_auto(&src.join("closures.svg"), &svg)?;
-        o.push("![System closure size by host](./closures.svg)".into());
-        o.push("".into());
+        o.push(fill(t::CHART, &[("caption", t::CHART_CAPTION)]));
     }
-
-    o.extend(summary_rows(closures, &hosts));
-    o.push("".into());
+    o.push(fill(
+        t::TABLE,
+        &[("rows", &summary_rows(closures, &hosts).join("\n"))],
+    ));
 
     let measured = hosts.iter().filter(|(_, c)| c.is_some()).count();
     if measured > 1 {
@@ -49,88 +48,73 @@ pub(super) fn page_closures(
         let shared_size: u64 = shared.iter().map(|(_, s)| s).sum();
         let (dedup_n, dedup_size) = closures.deduped();
         let naive = closures.naive_sum();
-
-        o.push("## Fleet".into());
-        o.push("".into());
-        o.push("| | |".into());
-        o.push("|---|---|".into());
-        o.push(format!(
-            "| Shared by every host | {} ({} paths) |",
-            human_size(shared_size),
-            human_count(shared.len())
+        o.push(fill(
+            t::FLEET,
+            &[
+                ("shared", &human_size(shared_size)),
+                ("shared_paths", &human_count(shared.len())),
+                ("deduped", &human_size(dedup_size)),
+                ("deduped_paths", &human_count(dedup_n)),
+                ("sum", &human_size(naive)),
+                ("saved", &human_size(naive.saturating_sub(dedup_size))),
+            ],
         ));
-        o.push(format!(
-            "| Fleet total, deduplicated | {} ({} paths) |",
-            human_size(dedup_size),
-            human_count(dedup_n)
-        ));
-        o.push(format!(
-            "| Sum of per-host closures | {} |",
-            human_size(naive)
-        ));
-        o.push(format!(
-            "| Saved by sharing | {} |",
-            human_size(naive.saturating_sub(dedup_size))
-        ));
-        o.push("".into());
     }
 
     for (host, closure) in &hosts {
         let Some(h) = closure else { continue };
-        o.push(format!("## {host}"));
-        o.push("".into());
+        o.push(fill(t::HOST, &[("host", host)]));
 
         let tiles = treemap_tiles(closures, host);
         if !tiles.is_empty() {
             let file = format!("closures-{}.svg", sanitize(host));
-            let caption = format!("{host} closure by package");
+            let caption = fill(t::TREEMAP_CAPTION, &[("host", host)]);
             out.write_auto(&src.join(&file), &chart::treemap(&caption, &tiles, style))?;
-            o.push(format!("![{caption}](./{file})"));
-            o.push("".into());
+            o.push(fill(t::TREEMAP, &[("caption", &caption), ("file", &file)]));
         }
 
-        o.push("Largest single paths:".into());
-        o.push("".into());
-        o.push("| Package | Size |".into());
-        o.push("|---|---|".into());
-        for p in h.largest(TOP_PATHS) {
-            o.push(format!(
-                "| `{}` | {} |",
-                store_name(&p.path),
-                human_size(p.nar_size)
-            ));
+        let mut rows: Vec<String> = h
+            .largest(TOP_PATHS)
+            .iter()
+            .map(|p| {
+                fill(
+                    t::LARGEST_ROW,
+                    &[
+                        ("package", store_name(&p.path)),
+                        ("size", &human_size(p.nar_size)),
+                    ],
+                )
+            })
+            .collect();
+        if rows.is_empty() {
+            rows.push(t::LARGEST_EMPTY.into());
         }
-        if h.paths.is_empty() {
-            o.push("| — | — |".into());
-        }
-        o.push("".into());
+        o.push(fill(t::LARGEST, &[("rows", &rows.join("\n"))]));
     }
 
-    out.write_auto(&src.join("closures.md"), &o.join("\n"))
+    page(out, &src.join("closures.md"), &o)
 }
 
 fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<String> {
-    let mut o = vec![
-        "| Host | Closure | Paths | Unique |".to_string(),
-        "|---|---|---|---|".to_string(),
-    ];
     if hosts.is_empty() {
-        o.push("| — | — | — | — |".into());
-        return o;
+        return vec![t::EMPTY.into()];
     }
-    for (host, closure) in hosts {
-        match closure {
+    hosts
+        .iter()
+        .map(|(host, closure)| match closure {
             Some(h) => {
                 let unique: u64 = closures.unique(host).iter().map(|(_, s)| s).sum();
-                o.push(format!(
-                    "| `{host}` | {} | {} | {} |",
-                    human_size(h.total()),
-                    human_count(h.len()),
-                    human_size(unique),
-                ));
+                fill(
+                    t::ROW,
+                    &[
+                        ("host", host),
+                        ("closure", &human_size(h.total())),
+                        ("paths", &human_count(h.len())),
+                        ("unique", &human_size(unique)),
+                    ],
+                )
             }
-            None => o.push(format!("| `{host}` | — | — | — |")),
-        }
-    }
-    o
+            None => fill(t::ROW_UNMEASURED, &[("host", host)]),
+        })
+        .collect()
 }
