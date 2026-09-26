@@ -1,0 +1,65 @@
+name: monitor
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  head:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [master, nixos-unstable, nixos-25.05]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - run: |
+          nixpkgs="github:NixOS/nixpkgs/${{ matrix.ref }}"
+          rev=$(nix flake metadata --json "$nixpkgs" | jq -r .revision)
+          facts=$(nix build .#fixture-facts --override-input nixpkgs "$nixpkgs" --no-write-lock-file --no-link --print-out-paths)
+          nix run .#nixdiag -- render --facts "$facts" --repo tests/fixture --out out --no-svg
+          if diff tests/reference/topology.d2 out/topology.d2; then eval=ok; else eval=changed; fi
+          nix run .#audit -- --json "$nixpkgs" > audit.json || true
+          jq -n --arg ref "${{ matrix.ref }}" --arg rev "$rev" --arg date "$(date -u +%F)" --arg eval "$eval" \
+            --slurpfile audit audit.json '{ ref: $ref, rev: $rev, date: $date, eval: $eval, audit: $audit }' > record.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.ref }}
+          path: record.json
+
+  record:
+    needs: head
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: records
+
+      - run: |
+          for f in records/*/record.json; do
+            ref=$(jq -r .ref "$f")
+            mkdir -p "$ref"
+            cp "$f" "$ref/$(jq -r .date "$f").json"
+          done
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit -m "monitor $(date -u +%F)"
+          git push
+
+      - run: jq -es 'all(.[]; .eval == "ok" and all(.audit[]; .status != "broken"))' records/*/record.json
