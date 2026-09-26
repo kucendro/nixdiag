@@ -2,7 +2,7 @@
   "ref": "nixos-25.05",
   "rev": "ac62194c3917d5f474c1a844b6fd6da2db95077d",
   "date": "2026-09-26",
-  "eval": "changed",
+  "eval": "ok",
   "audit": [
     {
       "adapter": "grafana",
