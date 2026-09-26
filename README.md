@@ -24,7 +24,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 ## Docs
 
-**<https://kucendro.github.io/nixdiag>**
+**<https://kucendro.github.io/nixdiag>** ![adapters](https://img.shields.io/endpoint?url=https://kucendro.github.io/nixdiag/status.json)
 
 - [Quickstart](https://kucendro.github.io/nixdiag/quickstart.html): first render in one command
 - [Topology](https://kucendro.github.io/nixdiag/topology.html): adapters, `nixdiag.*` options, overrides

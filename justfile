@@ -21,6 +21,7 @@ _site-assets:
     cp -f assets/topology-light.svg site/src/topology.svg
     cp -f assets/modules-light.svg site/src/modules.svg
     cp -f assets/closures-light.svg site/src/closures.svg
+    cp -f "$(nix build .#adapters-page --no-link --print-out-paths)/adapters.md" site/src/adapters.md
 
 build:
     cargo build

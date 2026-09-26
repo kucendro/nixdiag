@@ -2,7 +2,7 @@ name: pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, data]
   workflow_dispatch:
 
 permissions:
@@ -22,13 +22,15 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      - run: nix build .#site
+      - run: nix build .#site --override-input data github:kucendro/nixdiag/data --no-write-lock-file
 
       - name: copy out of the store
         run: |

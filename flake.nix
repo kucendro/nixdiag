@@ -1,10 +1,20 @@
 {
   description = "Static infrastructure docs";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    data = {
+      url = "github:kucendro/nixdiag/data";
+      flake = false;
+    };
+  };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      data,
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -33,7 +43,7 @@
         }
         // fixture.packages { inherit pkgs nixdiag; }
         // import ./nix/site.nix {
-          inherit pkgs self;
+          inherit pkgs self data;
           fixtureFlake = fixture.flake;
         }
       );
