@@ -1,5 +1,7 @@
 { self, lib }:
 rec {
+  adapters = import ./adapters { inherit lib; };
+
   mkFacts =
     {
       flake,

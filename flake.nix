@@ -64,6 +64,15 @@
             }
           );
         };
+        audit = {
+          type = "app";
+          program = nixpkgs.lib.getExe (
+            import ./nix/audit.nix {
+              inherit pkgs;
+              inherit (self.lib) adapters;
+            }
+          );
+        };
       });
 
       devShells = eachSystem (pkgs: {
