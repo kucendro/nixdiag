@@ -135,16 +135,11 @@
       checks = eachSystem (
         pkgs:
         let
-          # Snapshot list and layout live in tests/reference/MANIFEST, which
-          # `just snapshots` writes from. One source, so adding a snapshot
-          # cannot land in the refresher but not the gate.
           diffManifest = pkgs.writeShellScript "nixdiag-diff-manifest" ''
             set -euo pipefail
             want="$1"; reference="$2"; docs="$3"; seen=0
             while read -r build path; do
               case "$build" in "") continue ;; esac
-              # Every line is validated by both checks, so a typo in the build
-              # column fails loudly instead of silently skipping a snapshot.
               case "$build" in
                 docs|closures) ;;
                 *) echo "MANIFEST: unknown build '$build' for $path"; exit 1 ;;
@@ -160,8 +155,6 @@
             echo "$want: $seen snapshots match"
           '';
 
-          # Nix records a reference for every store path in an output, so a
-          # listing of a system closure would make the docs retain it.
           noStorePaths = ''
             if grep -rIqE '/nix/store/[a-z0-9]{32}-' "$docs"; then
               echo "generated docs contain a store path; that would retain Nix references:"
@@ -239,20 +232,12 @@
               ''
                 ${diffManifest} docs "$reference" "$docs"
 
-                # snapshot.json is deliberately not diffed: it carries the
-                # revision, so it is Volatile and out of the drift gate. Its
-                # shape is still asserted.
                 jq -e '.meta.schema and .totals.hosts' "$docs/api/v1/snapshot.json" > /dev/null
 
-                # Every generated JSON must carry the AUTO marker, or the next
-                # render refuses to overwrite its own output.
                 for f in "$docs"/api/v1/*.json; do
                   grep -q 'Auto-generated' "$f" || { echo "no marker: $f"; exit 1; }
                 done
 
-                # `hosts.json` and `services.json` carry defining files, which
-                # arrive from eval as store paths — the one place a Repo
-                # resolution failure would leak one into an installed file.
                 ${noStorePaths}
                 touch $out
               '';

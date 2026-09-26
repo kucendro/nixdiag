@@ -1,10 +1,3 @@
-//! The module import graph of the documented repo.
-//!
-//! Follows both `imports = [ ... ]` lists and plain `import ./path`
-//! expressions, starting from each host's entry module. Two consumers: the
-//! module-tree diagram draws it, and annotation attachment uses it to decide
-//! which hosts a given file reaches.
-
 use super::repo::Repo;
 use regex::Regex;
 use std::collections::HashSet;
@@ -14,7 +7,6 @@ fn import_token_re() -> Regex {
     Regex::new(r#"\.\.?/[^\s\]"';]+"#).unwrap()
 }
 
-/// Lexical normalization (Python Path.resolve without symlink following).
 fn normalize(p: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for c in p.components() {
@@ -38,8 +30,6 @@ fn with_nix_ext(mut p: PathBuf) -> PathBuf {
     p
 }
 
-/// Entry module files for a host, from targetModule/hardwareModule keys in
-/// flake.nix, with hosts/<name>/default.nix as the convention fallback.
 pub fn host_entry_modules(host: &str, flake_text: &str, repo: &Repo) -> Vec<PathBuf> {
     let block_re = Regex::new(&format!(
         r"(?s)\b{}\s*=\s*\{{(.*?)\n\s*\}};",
@@ -69,9 +59,6 @@ pub fn host_entry_modules(host: &str, flake_text: &str, repo: &Repo) -> Vec<Path
     files
 }
 
-/// Relative-path tokens appearing in `imports = [ ... ];` lists, plus the
-/// argument of plain `import ./path` expressions (files pulled in as data,
-/// e.g. an upstream table, are part of the host's assembly too).
 fn parse_imports(nix_file: &Path) -> Vec<String> {
     let Ok(text) = std::fs::read_to_string(nix_file) else {
         return Vec::new();

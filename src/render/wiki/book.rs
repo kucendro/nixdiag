@@ -1,13 +1,7 @@
-//! mdBook scaffolding: the book config, the SUMMARY index, the write-once
-//! landing page, and hand-written pages copied in from outside.
-
 use super::super::out::{Out, MD_MARKER};
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
-/// The seeded mdBook theme follows the diagram palette: navy for a dark
-/// render, mdBook's light theme (coal for viewers who prefer dark) for a
-/// light one, so the page chrome and the pictures on it agree.
 pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str, dark: bool) -> Result<()> {
     let (default, preferred_dark) = if dark {
         ("navy", "navy")

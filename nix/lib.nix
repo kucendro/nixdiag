@@ -47,12 +47,7 @@ rec {
       closures ? false,
       closuresExclude ? [ ],
       api ? true,
-      # Identity for api/v1/snapshot.json, so accumulated snapshots can be
-      # told apart. `self.rev` on a clean tree, `self.dirtyRev` otherwise,
-      # neither on a plain directory — guarded with `or` so eval never throws.
-      # nixdiag itself never invokes git; the value is always passed in.
       revision ? (flake.rev or flake.dirtyRev or null),
-      # A fixed integer Nix computes from the source, not a clock read.
       revisionTime ? (flake.lastModified or null),
     }:
     let
@@ -132,8 +127,6 @@ rec {
         ++ lib.optional (grammar != null) "--grammar ${toString grammar}"
         ++ map (d: "--deny ${lib.escapeShellArg d}") deny
         ++ lib.optional (closureFile != null) "--closures ${closureFile}"
-        # `cmd_render` uses FlakeConfig::default(), so mode B never sees the
-        # documented flake's `nixdiag` attr — every setting must be passed.
         ++ lib.optional (!api) "--no-api"
         ++ lib.optional (api && revision != null) "--revision ${lib.escapeShellArg revision}"
         ++ lib.optional (api && revisionTime != null) "--revision-time ${toString revisionTime}";
@@ -163,7 +156,6 @@ rec {
           '') extraAssets
         )}
         ${lib.optionalString buildWiki ''
-          # --dest-dir resolves relative paths against the cwd, not the book root
           mdbook build $out/wiki --dest-dir $out/wiki/book
         ''}
       '';

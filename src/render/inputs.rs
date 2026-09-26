@@ -1,12 +1,3 @@
-//! Flake input graph: the documented flake's own supply chain.
-//!
-//! Everything here comes out of `flake.lock`, so the diagram is a pure
-//! function of a file already in the repo — no eval, no realisation.
-//!
-//! Only nodes caught by duplicate detection carry their revision in the
-//! label. A rev on every box is noise; a rev on the two boxes that disagree
-//! is the whole point of the picture.
-
 use super::d2::{write_and_render, D2Style, D2_HEADER};
 use super::out::Out;
 use crate::source::flakelock::Lock;
@@ -51,8 +42,6 @@ pub fn generate(lock: &Lock, out: &mut Out, render_svg: bool, style: &D2Style) -
     let mut direct: Vec<String> = Vec::new();
     let mut follows: Vec<String> = Vec::new();
     for (parent, input, child, is_follows) in lock.edges() {
-        // The input name is only worth showing when it differs from the node
-        // it resolves to (`utils` pointing at `flake-utils`).
         let label = if input == child {
             String::new()
         } else {

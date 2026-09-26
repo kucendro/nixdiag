@@ -1,18 +1,7 @@
-//! `topology.json` — the resolved annotation model.
-//!
-//! The one document a reader could not compute for itself: resolution needs
-//! rnix over the repo source, which a browser does not have.
-
 use crate::api::{self, Meta};
 use crate::facts::Facts;
 use crate::source::annotations::{Endpoint, Model, NodeInfo};
 
-/// How a node is addressed in the API.
-///
-/// Spelled the way the user writes it in `#: -> host/service`, so ids in the
-/// output match the ids in their own files. Deliberately *not*
-/// `util::sanitize`, which maps `.` and `-` to `_` to satisfy d2 and is
-/// lossy — that is a drawing requirement, not an identity.
 pub(super) fn node_id(e: &Endpoint) -> String {
     match e {
         Endpoint::Host(h) => h.clone(),
@@ -52,7 +41,6 @@ pub(super) fn build(meta: Meta, facts: &Facts, model: &Model) -> api::Topology {
             names: info.names.clone(),
         });
     };
-    // Host order follows `Facts::normalize`, so mode A and mode B agree.
     for host in facts.hosts.keys() {
         if let Some(info) = model.hosts.get(host) {
             push(host, None, info);
@@ -81,8 +69,6 @@ pub(super) fn build(meta: Meta, facts: &Facts, model: &Model) -> api::Topology {
             .then(a.label.cmp(&b.label))
     });
 
-    // Two provenances, one table, exactly as on the Endpoints page: every
-    // `#: expose`, plus the fqdns a node fronts via `name=` on an edge.
     let mut endpoints: Vec<api::EndpointRow> = Vec::new();
     for n in &nodes {
         for e in &n.exposes {
@@ -130,9 +116,6 @@ mod tests {
 
     #[test]
     fn node_ids_are_spelled_the_way_annotations_write_them() {
-        // `util::sanitize` would give `sol_nginx` here, which is a d2
-        // identifier and not an identity — an API id has to match what the
-        // user types in `#: -> sol/nginx`.
         assert_eq!(
             node_id(&Endpoint::Unit("sol".into(), "nginx".into())),
             "sol/nginx"
@@ -140,7 +123,6 @@ mod tests {
         assert_eq!(node_id(&Endpoint::Host("nas".into())), "nas");
         assert_eq!(node_id(&Endpoint::Internet), "internet");
         assert_eq!(node_id(&Endpoint::Lan), "lan");
-        // Dots and dashes survive, which is the whole point.
         assert_eq!(
             node_id(&Endpoint::Unit("web-01".into(), "nginx.tls".into())),
             "web-01/nginx.tls"

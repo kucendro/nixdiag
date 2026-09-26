@@ -1,6 +1,3 @@
-//! `hosts.json` — one entry per configuration, with whatever the projection
-//! saw plus any host-level annotation.
-
 use super::services::repo_units;
 use crate::api::{self, Meta};
 use crate::facts::{Facts, Host};
@@ -14,9 +11,6 @@ pub(super) fn build(meta: Meta, facts: &Facts, repo: &Repo, model: &Model) -> ap
         .map(|(name, h)| {
             let info = model.hosts.get(name);
             let (services, programs) = repo_units(h, repo);
-            // A darwin host has no platform, stateVersion, package count or
-            // firewall in the projection. Emitted as null rather than omitted,
-            // so a reader can index every key on every entry.
             let n = h.as_nixos();
             api::HostEntry {
                 name: name.clone(),

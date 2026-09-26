@@ -1,8 +1,3 @@
-//! mdBook wiki source — port of gen-wiki.py.
-//!
-//! One module per generated page; this file owns the options, the shared
-//! host->services helper, and the order the pages are written in.
-
 mod api;
 mod architecture;
 mod book;
@@ -33,9 +28,6 @@ use anyhow::Result;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-/// Everything the pages draw on. Bundled because the data inputs keep
-/// growing — facts, then annotations, then the lock, then closures — and a
-/// positional argument list that long stops being readable.
 pub struct WikiData<'a> {
     pub facts: &'a Facts,
     pub repo: &'a Repo,
@@ -43,21 +35,15 @@ pub struct WikiData<'a> {
     pub model: &'a Model,
     pub lock: Option<&'a Lock>,
     pub closures: Option<&'a Closures>,
-    /// Whether the `api/` tree was published, so the wiki can point at it
-    /// without ever advertising endpoints that are not there.
     pub api: bool,
 }
 
 pub struct WikiOpts {
     pub title: String,
-    /// (link title, source path) — appended to SUMMARY and copied into src/.
     pub extra_pages: Vec<(String, PathBuf)>,
-    /// (link title, file name) — SUMMARY entry only, for pages some other
-    /// tool writes into wiki/src itself.
     pub extra_links: Vec<(String, String)>,
 }
 
-/// Services this repo actually configures: name -> repo-relative files.
 pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<String>> {
     let mut svcs = BTreeMap::new();
     for item in &n.services {
@@ -69,9 +55,6 @@ pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<
     svcs
 }
 
-/// `style` is passed alongside the data rather than folded into `WikiData`
-/// because it is not data: the Closures page draws its own SVG chart and needs
-/// the palette to do it.
 pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -> Result<()> {
     let wiki = PathBuf::from("wiki");
     let src = wiki.join("src");

@@ -1,9 +1,3 @@
-//! Raw statements + facts -> the annotation `Model`.
-//!
-//! Two passes, and the order matters: roles, scopes, exposes and `#: name`
-//! entries first, so the address book is complete before any edge tries to
-//! resolve a target against it.
-
 use super::attach::Ctx;
 use super::diag::Diag;
 use super::model::{Edge, Endpoint, Expose, Model, NamedEndpoint};
@@ -43,8 +37,6 @@ pub fn collect(
     };
     let mut book: BTreeMap<String, Vec<Endpoint>> = BTreeMap::new();
 
-    // Pass 1: roles, exposes, names, scopes (the address book must be complete
-    // before edges resolve).
     let mut attached: Vec<(usize, Vec<Endpoint>)> = Vec::new();
     for (i, raw) in raws.iter().enumerate() {
         let targets = match ctx.attach(raw) {
@@ -54,8 +46,6 @@ pub fn collect(
                 continue;
             }
         };
-        // `@key` fqdn positions expand once per statement; a failed expansion
-        // reports one diagnostic and drops the statement.
         let expanded_name = match &raw.stmt {
             Stmt::Name(n) | Stmt::Expose(Expose { name: Some(n), .. }) => {
                 match expand_fqdn(n, domains) {
@@ -112,13 +102,11 @@ pub fn collect(
                         book.entry(n.clone()).or_default().push(t.clone());
                     }
                 }
-                // The or_default above already materialized the node.
                 Stmt::Unit(_) | Stmt::Edge { .. } => {}
             }
         }
     }
 
-    // Pass 2: edges.
     for (i, sources) in &attached {
         let raw = &raws[*i];
         let Stmt::Edge {

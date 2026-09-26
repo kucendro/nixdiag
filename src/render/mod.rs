@@ -1,5 +1,3 @@
-//! facts + annotations -> the full docs tree (topology, module tree, wiki).
-
 mod api;
 mod chart;
 pub mod d2;
@@ -23,12 +21,9 @@ use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Doc comments harvested from the repo, keyed for the wiki.
 #[derive(Default)]
 pub struct DocComments {
-    /// host name -> doc of its entry module
     pub hosts: HashMap<String, String>,
-    /// repo-relative module file -> its doc
     pub files: HashMap<String, String>,
 }
 
@@ -66,25 +61,15 @@ pub struct RenderOpts {
     pub wiki: WikiOpts,
     pub svg: bool,
     pub style: d2::D2Style,
-    /// `@key` -> domain suffix for fqdn positions in annotations.
     pub domains: std::collections::BTreeMap<String, String>,
-    /// Annotation grammar edition in force (already resolved against
-    /// `annotations::GRAMMAR`).
     pub grammar: u32,
-    /// Warning categories promoted to errors, e.g. `deprecated`.
     pub deny: Vec<String>,
-    /// Per-host closure sizes, when `mkDocs { closures = true; }` supplied
-    /// them. Absent in every other case, including all of mode A.
     pub closures: Option<Closures>,
-    /// The published `api/` tree. `None` disables it entirely.
     pub api: Option<ApiOpts>,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
     if facts.schema != SCHEMA {
-        // Both halves normally ship from one flake, so a mismatch means a
-        // `lib` and a binary from different revisions — name the versions,
-        // not just the numbers.
         bail!(
             "facts.json declares schema {}, but nixdiag {} implements schema {SCHEMA} — \
              the projection that produced these facts comes from a different nixdiag \
@@ -132,7 +117,6 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
 
     topology::generate(facts, &model, &mut out, opts.svg, &opts.style)?;
     modules::generate(facts, &repo, &mut out, opts.svg, &opts.style)?;
-    // A flake without a lock is legitimate; the input pages are simply absent.
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
         inputs::generate(lock, &mut out, opts.svg, &opts.style)?;

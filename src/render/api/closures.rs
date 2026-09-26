@@ -1,15 +1,3 @@
-//! `closures.json` — per-host system closure sizes.
-//!
-//! Per *package*, never per store path, and that is a necessity rather than a
-//! preference: Nix records a reference for every store path appearing in a
-//! build output, so naming one here would make the docs derivation retain the
-//! entire closure it describes — and `services.nixdiag.serve` would drag that
-//! into the serving host's own system. Since this document cannot name a
-//! path, it cannot report one.
-//!
-//! Unlike the treemap it is untruncated: 24 tiles is a limit on what can be
-//! drawn legibly, not on what a reader may want.
-
 use crate::api::{self, Meta};
 use crate::closures::Closures;
 use crate::facts::Facts;
@@ -26,9 +14,6 @@ pub(super) fn build(meta: Meta, facts: &Facts, closures: &Closures) -> api::Clos
         naive_sum_bytes: closures.naive_sum(),
     };
 
-    // Every NixOS host keeps a row. A silent omission would read as "this is
-    // the whole fleet", when in fact a host can be unmeasured for two very
-    // different reasons: darwin, or serving these docs.
     let hosts = facts
         .hosts
         .iter()

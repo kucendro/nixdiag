@@ -1,11 +1,3 @@
-//! The published API tree: `api/v1/*.json` and the OpenAPI document that
-//! describes them.
-//!
-//! Façade in the shape of `wiki/mod.rs` — submodules are private and each
-//! owns one document. They *build* payloads and never touch `Out`, so the
-//! writing (and the choice of `WKind`) stays in one place here and every
-//! builder is unit-testable without a filesystem.
-
 mod closures;
 mod hosts;
 mod inputs;
@@ -24,8 +16,6 @@ use crate::source::repo::Repo;
 use anyhow::Result;
 use std::path::PathBuf;
 
-/// Everything the documents are built from — the same inputs the wiki pages
-/// draw on, minus the doc comments, which are prose and belong in the book.
 pub struct ApiData<'a> {
     pub facts: &'a Facts,
     pub repo: &'a Repo,
@@ -35,14 +25,10 @@ pub struct ApiData<'a> {
 }
 
 pub struct ApiOpts {
-    /// Resolved annotation edition, reported in every document's `meta`.
     pub grammar: u32,
-    /// Supplied by the caller — `render` shells out to no git and reads no
-    /// clock. `None` in mode A unless CI passes one.
     pub revision: Option<api::Revision>,
 }
 
-/// Every endpoint, in the order the service document lists them.
 fn links(has_lock: bool, has_closures: bool) -> Vec<api::Link> {
     let mut v = vec![
         ("hosts.json", "Hosts, platforms, open ports and users"),
@@ -93,8 +79,6 @@ pub fn generate(out: &mut Out, opts: &ApiOpts, d: &ApiData) -> Result<()> {
         &topology::build(meta(), d.facts, d.model),
         WKind::Auto,
     )?;
-    // A flake without a lock is legitimate; the endpoint is simply absent,
-    // which is why `index.json` lists it conditionally.
     if let Some(lock) = d.lock {
         out.write_json(
             &v.join("inputs.json"),
@@ -109,15 +93,11 @@ pub fn generate(out: &mut Out, opts: &ApiOpts, d: &ApiData) -> Result<()> {
             WKind::Auto,
         )?;
     }
-    // Volatile: it carries the revision, so gating it would make every
-    // consumer's `check` red on each commit.
     out.write_json(
         &v.join("snapshot.json"),
         &snapshot::build(meta(), opts.revision.clone(), d),
         WKind::Volatile,
     )?;
-    // No viewer is bundled: one weighed 3.6 MB against 204 KB of documents,
-    // in a derivation `serve` puts into a host's system closure.
     out.write_json(
         &v.join("openapi.json"),
         &openapi::build(d.lock.is_some(), d.closures.is_some()),

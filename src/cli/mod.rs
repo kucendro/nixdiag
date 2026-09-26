@@ -1,5 +1,3 @@
-//! Command-line surface: the clap types and the dispatch into `commands`.
-
 mod commands;
 mod options;
 
@@ -130,7 +128,6 @@ enum Cmd {
     Syntax,
 }
 
-/// Parse argv and run the requested subcommand.
 pub fn run() -> anyhow::Result<()> {
     match Cli::parse().cmd {
         Cmd::Facts(f) => cmd_facts(f),

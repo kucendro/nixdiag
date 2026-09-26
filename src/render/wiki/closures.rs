@@ -1,9 +1,3 @@
-//! The Closures page: what each host's system actually weighs, and how much
-//! of that weight the fleet shares.
-//!
-//! Opt-in and mode B only — nar sizes exist only for realised paths, so this
-//! page is present exactly when `mkDocs { closures = …; }` supplied the data.
-
 use super::super::chart::{self, Band, Row, Tile};
 use super::super::d2::D2Style;
 use super::super::out::{Out, MD_MARKER};
@@ -13,13 +7,8 @@ use crate::util::{human_count, human_size, sanitize, store_name};
 use anyhow::Result;
 use std::path::Path;
 
-/// Biggest contributors listed per host. Enough to see what dominates without
-/// turning the page into a store dump.
 const TOP_PATHS: usize = 10;
 
-/// Treemap tiles before the tail is folded into one. A real closure has a few
-/// hundred packages, and past this many the rectangles are thinner than their
-/// own labels.
 const TREEMAP_TILES: usize = 24;
 
 pub(super) fn page_closures(
@@ -29,10 +18,6 @@ pub(super) fn page_closures(
     closures: &Closures,
     style: &D2Style,
 ) -> Result<()> {
-    // Every NixOS host gets a row, measured or not. `closures` accepts an
-    // opt-in host list, so dropping the unselected ones would leave the page
-    // reading as though it covered the whole fleet. Canonical host order comes
-    // from the facts, so this page agrees with every other one.
     let hosts: Vec<(&str, Option<&HostClosure>)> = facts
         .hosts
         .iter()
@@ -41,10 +26,6 @@ pub(super) fn page_closures(
         .collect();
 
     let mut o: Vec<String> = vec![MD_MARKER.into(), "".into(), "# Closures".into(), "".into()];
-    // The chart is nixdiag's own SVG, not d2's, so it is written whatever
-    // `--no-svg` says: that flag exists because d2 needs a binary on PATH and
-    // its bytes move with its version, and neither is true here. Being an
-    // `Auto` file, it is covered by the drift gate like the Markdown.
     if !hosts.is_empty() {
         let svg = chart::bars(
             "System closure size by host",
@@ -59,8 +40,6 @@ pub(super) fn page_closures(
     o.extend(summary_rows(closures, &hosts));
     o.push("".into());
 
-    // With one measured host every path is trivially both shared and unique,
-    // so the comparison says nothing.
     let measured = hosts.iter().filter(|(_, c)| c.is_some()).count();
     if measured > 1 {
         let shared = closures.shared();
@@ -94,8 +73,6 @@ pub(super) fn page_closures(
     }
 
     for (host, closure) in &hosts {
-        // An unmeasured host has nothing to contribute; an empty heading would
-        // only repeat what the summary table already said.
         let Some(h) = closure else { continue };
         o.push(format!("## {host}"));
         o.push("".into());
@@ -109,14 +86,11 @@ pub(super) fn page_closures(
             o.push("".into());
         }
 
-        // Single paths, where the treemap tiles are packages: the two differ
-        // wherever one package ships several outputs.
         o.push("Largest single paths:".into());
         o.push("".into());
         o.push("| Package | Size |".into());
         o.push("|---|---|".into());
         for p in h.largest(TOP_PATHS) {
-            // Name only, never the full path — see util::store_name.
             o.push(format!(
                 "| `{}` | {} |",
                 store_name(&p.path),
@@ -132,15 +106,7 @@ pub(super) fn page_closures(
     out.write_auto(&src.join("closures.md"), &o.join("\n"))
 }
 
-/// One bar per host, stacked by how widely its paths are held.
-///
-/// An unmeasured host keeps its row and loses its bar, for the same reason it
-/// keeps its `—` in the table: silently dropping it would make the picture
-/// read as the whole fleet.
 fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<Row> {
-    // Measured against the same set `split` divides by, not against the rows:
-    // with one measured host every path is trivially held by "all" of them, so
-    // the split says nothing and the bar is drawn plain.
     let comparable = closures.hosts.len() > 1;
     hosts
         .iter()
@@ -149,8 +115,6 @@ fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<
                 let s = closures.split(host);
                 Row {
                     label: (*host).to_string(),
-                    // Zero-valued bands draw nothing and claim no legend
-                    // entry, so a fleet too small for one is handled here.
                     bands: vec![
                         (Band::Shared, s.shared),
                         (Band::Partial, s.partial),
@@ -173,9 +137,6 @@ fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<
         .collect()
 }
 
-/// Treemap tiles for one host: package name and how widely it is held, summed
-/// over every store path that folds to that name, with the long tail folded
-/// into a single tile so it is visible without being drawn.
 fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
     let n = closures.hosts.len();
     let band = |count: usize| match count {
@@ -185,8 +146,6 @@ fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
         _ => Band::Partial,
     };
 
-    // The grouping lives on `Closures` so the picture and the published API
-    // cannot disagree about what one package is.
     let v = closures.package_shares(host);
 
     let mut tiles: Vec<Tile> = v
@@ -209,8 +168,6 @@ fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
     tiles
 }
 
-/// The summary table. Split out so the unmeasured-host case is testable
-/// without building a whole `Facts`.
 fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<String> {
     let mut o = vec![
         "| Host | Closure | Paths | Unique |".to_string(),
@@ -308,16 +265,13 @@ mod tests {
         let c = Closures { schema: 1, hosts };
         let tiles = treemap_tiles(&c, "nas");
         let seen: Vec<(&str, u64)> = tiles.iter().map(|t| (t.label.as_str(), t.value)).collect();
-        // Two outputs of glibc are one 140-byte tile, and it sorts under linux.
         assert_eq!(seen, vec![("linux", 300), ("glibc", 140)]);
-        // One measured host, so nothing to compare and no legend to earn.
         assert!(tiles.iter().all(|t| t.band == Band::Solid), "{seen:?}");
     }
 
     #[test]
     fn the_treemap_tail_folds_into_one_counted_tile() {
         let mut hosts = IndexMap::new();
-        // TREEMAP_TILES big ones plus three stragglers.
         let paths = (0..TREEMAP_TILES + 3)
             .map(|i| ClosurePath {
                 path: format!("/nix/store/0000000000000000000000000000{i:04}-pkg{i:03}-1.0"),
@@ -334,8 +288,6 @@ mod tests {
         assert_eq!(last.band, Band::Rest);
     }
 
-    /// Three hosts is the smallest fleet where a path can be held by some but
-    /// not all, so it is the only shape that exercises every band.
     #[test]
     fn three_hosts_stack_all_three_bands() {
         let mut hosts = IndexMap::new();

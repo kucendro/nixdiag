@@ -1,21 +1,10 @@
-//! The closure treemap: every package as a rectangle sized by its bytes.
-//!
-//! The fleet bar exploded by package — same bands, same colours, so the two
-//! read as one picture at two zoom levels.
-
 use super::{
     color, legend, legend_bands, rect, svg_open, text, Band, D2Style, CH, LEGEND_H, PAD, W,
 };
 use crate::util::human_size;
 
-/// Canvas height for a treemap. Wider than tall, so the first row the
-/// algorithm lays down runs along the vertical side and the largest tile
-/// lands top-left, where a reader starts.
 const TREE_H: u64 = 400;
 
-/// The longest prefix of `s` that fits `cap` characters, elided when it had
-/// to cut. Below six characters a package name stops being recognisable, so
-/// nothing is drawn rather than a stub.
 fn fit_label(s: &str, cap: usize) -> Option<String> {
     let n = s.chars().count();
     if cap >= n {
@@ -27,15 +16,12 @@ fn fit_label(s: &str, cap: usize) -> Option<String> {
     Some(s.chars().take(cap - 1).collect::<String>() + "\u{2026}")
 }
 
-/// One rectangle of a treemap.
 pub struct Tile {
     pub label: String,
     pub value: u64,
     pub band: Band,
 }
 
-/// The worst aspect ratio in a row of `areas` laid along a side of length
-/// `side` (Bruls, Huizing and van Wijk). Lower is squarer.
 fn worst(side: f64, sum: f64, lo: f64, hi: f64) -> f64 {
     if sum <= 0.0 || lo <= 0.0 || side <= 0.0 {
         return f64::INFINITY;
@@ -44,16 +30,6 @@ fn worst(side: f64, sum: f64, lo: f64, hi: f64) -> f64 {
     (w2 * hi / s2).max(s2 / (w2 * lo))
 }
 
-/// Squarified treemap layout: repeatedly grow a row along the shorter side of
-/// what is left, for as long as adding the next area improves the worst
-/// aspect ratio in that row, then place the row and recurse on the remainder.
-///
-/// `areas` must be descending — that is what makes the result squarish.
-///
-/// The layout runs in f64 because aspect ratios are divisions and integer
-/// cross-multiplication buys nothing when every coordinate is rounded to a
-/// whole pixel before it reaches the output. It stays deterministic: the same
-/// values drive the same IEEE-754 operations in the same order.
 fn squarify(areas: &[f64], rect: (f64, f64, f64, f64)) -> Vec<(f64, f64, f64, f64)> {
     let (mut x, mut y, mut w, mut h) = rect;
     let mut out = Vec::with_capacity(areas.len());
@@ -69,8 +45,6 @@ fn squarify(areas: &[f64], rect: (f64, f64, f64, f64)) -> Vec<(f64, f64, f64, f6
         while j < areas.len() {
             let (s, l, g) = (sum + areas[j], lo.min(areas[j]), hi.max(areas[j]));
             let cand = worst(side, s, l, g);
-            // The first area always joins: a row of one is the baseline the
-            // rest are measured against.
             if j > i && cand > best {
                 break;
             }
@@ -106,13 +80,7 @@ fn squarify(areas: &[f64], rect: (f64, f64, f64, f64)) -> Vec<(f64, f64, f64, f6
     out
 }
 
-/// A treemap: rectangle area proportional to `value`, coloured by band.
-///
-/// Sorts internally, so the caller's order does not matter.
 pub fn treemap(caption: &str, tiles: &[Tile], style: &D2Style) -> String {
-    // Tile text sits on a band colour, so it contrasts with the fill rather
-    // than following the theme's ink: the light palette's fills are dark and
-    // the dark palette's are light.
     let tile_ink = color(style, "chartTileInk", ("#ffffff", "#14181f"));
 
     let mut order: Vec<&Tile> = tiles.iter().filter(|t| t.value > 0).collect();
@@ -136,8 +104,6 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &D2Style) -> String {
         .iter()
         .zip(squarify(&areas, (0.0, top as f64, pw, ph)))
     {
-        // A one-pixel inset is the whole separator: gaps show the page
-        // through, so the tiles need no strokes.
         let (px, py) = (rx.round() as u64 + 1, ry.round() as u64 + 1);
         let (tw, th) = (
             (rw.round() as u64).saturating_sub(2),
@@ -148,9 +114,6 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &D2Style) -> String {
         }
         let (name, light, dark) = t.band.color();
         rect(&mut o, px, py, tw, th, color(style, name, (light, dark)));
-        // Elide rather than clip, and only when there is a line's height to
-        // put it on. Losing the label on a large tile is the worse failure:
-        // the biggest rectangle is the one a reader most wants named.
         let cap = (tw.saturating_sub(8) / CH) as usize;
         if th >= 18 {
             if let Some(label) = fit_label(&t.label, cap) {
@@ -179,7 +142,6 @@ mod tests {
         }
     }
 
-    /// Every `<rect>` as (x, y, w, h).
     fn rects(svg: &str) -> Vec<(u64, u64, u64, u64)> {
         let attr = |l: &str, k: &str| -> u64 {
             l.split(&format!("{k}=\""))
@@ -215,7 +177,6 @@ mod tests {
         let r = rects(&svg);
         assert_eq!(r.len(), 3, "one rect per tile, no legend for Solid alone");
         let area: Vec<u64> = r.iter().map(|(_, _, w, h)| w * h).collect();
-        // Ratios survive the rounding: b is about half of a, c about a sixth.
         assert!(
             (area[0] as f64 / area[1] as f64 - 2.0).abs() < 0.1,
             "{area:?}"
@@ -224,7 +185,6 @@ mod tests {
             (area[0] as f64 / area[2] as f64 - 6.0).abs() < 0.3,
             "{area:?}"
         );
-        // Nothing escapes the canvas.
         for (x, y, w, h) in &r {
             assert!(x + w <= W && y + h <= TREE_H + 2 * PAD, "{r:?}");
         }
@@ -237,7 +197,6 @@ mod tests {
             &[tile("small", 1, Band::Solid), tile("big", 99, Band::Solid)],
             &D2Style::default(),
         );
-        // Sorted internally, so the caller's order does not matter.
         let first = svg.find(">big<").unwrap();
         assert!(first < svg.find(">small<").unwrap_or(usize::MAX), "{svg}");
         let (x, y, _, _) = rects(&svg)[0];
@@ -283,7 +242,6 @@ mod tests {
             fit_label("playwright-chromium-headless-shell", 12).as_deref(),
             Some("playwright-\u{2026}")
         );
-        // Too narrow to recognise anything: draw nothing.
         assert_eq!(fit_label("playwright-chromium", 5), None);
     }
 }

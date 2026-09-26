@@ -1,6 +1,3 @@
-//! The Services page: every service this repo configures, which hosts enable
-//! it, and the doc comment of the file that defines it.
-
 use super::super::out::{Out, MD_MARKER};
 use super::repo_services;
 use crate::facts::Facts;
@@ -17,7 +14,6 @@ pub(super) fn page_services(
     repo: &Repo,
     docs: &DocComments,
 ) -> Result<()> {
-    // name -> (hosts, files)
     let mut index: BTreeMap<String, (BTreeSet<String>, BTreeSet<String>)> = BTreeMap::new();
     for (host, f) in &facts.hosts {
         let Some(n) = f.as_nixos() else { continue };
@@ -47,7 +43,6 @@ pub(super) fn page_services(
     if index.is_empty() {
         o.push("| — | — | — |".into());
     }
-    // Doc-commented services get a section below the table.
     for (name, (_, files)) in &index {
         let Some(doc) = files.iter().find_map(|f| docs.files.get(f)) else {
             continue;

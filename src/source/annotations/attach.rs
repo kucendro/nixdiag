@@ -1,11 +1,3 @@
-//! Where a statement lands.
-//!
-//! An annotation is written next to a `services.<x>` binding, at the top of a
-//! file, or under an explicit `#: unit`. Turning that syntactic position into
-//! actual (host, unit) nodes needs the evaluated facts *and* the import graph:
-//! sub-service enables and raw systemd units are invisible to the projection,
-//! so those fall back to "the hosts whose imports reach this file".
-
 use super::model::Endpoint;
 use super::scan::{Raw, RawAttach};
 use crate::facts::Facts;
@@ -15,15 +7,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
 pub(super) struct Ctx {
-    /// facts host order, for deterministic attachment.
     pub(super) host_order: Vec<String>,
-    /// unit name -> hosts that enable it.
     pub(super) unit_hosts: BTreeMap<String, Vec<String>>,
-    /// repo-relative file -> (host, unit) pairs it enables.
     file_units: BTreeMap<String, Vec<(String, String)>>,
-    /// host -> repo-relative files reachable from its entry modules.
     reach: HashMap<String, HashSet<String>>,
-    /// repo-relative entry module -> host.
     entry_of: HashMap<String, String>,
 }
 
@@ -81,14 +68,12 @@ impl Ctx {
             .collect()
     }
 
-    /// Where a raw annotation lands: the host box, or (host, unit) nodes.
     pub(super) fn attach(&self, raw: &Raw) -> Result<Vec<Endpoint>, String> {
         match &raw.attach {
             RawAttach::Unit(u) => {
                 let via = self.hosts_reaching(&raw.file);
                 let hosts = match self.unit_hosts.get(u) {
                     Some(hosts) => {
-                        // Narrow to hosts that import this file, when the graph knows it.
                         let narrowed: Vec<String> =
                             hosts.iter().filter(|h| via.contains(h)).cloned().collect();
                         if narrowed.is_empty() {
@@ -97,9 +82,6 @@ impl Ctx {
                             narrowed
                         }
                     }
-                    // Nested enables (services.x.sub.enable) are invisible to the
-                    // generic projection; the binding in this file is still real
-                    // state, so fall back to the hosts that import the file.
                     None if !via.is_empty() => via,
                     None => {
                         return Err(format!(
@@ -115,9 +97,6 @@ impl Ctx {
                     .collect())
             }
             RawAttach::Declared(name) => {
-                // `host/name` pins the host explicitly, for files shared
-                // between hosts (e.g. a data file both a proxy and a
-                // monitoring module import).
                 if let Some((host, unit)) = name.split_once('/') {
                     if !self.host_order.iter().any(|h| h == host) {
                         return Err(format!("unknown host `{host}` in `unit {name}`"));

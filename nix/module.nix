@@ -1,6 +1,3 @@
-# NixOS module. `serve` points an nginx vhost at a docs derivation, so the
-# wiki ships atomically with every deploy — no daemon, no timer. `timer` is
-# the fallback for repos that want a checkout regenerated on a schedule.
 { self }:
 {
   config,
@@ -11,8 +8,6 @@
 let
   cfg = config.services.nixdiag;
 
-  # Mirrors `API_VERSION` in the binary. The URL prefix is the API's version,
-  # so a v2 can be served beside v1 rather than replacing it.
   apiVersion = "v1";
   historyDir = "/var/lib/nixdiag/history";
 
@@ -150,11 +145,6 @@ in
   config = lib.mkMerge [
     (lib.mkIf cfg.serve.enable {
       services.nginx.enable = true;
-      # Projections must never read an option here that names the docs
-      # derivation — `root`, and equally `locations.*.alias`. Reading one
-      # forces the derivation, and eval recurses on a host that serves the
-      # docs describing it. They read vhost names, listen addresses and
-      # proxyPass only; keep it that way.
       services.nginx.virtualHosts.${cfg.serve.virtualHost} = lib.mkMerge [
         { root = "${cfg.serve.docs}/${cfg.serve.subpath}"; }
         (lib.mkIf cfg.serve.api {
@@ -162,8 +152,6 @@ in
         })
         (lib.mkIf (cfg.serve.allowOrigins != [ ]) { extraConfig = corsHeaders; })
         (lib.mkIf cfg.serve.history {
-          # The mutable half, under the same URL namespace as the immutable
-          # one but living on a completely different filesystem path.
           locations."/api/${apiVersion}/history/".alias = "${historyDir}/";
         })
         cfg.serve.virtualHostExtra
@@ -181,10 +169,6 @@ in
       ];
     })
     (lib.mkIf (cfg.serve.enable && lib.length cfg.serve.allowOrigins > 1) {
-      # nginx omits a header whose value is empty, which is what lets one
-      # `add_header` serve several origins. `Vary: Origin` is not optional
-      # here: without it a cache in front hands one origin's response to
-      # another.
       services.nginx.appendHttpConfig = ''
         map $http_origin $nixdiag_allow_origin {
             default "";
@@ -195,8 +179,6 @@ in
       systemd.services.nixdiag-history = {
         description = "File this generation's nixdiag snapshot";
         wantedBy = [ "multi-user.target" ];
-        # Ahead of nginx, so a fresh deploy never serves an index that does
-        # not yet list the snapshot sitting beside it.
         before = [ "nginx.service" ];
         path = [
           pkgs.jq
@@ -221,19 +203,12 @@ in
             echo "nixdiag: this build carries no revision; nothing to file." >&2
             exit 0
           fi
-          # Idempotent: re-activating this generation, or rolling back to it,
-          # rewrites the same file and disturbs nothing else.
           install -m444 "$snap" "$STATE_DIRECTORY/$rev.json"
           ${lib.optionalString (cfg.serve.historyLimit != null) ''
             ls -1t "$STATE_DIRECTORY"/*.json 2>/dev/null \
               | tail -n +${toString (cfg.serve.historyLimit + 1)} \
               | xargs -r rm -f
           ''}
-          # Rebuild the index from the snapshots only — a plain *.json glob
-          # would sweep in index.json itself and append a null revision to it.
-          # `sort -z` keeps the input order stable so snapshots sharing a
-          # timestamp do not reshuffle between runs. Written via rename
-          # because nginx may be serving the old index right now.
           find "$STATE_DIRECTORY" -maxdepth 1 -name '*.json' ! -name index.json -print0 \
             | sort -z \
             | xargs -0 -r jq -s 'map(.revision) | map(select(. != null))

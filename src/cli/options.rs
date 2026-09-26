@@ -1,6 +1,3 @@
-//! Settings resolution. Every knob has the same override order: the flake's
-//! declared `nixdiag` output first, CLI flags on top.
-
 use super::RenderArgs;
 use crate::api;
 use crate::closures::Closures;
@@ -28,7 +25,6 @@ fn parse_extra_pages(specs: &[String]) -> Result<Vec<(String, PathBuf)>> {
         .collect()
 }
 
-/// Declared flake config first, CLI flags on top.
 pub(super) fn to_render_opts(
     repo: PathBuf,
     out: PathBuf,
@@ -86,8 +82,6 @@ pub(super) fn to_render_opts(
     })
 }
 
-/// The `api/` tree is on unless something turns it off; a flag beats the
-/// flake, like every other setting.
 fn to_api_opts(r: &RenderArgs, cfg: &eval::FlakeConfig, grammar: u32) -> Option<ApiOpts> {
     if r.no_api || cfg.api == Some(false) {
         return None;
@@ -97,9 +91,6 @@ fn to_api_opts(r: &RenderArgs, cfg: &eval::FlakeConfig, grammar: u32) -> Option<
         .clone()
         .or_else(|| cfg.revision.clone())
         .map(|id| api::Revision {
-            // `self.dirtyRev` spells an unclean tree `<rev>-dirty`, so the
-            // flag is already in the identifier; a dashboard can drop those
-            // points from a trend without a second field to thread through.
             dirty: id.ends_with("-dirty"),
             id,
             time: r.revision_time.or(cfg.revision_time),
@@ -143,8 +134,6 @@ fn to_style(r: &RenderArgs, cfg: &eval::FlakeConfig) -> Result<d2::D2Style> {
     })
 }
 
-/// --out flag, then the flake's declared `nixdiag.out` (relative to the
-/// flake), then <flake>/docs.
 pub(super) fn resolve_out(cli: Option<PathBuf>, cfg: &eval::FlakeConfig, flake: &Path) -> PathBuf {
     cli.map(|o| abs(&o))
         .or_else(|| cfg.out.as_ref().map(|o| flake.join(o)))

@@ -1,21 +1,8 @@
-//! `openapi.json` — the API describing itself.
-//!
-//! Every schema is *derived* from the same struct that serialises the
-//! payload, so the document cannot describe a field the API does not emit.
-//! Only the handful of paths is written by hand, and there is one per
-//! document type.
-//!
-//! OpenAPI 3.1 embeds JSON Schema 2020-12 directly, which is exactly what
-//! schemars emits — the only adaptation needed is moving `$defs` into
-//! `components/schemas` and repointing the `$ref`s at it.
-
 use crate::api::{self, API_VERSION};
 use crate::render::out::JSON_MARKER;
 use schemars::{schema_for, JsonSchema};
 use serde_json::{json, Map, Value};
 
-/// schemars places subschemas under `#/$defs/`; OpenAPI wants
-/// `#/components/schemas/`. Rewrites in place, at any depth.
 fn repoint_refs(v: &mut Value) {
     match v {
         Value::Object(map) => {
@@ -33,14 +20,11 @@ fn repoint_refs(v: &mut Value) {
     }
 }
 
-/// Add `T`'s schema under `name`, hoisting its subschemas beside it.
 fn add<T: JsonSchema>(name: &str, schemas: &mut Map<String, Value>) {
     let mut root = serde_json::to_value(schema_for!(T)).unwrap_or(Value::Null);
     let Some(obj) = root.as_object_mut() else {
         return;
     };
-    // `$schema` is a document-level declaration; inside a component it is
-    // noise, and OpenAPI already fixes the dialect.
     obj.remove("$schema");
     obj.remove("title");
     if let Some(Value::Object(defs)) = obj.remove("$defs") {
@@ -152,13 +136,9 @@ mod tests {
         repoint_refs(&mut v);
         assert_eq!(v["properties"]["meta"]["$ref"], "#/components/schemas/Meta");
         assert_eq!(v["items"][0]["$ref"], "#/components/schemas/HostEntry");
-        // Only `$ref` values are rewritten; a string that merely looks like
-        // one is left alone.
         assert_eq!(v["unrelated"], "#/$defs/NotARef");
     }
 
-    /// A dangling `$ref` renders as an error in the reference viewer, and the
-    /// hoisting is the only thing standing between us and one.
     #[test]
     fn the_document_has_no_dangling_refs_and_carries_the_marker() {
         let doc = build(true, true);
@@ -170,7 +150,6 @@ mod tests {
         for name in ["Index", "Hosts", "Services", "Topology", "Snapshot"] {
             assert!(schemas.contains_key(name), "missing schema {name}");
         }
-        // Every ref in the document must resolve to something we emitted.
         for cap in text.split("#/components/schemas/").skip(1) {
             let name: String = cap.chars().take_while(|c| c.is_alphanumeric()).collect();
             assert!(schemas.contains_key(&name), "dangling ref to {name}");
@@ -183,8 +162,6 @@ mod tests {
         let paths = doc["paths"].as_object().unwrap();
         assert!(!paths.contains_key("/api/v1/inputs.json"));
         assert!(!paths.contains_key("/api/v1/closures.json"));
-        // ...and their schemas, so the document never describes an endpoint
-        // this build did not publish.
         let schemas = doc["components"]["schemas"].as_object().unwrap();
         assert!(!schemas.contains_key("Inputs"));
         assert!(!schemas.contains_key("Closures"));

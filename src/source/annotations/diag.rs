@@ -1,8 +1,3 @@
-//! Render-time diagnostics. Every annotation carries a file and a line, so
-//! every diagnostic can point at the source that caused it.
-
-/// A warning's category doubles as the `--deny` vocabulary, so a future
-/// category is one variant plus one accepted flag value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Sev {
     Error,

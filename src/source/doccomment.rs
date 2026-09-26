@@ -1,10 +1,5 @@
-//! RFC 145 doc comments: a leading `/** ... */` block in a module file is
-//! that file's documentation (Markdown body).
-
 use std::path::Path;
 
-/// First-token-of-file doc comment, dedented. Parsed with rnix so string
-/// contents and nested expressions can never fool the scan.
 pub fn leading_doc(text: &str) -> Option<String> {
     let parse = rnix::Root::parse(text);
     for el in parse.syntax().descendants_with_tokens() {
@@ -13,7 +8,6 @@ pub fn leading_doc(text: &str) -> Option<String> {
             rnix::SyntaxKind::TOKEN_WHITESPACE => continue,
             rnix::SyntaxKind::TOKEN_COMMENT => {
                 let s = tok.text();
-                // `/**` opens a doc comment; `/***` and plain `/*` do not (RFC 145)
                 if s.starts_with("/**")
                     && !s.starts_with("/***")
                     && s.ends_with("*/")
@@ -29,8 +23,6 @@ pub fn leading_doc(text: &str) -> Option<String> {
     None
 }
 
-/// The doc comment with `#:` annotation lines stripped — those are directives
-/// for the topology (see annotations.rs), not prose.
 pub fn from_file(path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
     let doc = strip_directives(&leading_doc(&text)?);

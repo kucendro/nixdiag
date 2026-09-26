@@ -1,6 +1,3 @@
-//! The Endpoints page: what each node exposes and under which name, built
-//! from `#: expose` and the opt-in `name=` on edges.
-
 use super::super::out::{Out, MD_MARKER};
 use crate::facts::Facts;
 use crate::source::annotations::Model;
@@ -21,7 +18,6 @@ pub(super) fn page_endpoints(
         "| Endpoint | Port | Scope | Host | Service |".into(),
         "|---|---|---|---|---|".into(),
     ];
-    // (endpoint, port, scope, host, service)
     let mut rows: Vec<(String, String, String, String, String)> = Vec::new();
     let mut push = |host: &str, unit: Option<&str>, info: &crate::source::annotations::NodeInfo| {
         for e in &info.exposes {
@@ -53,8 +49,6 @@ pub(super) fn page_endpoints(
             }
         }
     }
-    // Named endpoints from `name=` on edges: the annotated node fronts the
-    // fqdn, the edge target is the service behind it.
     use crate::source::annotations::Endpoint;
     for ne in &model.named {
         let (host, unit) = match &ne.node {

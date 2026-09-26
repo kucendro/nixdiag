@@ -1,6 +1,3 @@
-//! The Architecture page: both diagrams, side by side, with the SVGs copied
-//! next to the Markdown that references them.
-
 use super::super::out::{Out, MD_MARKER};
 use anyhow::Result;
 use std::path::Path;

@@ -1,6 +1,3 @@
-//! Module-tree diagram: how each host is assembled from the repo's files.
-//! Port of gen-diagram.py.
-
 use super::d2::{write_and_render, D2Style, D2_HEADER};
 use super::out::Out;
 use crate::facts::{Facts, Host};

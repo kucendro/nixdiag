@@ -1,8 +1,3 @@
-//! The Data API page: how to read this wiki's contents as JSON.
-//!
-//! Written only when the `api/` tree was published, and it lists exactly the
-//! documents that were written, so it can never advertise a missing endpoint.
-
 use super::super::out::{Out, MD_MARKER};
 use crate::api::API_VERSION;
 use anyhow::Result;
@@ -44,8 +39,6 @@ pub(super) fn page_api(
         "| `/api/{v}/openapi.json` | an OpenAPI 3.1 document describing all of the above |"
     ));
     o.push("".into());
-    // Absolute, because that is how the vhost serves them: the book is the web
-    // root and `/api/` a sibling location.
     o.push("Paths are relative to the site root.".into());
     out.write_auto(&src.join("api.md"), &o.join("\n"))
 }

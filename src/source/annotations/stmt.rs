@@ -1,7 +1,3 @@
-//! The statement grammar: one statement per line, a malformed line is a
-//! reported error and never silently ignored. One statement per line is also
-//! what keeps `nixdiag migrate` mechanical at an edition bump.
-
 use super::model::{Expose, Scope};
 use std::collections::BTreeMap;
 
@@ -13,14 +9,11 @@ pub(super) enum Stmt {
         rev: bool,
         target: String,
         label: String,
-        /// `name=<fqdn>[:port]` — the endpoint the annotated node fronts.
         name: Option<String>,
         port: Option<u32>,
     },
     Name(String),
     Scope(Scope),
-    /// Declares a node the projection can't see (a container, a raw systemd
-    /// unit); the contiguous `#:` block it sits in attaches to it.
     Unit(String),
 }
 
@@ -125,8 +118,6 @@ fn parse_expose(port: &str, rest: &[&str]) -> Result<Stmt, String> {
     }))
 }
 
-/// `<name>` or `<host>/<name>`: a slash pins the declared unit to one host
-/// (needed when several hosts' import graphs reach the file).
 fn is_unit_token(s: &str) -> bool {
     let ident = |p: &str| {
         !p.is_empty()
@@ -139,9 +130,6 @@ fn is_unit_token(s: &str) -> bool {
     }
 }
 
-/// `<sub>@<key>` in an fqdn position: the domain map supplies the suffix at
-/// render time, so domain literals stay out of the repo source. A bare
-/// `@<key>` is the domain itself; a token without `@` passes through.
 pub(super) fn expand_fqdn(
     token: &str,
     domains: &BTreeMap<String, String>,

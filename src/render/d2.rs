@@ -1,5 +1,3 @@
-//! d2 emission and SVG rendering.
-
 use crate::render::out::Out;
 use anyhow::{bail, Result};
 use std::io::ErrorKind;
@@ -11,19 +9,13 @@ pub const D2_HEADER: [&str; 2] = [
     "# Regenerate: nixdiag gen",
 ];
 
-/// Appearance knobs. Every diagram color comes from the `vars` palette
-/// block, so a theme swaps the whole set and any single name can be
-/// overridden. One build renders one theme: d2 cannot switch explicitly
-/// styled colors with the viewer's color scheme (d2lang/d2#831).
 #[derive(Default)]
 pub struct D2Style {
     pub dark: bool,
     pub background: Option<String>,
-    /// palette overrides (name, color); later entries win
     pub colors: Vec<(String, String)>,
 }
 
-/// (name, light, dark)
 pub const PALETTE: &[(&str, &str, &str)] = &[
     ("appFill", "#e6f0ff", "#1c2e4a"),
     ("appStroke", "#4a76c4", "#7fa7e8"),
@@ -40,14 +32,6 @@ pub const PALETTE: &[(&str, &str, &str)] = &[
     ("mesh", "#4a76c4", "#7fa7e8"),
 ];
 
-/// Resolve one color: an explicit `--color NAME=#hex` wins, then the built-in
-/// light/dark pair for `name` in `PALETTE`, then `default`.
-///
-/// The `default` arm is what lets `render::chart` have its own tunable color
-/// names without adding `PALETTE` entries. `vars_block` writes the whole
-/// palette into every diagram, so a new entry would churn every snapshot in
-/// this repo and in every consumer's committed docs; a name that resolves
-/// only through `default` is still overridable but appears nowhere.
 pub fn color<'a>(style: &'a D2Style, name: &str, default: (&'a str, &'a str)) -> &'a str {
     if let Some((_, v)) = style.colors.iter().rev().find(|(n, _)| n == name) {
         return v;
@@ -97,7 +81,7 @@ pub fn write_and_render(
     let mut cmd = Command::new("d2");
     cmd.args(["--layout", "elk"]);
     if style.dark {
-        cmd.args(["--theme", "200"]); // label/text colors for dark canvases
+        cmd.args(["--theme", "200"]);
     }
     let run = cmd.arg(&d2_path).arg(&svg_path).output();
     match run {
@@ -121,27 +105,6 @@ pub fn write_and_render(
     Ok(())
 }
 
-/// Rewrite d2's edge-label mask into a clip path.
-///
-/// d2 keeps each edge line from running through its own label with an SVG
-/// `mask`: one white rect over the canvas, one black rect per label, and
-/// `mask="url(#…)"` on every connection path — with or without labels.
-/// A mask has no vector form in PDF, so Chrome's print backend rasterises
-/// each masked path into a page-wide bitmap at 300 dpi, with an alpha
-/// image beside it; a wiki printed to PDF grew by ~30 KB per edge and a
-/// 24-page fleet came out at 6.4 MB, 5 MB of it 460 near-empty bitmaps.
-/// The same region as a `clipPath` is a plain PDF clip, kept as vectors.
-///
-/// The region is emitted as one `<path>` of disjoint rectangles (the
-/// canvas minus the union of the labels): a single child is what keeps
-/// Chrome on its path-based clip rather than the mask fallback it uses
-/// past a few dozen children, and disjoint pieces are exact under any fill
-/// rule even where two labels overlap, which even-odd would flip back to
-/// visible. A mask with no label rects, and the attributes pointing at it,
-/// are dropped outright. Anything shaped differently from d2's pattern —
-/// a non-rect child, an unexpected fill, a white rect after a black one —
-/// is left untouched, so an upstream change degrades to today's output
-/// rather than to a wrong picture.
 pub fn unmask(svg: &str) -> String {
     let mut out = String::with_capacity(svg.len());
     let mut rest = svg;
@@ -195,7 +158,6 @@ impl Rect {
         self.y + self.h
     }
 
-    /// `self` minus `hole`, as up to four disjoint rectangles.
     fn minus(self, hole: Rect) -> Vec<Rect> {
         let (ix, iy) = (self.x.max(hole.x), self.y.max(hole.y));
         let (ix2, iy2) = (self.x2().min(hole.x2()), self.y2().min(hole.y2()));
@@ -249,7 +211,6 @@ impl Rect {
     }
 }
 
-/// One d2 mask, understood: the canvas rect and the label rects cut out of it.
 struct Mask {
     id: String,
     base: Rect,
@@ -274,8 +235,6 @@ impl Mask {
     }
 }
 
-/// The value of attribute `name` in one tag's text. The leading space is
-/// what keeps `width` from matching inside `stroke-width`.
 fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
     let key = format!(" {name}=\"");
     let start = tag.find(&key)? + key.len();
@@ -283,8 +242,6 @@ fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
     Some(&tag[start..end])
 }
 
-/// Parse a `<mask …>…</mask>` element that follows d2's pattern exactly:
-/// one white rect first, then only black rects, nothing else inside.
 fn parse_mask(elem: &str) -> Option<Mask> {
     let open_end = elem.find('>')?;
     let id = attr(&elem[..open_end], "id")?.to_string();
@@ -372,7 +329,6 @@ mod tests {
         for hole in &m.holes {
             region = region.into_iter().flat_map(|p| p.minus(*hole)).collect();
         }
-        // union of the two 4x4 holes overlapping on a 2x2 square
         assert_eq!(area(&region), 100.0 - (16.0 + 16.0 - 4.0));
     }
 

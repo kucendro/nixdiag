@@ -1,27 +1,9 @@
-//! The published API contract: every type here is a wire format someone
-//! else's code reads.
-//!
-//! This is the fourth versioned surface (after the facts schema, the
-//! annotation grammar and the package API) and it fails unlike any of them.
-//! The facts schema is *fatal* on skew because both halves ship from one
-//! flake, but a reader of this API is a third party that can only take what
-//! it is handed — so nixdiag never validates it, and the documented contract
-//! for readers is: tolerate unknown keys, and treat an unknown `schema` as
-//! newer than you understand.
-//!
-//! Adding a key or an optional field does not bump `API_SCHEMA`. Removing or
-//! renaming one does, with a CHANGELOG entry — a reworded table heading
-//! breaks nobody's parser, a renamed key breaks every dashboard.
-
 use crate::render::out::JSON_MARKER;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-/// URL prefix. A v2 lives beside v1 rather than replacing it, which is what
-/// makes an incompatible change survivable for readers.
 pub const API_VERSION: &str = "v1";
 
-/// Bump only on a removal, rename, or change of meaning.
 pub const API_SCHEMA: u32 = 1;
 
 /// Carried by every document. `generator` holds the AUTO marker, which is
@@ -51,8 +33,6 @@ impl Meta {
     }
 }
 
-// ---------------------------------------------------------------- index
-
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Index {
     pub meta: Meta,
@@ -64,8 +44,6 @@ pub struct Link {
     pub path: String,
     pub description: &'static str,
 }
-
-// ---------------------------------------------------------------- hosts
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Hosts {
@@ -98,8 +76,6 @@ pub struct Ports {
     pub udp: Vec<u32>,
 }
 
-// ------------------------------------------------------------- services
-
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Services {
     pub meta: Meta,
@@ -117,8 +93,6 @@ pub struct ServiceEntry {
     /// retain the closure it describes.
     pub files: Vec<String>,
 }
-
-// ------------------------------------------------------------- topology
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Topology {
@@ -166,8 +140,6 @@ pub struct EndpointRow {
     /// Present when the row came from `name=` on an edge.
     pub target: Option<String>,
 }
-
-// --------------------------------------------------------------- inputs
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Inputs {
@@ -220,8 +192,6 @@ pub struct RevGroup {
     pub nodes: Vec<String>,
 }
 
-// ------------------------------------------------------------- closures
-
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Closures {
     pub meta: Meta,
@@ -273,8 +243,6 @@ pub struct Package {
     /// How many measured hosts carry it.
     pub holders: usize,
 }
-
-// ------------------------------------------------------------- snapshot
 
 /// The small document history accumulates. A few hundred bytes plus one
 /// number per host: a trend means fetching many of these, so it is

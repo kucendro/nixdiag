@@ -1,17 +1,7 @@
-//! Per-host system closure sizes — the second data input to `render`.
-//!
-//! Deliberately not part of `facts`: facts are pure evaluation, while nar
-//! sizes exist only for *realised* store paths. Keeping the provenances apart
-//! is what lets `facts.json` stay schema 2 and `mkFacts` stay a pure eval.
-//!
-//! Totals and counts are always derived from `paths`, never stored, so they
-//! cannot drift out of agreement with the list they summarise.
-
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Bump on any breaking change to this model or to nix/closures.nix.
 pub const CLOSURES_SCHEMA: u32 = 1;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,8 +32,6 @@ impl HostClosure {
         self.paths.len()
     }
 
-    /// The `n` biggest contributors, largest first. Ties break on path so the
-    /// rendered table is stable.
     pub fn largest(&self, n: usize) -> Vec<&ClosurePath> {
         let mut v: Vec<&ClosurePath> = self.paths.iter().collect();
         v.sort_by(|a, b| b.nar_size.cmp(&a.nar_size).then(a.path.cmp(&b.path)));
@@ -53,8 +41,6 @@ impl HostClosure {
 }
 
 impl Closures {
-    /// How many hosts hold each path, with its size. BTreeMap so every derived
-    /// listing comes out in a deterministic order.
     fn occurrences(&self) -> BTreeMap<&str, (usize, u64)> {
         let mut seen: BTreeMap<&str, (usize, u64)> = BTreeMap::new();
         for host in self.hosts.values() {
@@ -66,7 +52,6 @@ impl Closures {
         seen
     }
 
-    /// Paths every host carries — the common base.
     pub fn shared(&self) -> Vec<(&str, u64)> {
         let n = self.hosts.len();
         self.occurrences()
@@ -76,8 +61,6 @@ impl Closures {
             .collect()
     }
 
-    /// Paths this host carries and no other — what it actually costs beyond
-    /// the shared base.
     pub fn unique(&self, host: &str) -> Vec<(&str, u64)> {
         let occ = self.occurrences();
         let Some(h) = self.hosts.get(host) else {
@@ -93,23 +76,15 @@ impl Closures {
         v
     }
 
-    /// Distinct paths across the fleet, and their total size.
     pub fn deduped(&self) -> (usize, u64) {
         let occ = self.occurrences();
         (occ.len(), occ.values().map(|(_, size)| size).sum())
     }
 
-    /// What the fleet would weigh without sharing: every host's closure summed
-    /// as if it stood alone.
     pub fn naive_sum(&self) -> u64 {
         self.hosts.values().map(HostClosure::total).sum()
     }
 
-    /// This host's paths with how many measured hosts hold each one.
-    ///
-    /// The per-path form of `split`, which the treemap needs to colour a tile.
-    /// The count is returned raw rather than classified, so the model does not
-    /// have to know the renderer's vocabulary.
     pub fn path_shares(&self, host: &str) -> Vec<(&str, u64, usize)> {
         let occ = self.occurrences();
         let Some(h) = self.hosts.get(host) else {
@@ -124,16 +99,6 @@ impl Closures {
             .collect()
     }
 
-    /// This host's closure rolled up per package, largest first.
-    ///
-    /// `path_shares` one level up: `util::package_name` folds a package's
-    /// several outputs into one entry, which is what makes a treemap of a real
-    /// closure readable and what keeps the published API free of store paths.
-    /// Keyed on the holder count as well as the name, so an entry never
-    /// averages two sharing bands — one package's outputs are almost always
-    /// held alike, and when they are not, saying so is the honest answer.
-    /// Like `path_shares`, the count comes back raw so the model never learns
-    /// the renderer's vocabulary.
     pub fn package_shares(&self, host: &str) -> Vec<(String, u64, usize)> {
         let mut groups: BTreeMap<(&str, usize), u64> = BTreeMap::new();
         for (path, size, count) in self.path_shares(host) {
@@ -152,14 +117,6 @@ impl Closures {
         v
     }
 
-    /// One host's closure split by how widely each path is held: carried by
-    /// every measured host, by some of them, or by this host alone.
-    ///
-    /// The three always sum to that host's `total()`, which is what lets the
-    /// fleet chart stack them into one bar. With a single measured host every
-    /// path is trivially held by all of them, so the whole closure lands in
-    /// `shared` and the chart draws a plain bar instead of a legend that
-    /// would distinguish nothing.
     pub fn split(&self, host: &str) -> Split {
         let n = self.hosts.len();
         let occ = self.occurrences();
@@ -178,7 +135,6 @@ impl Closures {
     }
 }
 
-/// See `Closures::split`.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Split {
     pub shared: u64,
@@ -197,7 +153,6 @@ mod tests {
         }
     }
 
-    /// luna and sol share `libc` and `bash`; each has one path of its own.
     fn fixture() -> Closures {
         let mut hosts = IndexMap::new();
         hosts.insert(
@@ -238,9 +193,7 @@ mod tests {
     #[test]
     fn deduplication_counts_a_shared_path_once() {
         let c = fixture();
-        // libc + bash + nginx + postgres = 4 paths, 560 bytes
         assert_eq!(c.deduped(), (4, 560));
-        // 160 + 550, i.e. the shared 150 counted twice
         assert_eq!(c.naive_sum(), 710);
     }
 
@@ -256,7 +209,6 @@ mod tests {
     #[test]
     fn a_split_partitions_the_host_total() {
         let c = fixture();
-        // Two hosts, so nothing can be held by "some but not all".
         assert_eq!(
             c.split("luna"),
             Split {
@@ -306,9 +258,6 @@ mod tests {
             },
         );
         let c = Closures { schema: 1, hosts };
-        // Two outputs of glibc are one 140-byte entry, largest first. Their
-        // holder counts differ (the -bin output is luna's alone), so they are
-        // deliberately *not* merged into one averaged row.
         assert_eq!(
             c.package_shares("luna"),
             vec![
@@ -317,8 +266,6 @@ mod tests {
                 ("nginx".to_string(), 10, 1),
             ]
         );
-        // Never a store path: what reaches the published API and the treemap
-        // is the package name alone.
         assert!(c
             .package_shares("luna")
             .iter()
@@ -328,8 +275,6 @@ mod tests {
     #[test]
     fn a_third_host_makes_the_partial_band_possible() {
         let mut c = fixture();
-        // `nginx` now sits on two of three hosts: shared by some, unique to
-        // none, and counted in neither of the other two bands.
         c.hosts.insert(
             "terra".to_string(),
             HostClosure {
@@ -364,10 +309,8 @@ mod tests {
             },
         );
         let c = Closures { schema: 1, hosts };
-        // Degenerate but consistent; the page suppresses the fleet section.
         assert_eq!(c.shared(), vec![("libc", 100)]);
         assert_eq!(c.deduped(), (1, 100));
-        // "shared" wins the tie, so the split still sums to the total.
         assert_eq!(
             c.split("only"),
             Split {

@@ -117,7 +117,7 @@ pub(super) fn cmd_check(
     if tmp.exists() {
         std::fs::remove_dir_all(&tmp)?;
     }
-    r.no_svg = true; // SVG output varies with the d2 version; compare sources only
+    r.no_svg = true;
     let (_, mut facts) = gather_facts(&args)?;
     let rendered = render_all(
         &mut facts,
@@ -152,8 +152,6 @@ pub(super) fn cmd_check(
     }
 }
 
-/// `nixdiag syntax`: the annotation cheat sheet, shipped in the binary so the
-/// text a coding assistant is handed is the grammar this build parses.
 pub(super) fn cmd_syntax() {
     print!("{}", include_str!("../../SYNTAX.md"));
 }

@@ -1,6 +1,3 @@
-//! Data-flow topology diagram, driven entirely by `#:` annotations.
-//! With zero annotations it degrades to host boxes + firewall ports.
-
 use crate::facts::{Facts, Host};
 use crate::render::d2::{write_and_render, D2_HEADER};
 use crate::render::out::Out;
@@ -9,8 +6,6 @@ use crate::util::sanitize;
 use anyhow::Result;
 use indexmap::IndexMap;
 
-/// Known roles map to a d2 class and a label suffix; unknown roles render
-/// with defaults, so diagrams stay user-programmable without touching nixdiag.
 fn role_style(role: &str) -> (&'static str, String) {
     let class = match role {
         "mesh-control" | "proxy" | "monitor" | "dns" | "storage" | "gateway" => "infra",
@@ -60,8 +55,6 @@ pub fn generate(
     render_svg: bool,
     style: &crate::render::d2::D2Style,
 ) -> Result<()> {
-    // Nodes to draw per host: every annotated service, plus services that only
-    // appear as edge endpoints (any enabled service is a valid target).
     let mut per_host: IndexMap<&str, IndexMap<&str, (&'static str, String)>> = facts
         .hosts
         .keys()
@@ -89,8 +82,6 @@ pub fn generate(
         }
     }
 
-    // Expose edges: public ones come in from the internet, lan ones from the
-    // LAN cloud; mesh endpoints are only listed on the endpoints page.
     let mut expose_edges: Vec<(Endpoint, Endpoint, String)> = Vec::new();
     let mut collect = |node: Endpoint,
                        host: &str,
@@ -133,7 +124,6 @@ pub fn generate(
             .iter()
             .any(|e| e.from == Endpoint::Lan || e.to == Endpoint::Lan);
 
-    // --- emit ------------------------------------------------------------
     let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
     o.extend(crate::render::d2::vars_block(style));
     o.extend(

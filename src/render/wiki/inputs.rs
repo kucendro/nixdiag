@@ -1,10 +1,3 @@
-//! The Inputs page: the flake's supply chain, plus the two duplicate signals.
-//!
-//! A repo pulled in twice is reported as one of two different things, because
-//! they need different reactions: several *revisions* of one repo is a
-//! correctness risk, while one revision under several node names is only a
-//! redundant fetch.
-
 use super::super::chart::{self, Mark};
 use super::super::d2::D2Style;
 use super::super::out::{Out, MD_MARKER};
@@ -13,7 +6,6 @@ use crate::util::human_date;
 use anyhow::Result;
 use std::path::Path;
 
-/// "this flake" for the root, otherwise the node and the name it uses.
 fn pulled_in_by(lock: &Lock, node: &str) -> String {
     let parents = lock.parents_of(node);
     if parents.is_empty() {
@@ -52,7 +44,6 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     }
     o.push("".into());
 
-    // Suggest pointing the extra copies at whatever the root already pulls.
     let Some(target) = lock.root_input_for(&d.identity) else {
         return;
     };
@@ -83,11 +74,6 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     o.push("".into());
 }
 
-/// The lock-date section: the chart, plus the one number the picture cannot
-/// state on its own.
-///
-/// Skipped entirely when nothing carries a date — a timeline of undated rows
-/// is an empty axis with a legend on it.
 fn lock_dates(
     o: &mut Vec<String>,
     out: &mut Out,
@@ -109,8 +95,6 @@ fn lock_dates(
                 .unwrap_or_else(|| "—".into()),
         })
         .collect();
-    // Shared with `api/v1/snapshot.json`, so the sentence below and the
-    // number a dashboard plots cannot drift apart.
     let Some((lo, hi)) = lock.date_span() else {
         return Ok(());
     };
@@ -152,12 +136,8 @@ pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Styl
         "".into(),
         "# Inputs".into(),
         "".into(),
-        // The one thing the picture cannot say for itself: a dashed edge is
-        // the opposite of an extra input.
         "Dashed edges are `follows`, which *removes* a duplicate.".into(),
         "".into(),
-        // Emitted whether or not the SVG was rendered: `nixdiag check` runs
-        // with --no-svg, and the Markdown must not differ between the two.
         "![Input graph](./inputs.svg)".into(),
         "".into(),
         "| Input | Source | Rev | Locked |".into(),

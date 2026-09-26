@@ -1,11 +1,3 @@
-//! `snapshot.json` — the small document a trend line is built from.
-//!
-//! A few hundred bytes plus one number per host, deliberately not a copy of
-//! everything else: history means fetching many of these, so size is the
-//! design constraint. It is also the only document that is not a pure
-//! function of the repo, since it carries the revision — which is why it is
-//! written `Volatile` and stays out of `nixdiag check`.
-
 use super::ApiData;
 use crate::api::{self, Meta};
 use crate::facts::Host;

@@ -1,9 +1,3 @@
-//! The flake's own supply chain: `flake.lock` parsed into an input graph.
-//!
-//! A plain file read — no eval, no realisation, no clock, so this works
-//! identically in both modes. `lastModified` is a fixed integer stored in the
-//! lock, which is what keeps every rendered date deterministic.
-
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -20,12 +14,9 @@ pub struct Lock {
 #[serde(default)]
 pub struct Node {
     pub inputs: BTreeMap<String, InputRef>,
-    /// Absent on the root node, which is the flake itself.
     pub locked: Option<Locked>,
 }
 
-/// An input value is either a node name, or a `follows` path relative to the
-/// root flake (`[ "stylix" "nixpkgs" ]`).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum InputRef {
@@ -48,10 +39,6 @@ pub struct Locked {
 }
 
 impl Locked {
-    /// Grouping key. Forge owner/repo are case-insensitive, and real locks do
-    /// carry the same repo under different casing (`nixos/nixpkgs` next to
-    /// `NixOS/nixpkgs`) — without folding case the most important duplicate a
-    /// lock can hold is missed.
     pub fn identity(&self) -> String {
         match (&self.owner, &self.repo) {
             (Some(o), Some(r)) => {
@@ -64,7 +51,6 @@ impl Locked {
         }
     }
 
-    /// How the input is written in a flake, for display.
     pub fn source(&self) -> String {
         match (&self.owner, &self.repo) {
             (Some(o), Some(r)) => format!("{}:{o}/{r}", self.kind),
@@ -76,7 +62,6 @@ impl Locked {
         }
     }
 
-    /// Revision, or the nar hash for sources that have no rev.
     pub fn version_id(&self) -> String {
         self.rev
             .clone()
@@ -90,19 +75,14 @@ impl Locked {
     }
 }
 
-/// One repo pulled in under more than one lock node.
 #[derive(Debug)]
 pub struct Dup {
-    /// Case-folded grouping key, for looking the repo up again.
     pub identity: String,
     pub source: String,
-    /// version id -> the nodes locked at it, both sorted
     pub revs: Vec<(String, Vec<String>)>,
 }
 
 impl Dup {
-    /// More than one revision of the same repo: a correctness risk. A single
-    /// revision under several node names is only redundancy.
     pub fn is_diamond(&self) -> bool {
         self.revs.len() > 1
     }
@@ -116,15 +96,10 @@ impl Dup {
 }
 
 impl Lock {
-    /// Parse `<repo>/flake.lock`. A flake without a lock is legitimate, so a
-    /// missing file is `None` rather than an error.
     pub fn read(repo_root: &Path) -> Option<Lock> {
         let text = std::fs::read_to_string(repo_root.join("flake.lock")).ok()?;
         match serde_json::from_str::<Lock>(&text) {
             Ok(lock) => {
-                // The nodes/inputs/locked shape has been stable across lock
-                // versions 5-7, so an unfamiliar version is worth a word but
-                // not a failure.
                 if lock.version != 0 && lock.version != 7 {
                     eprintln!(
                         "note: flake.lock is version {}, expected 7 — reading it anyway",
@@ -140,16 +115,12 @@ impl Lock {
         }
     }
 
-    /// Follow a `follows` path from the root flake to the node it names.
     fn resolve(&self, path: &[String]) -> Option<String> {
         let mut at = self.root.clone();
         for seg in path {
             let next = self.nodes.get(&at)?.inputs.get(seg)?;
             at = match next {
                 InputRef::Node(n) => n.clone(),
-                // A follows pointing at a follows: resolve from the root
-                // again, bounded by the path length so a malformed lock
-                // cannot spin.
                 InputRef::Follows(p) if p != path => self.resolve(p)?,
                 InputRef::Follows(_) => return None,
             };
@@ -157,9 +128,6 @@ impl Lock {
         Some(at)
     }
 
-    /// Every input edge as (parent node, input name, child node, is_follows).
-    /// A `follows` is drawn distinctly because it is what *removes* a
-    /// duplicate rather than adding one.
     pub fn edges(&self) -> Vec<(String, String, String, bool)> {
         let mut out = Vec::new();
         for (parent, node) in &self.nodes {
@@ -177,8 +145,6 @@ impl Lock {
         out
     }
 
-    /// Nodes that pull `child` in directly, as (parent, input name). Follows
-    /// edges are excluded: they express deduplication, not a second copy.
     pub fn parents_of(&self, child: &str) -> Vec<(String, String)> {
         let mut out: Vec<(String, String)> = self
             .edges()
@@ -190,7 +156,6 @@ impl Lock {
         out
     }
 
-    /// Every input node except the root, sorted by name.
     pub fn inputs(&self) -> Vec<(&String, &Locked)> {
         let mut out: Vec<(&String, &Locked)> = self
             .nodes
@@ -202,8 +167,6 @@ impl Lock {
         out
     }
 
-    /// Repos appearing under more than one node, worst first: real diamonds
-    /// (several revisions) before mere redundancy.
     pub fn duplicates(&self) -> Vec<Dup> {
         let mut by_identity: BTreeMap<String, (String, BTreeMap<String, Vec<String>>)> =
             BTreeMap::new();
@@ -232,11 +195,6 @@ impl Lock {
         dups
     }
 
-    /// The nodes the root flake declares itself.
-    ///
-    /// These are the inputs `nix flake update` moves; every other node is
-    /// locked by whichever input pulled it in, so its date is that input's to
-    /// move, not this flake's.
     pub fn root_inputs(&self) -> BTreeSet<String> {
         let Some(root) = self.nodes.get(&self.root) else {
             return BTreeSet::new();
@@ -250,12 +208,6 @@ impl Lock {
             .collect()
     }
 
-    /// Oldest and newest `lastModified` across the dated inputs.
-    ///
-    /// Lock arithmetic, never a clock read — which is the whole reason the
-    /// timeline chart is deterministic and "overdue" is not rendered at all.
-    /// `None` when nothing carries a date (every input a `path:`, or no
-    /// inputs), because a span needs two ends.
     pub fn date_span(&self) -> Option<(i64, i64)> {
         let dates: Vec<i64> = self
             .inputs()
@@ -265,8 +217,6 @@ impl Lock {
         Some((*dates.iter().min()?, *dates.iter().max()?))
     }
 
-    /// The root's own input name for this repo, if it has one — the target a
-    /// `follows` should point at.
     pub fn root_input_for(&self, identity: &str) -> Option<String> {
         let root = self.nodes.get(&self.root)?;
         for (name, r) in &root.inputs {
@@ -342,7 +292,6 @@ mod tests {
 
     #[test]
     fn identity_folds_forge_case() {
-        // The real-world case: nixos/nixpkgs and NixOS/nixpkgs are one repo.
         let l = lock();
         let a = l.nodes["nixpkgs"].locked.as_ref().unwrap();
         let b = l.nodes["nixpkgs_2"].locked.as_ref().unwrap();
@@ -353,11 +302,9 @@ mod tests {
     fn diamond_beats_redundancy_in_the_ordering() {
         let dups = lock().duplicates();
         assert_eq!(dups.len(), 2);
-        // nixpkgs: two revisions -> a real diamond, reported first.
         assert!(dups[0].is_diamond());
         assert_eq!(dups[0].source, "github:nixos/nixpkgs");
         assert_eq!(dups[0].nodes(), vec!["nixpkgs", "nixpkgs_2"]);
-        // flake-utils: one revision under two names -> redundancy only.
         assert!(!dups[1].is_diamond());
         assert_eq!(dups[1].nodes(), vec!["utils", "utils_2"]);
     }
@@ -378,8 +325,6 @@ mod tests {
         let l = lock();
         let roots = l.root_inputs();
         assert!(roots.contains("nixpkgs") && roots.contains("stylix") && roots.contains("utils"));
-        // Reached only through stylix, so a flake update here moves stylix,
-        // not this node.
         assert!(!roots.contains("nixpkgs_2"), "{roots:?}");
     }
 

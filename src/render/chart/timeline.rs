@@ -1,16 +1,3 @@
-//! The lock timeline: every input placed by the date it was locked at.
-//!
-//! `lastModified` is a fixed integer stored in `flake.lock`, so this draws the
-//! *spread* of a supply chain and never a judgement about now. "Overdue" would
-//! need a clock, which would make two builds of the same input disagree and
-//! cost mode B its reproducibility — the reason the atlas plate it comes from
-//! (6.2, input staleness) is rendered de-clocked or not at all.
-//!
-//! Direct and transitive inputs are coloured apart because they move under
-//! different actions: `nix flake update` bumps what this flake declares, while
-//! everything else only moves when whatever pulled it in does. A lone old row
-//! is a different job depending on which it is.
-
 use super::{color, gutter, legend, rect, svg_open, text, D2Style, Key, LEGEND_H, PAD, W};
 use std::cmp::Ordering;
 
@@ -18,9 +5,6 @@ const ROW_H: u64 = 20;
 const TICK_W: u64 = 3;
 const TICK_H: u64 = 11;
 
-/// Hue-matched to the diagrams' mesh blue, but under a chart-only name: an
-/// entry in `PALETTE` is written into every diagram's `vars` block and would
-/// churn every snapshot here and in every consumer's committed docs.
 const DIRECT: Key = Key {
     color: ("chartMark", "#4a76c4", "#7fa7e8"),
     label: "declared by this flake",
@@ -30,18 +14,10 @@ const TRANSITIVE: Key = Key {
     label: "pulled in by an input",
 };
 
-/// One input on the timeline.
 pub struct Mark {
     pub label: String,
-    /// `lastModified` out of the lock. `None` for an input that carries no
-    /// date — a `path:` input, typically. The row keeps its name and draws no
-    /// tick, so an input that cannot be placed is visibly present rather than
-    /// quietly dropped.
     pub at: Option<i64>,
-    /// Declared by the root flake itself, rather than reached through another
-    /// input.
     pub direct: bool,
-    /// Right-hand annotation: the formatted date, or why there is none.
     pub note: String,
 }
 
@@ -55,12 +31,6 @@ impl Mark {
     }
 }
 
-/// A dot plot of dates: one row per input, ticks on a shared axis running from
-/// the oldest lock date to the newest.
-///
-/// Sorts internally, oldest first, so the caller's order cannot break the
-/// staircase — and so the first and last rows' own notes label the ends of the
-/// axis, which is why the chart needs no separate scale.
 pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
     let ink = color(style, "chartInk", ("#333333", "#c9d1d9"));
     let muted = color(style, "chartMuted", ("#777777", "#8b949e"));
@@ -78,8 +48,6 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
     let note_w = gutter(order.iter().map(|m| m.note.as_str()));
     let plot_w = W.saturating_sub(label_w + note_w + PAD).max(1);
 
-    // One kind alone draws no distinction, so it earns no key — the same rule
-    // the bands follow when a single measured host leaves nothing to compare.
     let mut keys: Vec<Key> = Vec::new();
     for direct in [true, false] {
         if order.iter().any(|m| m.at.is_some() && m.direct == direct) {
@@ -100,8 +68,6 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
 
     for (i, m) in order.iter().enumerate() {
         let cy = top + ROW_H * i as u64 + ROW_H / 2;
-        // Both gutters are right-aligned inward, so labels sit against the
-        // plot and nothing rides the canvas edge, whatever the name lengths.
         text(
             &mut o,
             label_w - PAD,
@@ -112,9 +78,6 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
             &m.label,
         );
         if let (Some(at), Some(lo), Some(hi)) = (m.at, lo, hi) {
-            // The axis is drawn per row rather than once, so an undated input
-            // gets no track: it has no place on this scale and should not look
-            // as though it does.
             rect(&mut o, label_w, cy, plot_w, 1, track);
             let span = hi - lo;
             let x = if span > 0 {
@@ -155,8 +118,6 @@ mod tests {
         }
     }
 
-    /// x of every tick, in the order they were drawn: the ticks are the only
-    /// rects as narrow as `TICK_W`, since the tracks span the plot.
     fn ticks(svg: &str) -> Vec<u64> {
         let attr = |l: &str, k: &str| -> Option<u64> {
             l.split(&format!("{k}=\""))
@@ -173,7 +134,6 @@ mod tests {
             .collect()
     }
 
-    /// Everything between the `>` and `<` of each `<text>`, in draw order.
     fn labels(svg: &str) -> Vec<String> {
         svg.lines()
             .filter(|l| l.contains("<text"))
@@ -213,8 +173,6 @@ mod tests {
         );
         let t = ticks(&svg);
         assert_eq!(t.len(), 3, "{svg}");
-        // The first tick opens the plot and the last one closes it, so the two
-        // notes beside them label the scale and no separate axis is drawn.
         let plot_start = t[0];
         assert!(t[1] > plot_start && t[2] > t[1], "{t:?}");
         assert_eq!(t[1] - plot_start, (t[2] - plot_start) / 2, "{t:?}");
@@ -222,8 +180,6 @@ mod tests {
 
     #[test]
     fn a_single_date_puts_every_tick_at_the_start() {
-        // Nothing separates the inputs, so nothing should be implied by
-        // position — a divide by the zero span would be the bug here.
         let svg = timeline(
             "t",
             &[mark("a", Some(7), true), mark("b", Some(7), true)],
@@ -244,7 +200,6 @@ mod tests {
         assert!(svg.contains(">path<"), "{svg}");
         assert!(svg.contains(">—<"), "{svg}");
         assert_eq!(ticks(&svg).len(), 1, "{svg}");
-        // Undated rows sort last, so the dated one keeps the top.
         let names = labels(&svg);
         assert!(
             names.iter().position(|s| s == "dated") < names.iter().position(|s| s == "path"),

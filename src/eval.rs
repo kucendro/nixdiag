@@ -1,6 +1,3 @@
-//! Mode A extraction: spawn `nix eval --json --apply <projection>` per host,
-//! parallel across hosts. One merged projection eval per host.
-
 use crate::facts::{Facts, Host, SCHEMA};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -10,8 +7,6 @@ use std::process::Command;
 
 const CORE_PROJ: &str = include_str!("../nix/projections/core.nix");
 
-/// Optional `nixdiag = { … };` output declared in the documented flake:
-/// defaults for mode A so `nixdiag gen` needs no flags. CLI flags override.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct FlakeConfig {
@@ -22,20 +17,10 @@ pub struct FlakeConfig {
     pub theme: Option<String>,
     pub background: Option<String>,
     pub colors: BTreeMap<String, String>,
-    /// `@key` -> domain suffix for fqdn positions in annotations.
     pub domains: BTreeMap<String, String>,
-    /// Annotation grammar edition these files are written against. Unset
-    /// means "whatever the binary implements".
     pub grammar: Option<u32>,
-    /// Warning categories promoted to errors, e.g. `[ "deprecated" ]`.
     pub deny: Vec<String>,
-    /// Publish the `api/` tree. Unset means yes: the data is already computed
-    /// and reads nothing new, the same reason the lock timeline ships on by
-    /// default.
     pub api: Option<bool>,
-    /// Revision the docs describe. A flake output may reference `self`, so a
-    /// mode A consumer can write `nixdiag.revision = self.rev or null;` and
-    /// nixdiag still never invokes git.
     pub revision: Option<String>,
     pub revision_time: Option<i64>,
 }
@@ -89,7 +74,6 @@ fn nix_eval_json(
     serde_json::from_slice(&out.stdout).ok()
 }
 
-/// The declared `.#nixdiag` config, or defaults when the flake has none.
 pub fn flake_config(flake: &Path) -> FlakeConfig {
     let Some(v) = nix_eval_json(flake, ".#nixdiag", None, false) else {
         return FlakeConfig::default();

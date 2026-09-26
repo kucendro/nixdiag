@@ -1,6 +1,3 @@
-//! The Hosts page: one section per host, with its entry module's doc comment
-//! as the description.
-
 use super::super::out::{Out, MD_MARKER};
 use super::repo_services;
 use crate::closures::Closures;
@@ -77,9 +74,6 @@ fn host_nixos(
     }
     o.push(format!("| Users | {} |", join_or_dash(&f.users)));
     o.push(format!("| System packages | {} |", f.pkg_count));
-    // The row appears whenever closure measurement is on at all. A host the
-    // `closures` list did not select says so, rather than silently omitting
-    // the row, which would be indistinguishable from the feature being off.
     if let Some(cs) = closures {
         match cs.hosts.get(host) {
             Some(c) => o.push(format!(

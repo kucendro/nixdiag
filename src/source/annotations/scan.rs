@@ -1,10 +1,3 @@
-//! The rnix pass over the documented repo's `.nix` files.
-//!
-//! Comments are invisible to eval, so annotations are read from the source
-//! text at render time. This module only *finds* statements and records where
-//! each one attaches syntactically; resolving those attachments against the
-//! evaluated facts is `resolve`'s job.
-
 use super::diag::Diag;
 use super::grammar::{canonicalize, DEPRECATIONS};
 use super::stmt::{parse_stmt, Stmt};
@@ -13,12 +6,8 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum RawAttach {
-    /// `services.<x>` / `programs.<x>` binding directly below the line.
     Unit(String),
-    /// `#: unit <name>` declaration: placed on the hosts whose import graph
-    /// reaches the file, independent of any binding.
     Declared(String),
-    /// File-level: resolves to the host (entry module) or to what the file defines.
     File,
 }
 
@@ -27,11 +16,9 @@ pub(super) struct Raw {
     pub(super) line: usize,
     pub(super) attach: RawAttach,
     pub(super) stmt: Stmt,
-    /// Came from the file-leading `/** */` doc comment.
     pub(super) doc: bool,
 }
 
-/// Body of an annotation line comment: `#: …` or `# nixdiag: …`.
 fn line_comment_body(s: &str) -> Option<&str> {
     let after = s.strip_prefix('#')?;
     if let Some(b) = after.strip_prefix(':') {
@@ -40,7 +27,6 @@ fn line_comment_body(s: &str) -> Option<&str> {
     after.trim_start().strip_prefix("nixdiag:")
 }
 
-/// Body of an annotation line inside a doc comment.
 fn doc_line_body(l: &str) -> Option<&str> {
     let t = l.trim_start();
     t.strip_prefix("#:").or_else(|| t.strip_prefix("nixdiag:"))
@@ -55,7 +41,6 @@ fn own_line(text: &str, offset: usize) -> bool {
     text[start..offset].chars().all(char::is_whitespace)
 }
 
-/// Ident segments of a binding's attrpath (None for string/dynamic segments).
 fn attrpath_segments(binding: &SyntaxNode) -> Vec<Option<String>> {
     let Some(ap) = binding
         .children()
@@ -74,8 +59,6 @@ fn attrpath_segments(binding: &SyntaxNode) -> Vec<Option<String>> {
         .collect()
 }
 
-/// Attachment of a comment token: the full attrpath of the binding it sits
-/// above (or inside), outermost segment first.
 fn binding_path(tok: &SyntaxToken) -> Vec<Option<String>> {
     let mut next = tok.next_token();
     while let Some(t) = &next {
@@ -123,8 +106,6 @@ pub(super) fn scan_file(
     let mut file_raws: Vec<Raw> = Vec::new();
     let mut push =
         |line: usize, attach: RawAttach, body: &str, doc: bool, diags: &mut Vec<Diag>| {
-            // Deprecated spellings are rewritten (with a warning) before the
-            // grammar proper sees them; removed ones are a hard error.
             let body = match canonicalize(body.trim(), edition, DEPRECATIONS) {
                 Ok((body, warn)) => {
                     if let Some(w) = warn {
@@ -161,7 +142,6 @@ pub(super) fn scan_file(
         }
         let s = tok.text();
         let offset = usize::from(tok.text_range().start());
-        // RFC 145 doc comment leading the file: directive lines are file-level.
         if s.starts_with("/**") && !s.starts_with("/***") && s.ends_with("*/") && s.len() >= 5 {
             if leading {
                 let base = line_of(text, offset);
@@ -191,17 +171,11 @@ pub(super) fn scan_file(
         );
     }
 
-    // A `unit` declared in the file-leading doc comment is the file's default
-    // attachment: file-level lines elsewhere in the file attach to it (e.g. a
-    // data file, imported with a plain `import`, whose entries feed a service
-    // defined somewhere else). Per-binding attachment still wins.
     let file_default = file_raws.iter().find_map(|r| match (&r.stmt, r.doc) {
         (Stmt::Unit(n), true) => Some(n.clone()),
         _ => None,
     });
 
-    // Contiguous annotation lines form one block; a `unit <name>` declaration
-    // re-attaches the whole block to that declared unit.
     let mut i = 0;
     while i < file_raws.len() {
         let mut j = i + 1;
@@ -288,7 +262,6 @@ mod tests {
             &mut raws,
             &mut diags,
         );
-        // No deprecations exist yet, so a clean file stays clean.
         assert!(diags.is_empty());
         assert_eq!(raws.len(), 1);
     }
@@ -309,8 +282,6 @@ mod tests {
 
     #[test]
     fn unit_declaration_reattaches_its_block() {
-        // A raw systemd unit is invisible to the parser; `unit` declares it
-        // and pulls the whole contiguous block onto the declared node.
         let (raws, diags) = scan(
             "{\n  #: unit kubicek\n  #: scope mesh\n  systemd.services.kubicek = {\n    wantedBy = [ ];\n  };\n}\n",
         );
@@ -319,16 +290,12 @@ mod tests {
         assert_eq!(raws[0].attach, RawAttach::Declared("kubicek".into()));
         assert_eq!(raws[1].attach, RawAttach::Declared("kubicek".into()));
 
-        // A `unit` in a block above a services binding overrides it (e.g. to
-        // split a sub-service from its parent unit).
         let (raws, diags) = scan(
             "{\n  #: unit beszel-agent\n  #: agent\n  services.beszel.agent = {\n    enable = true;\n  };\n}\n",
         );
         assert!(diags.is_empty());
         assert_eq!(raws[1].attach, RawAttach::Declared("beszel-agent".into()));
 
-        // Non-contiguous lines are separate blocks: the role keeps its own
-        // binding attachment.
         let (raws, diags) =
             scan("{\n  #: unit qore\n\n  #: monitor\n  services.grafana.enable = true;\n}\n");
         assert!(diags.is_empty());
@@ -358,7 +325,6 @@ mod tests {
             assert_eq!(r.attach, RawAttach::Declared("nginx".into()));
         }
 
-        // A services./programs. binding below still wins over the file default.
         let (raws, diags) = scan(
             "/**\n  #: unit nginx\n*/\n{\n  #: monitor\n  services.grafana.enable = true;\n}\n",
         );

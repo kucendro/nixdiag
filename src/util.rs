@@ -1,4 +1,3 @@
-/// d2 identifier from an arbitrary segment.
 pub fn sanitize(seg: &str) -> String {
     seg.chars()
         .map(|c| {
@@ -11,11 +10,6 @@ pub fn sanitize(seg: &str) -> String {
         .collect()
 }
 
-/// `YYYY-MM-DD` from a unix timestamp, UTC.
-///
-/// Hand-rolled civil-from-days (Howard Hinnant's algorithm). The only date
-/// nixdiag formats is `lastModified` out of `flake.lock` — a fixed integer in
-/// the file, never a clock read — which is not worth a calendar dependency.
 pub fn human_date(unix: i64) -> String {
     let z = unix.div_euclid(86_400) + 719_468;
     let era = z.div_euclid(146_097);
@@ -29,7 +23,6 @@ pub fn human_date(unix: i64) -> String {
     format!("{y:04}-{m:02}-{d:02}")
 }
 
-/// Bytes as GiB/MiB/KiB with one decimal.
 pub fn human_size(bytes: u64) -> String {
     const KIB: f64 = 1024.0;
     const MIB: f64 = 1024.0 * KIB;
@@ -44,25 +37,11 @@ pub fn human_size(bytes: u64) -> String {
     }
 }
 
-/// `/nix/store/<hash>-foo-1.2` -> `foo-1.2`.
-///
-/// Rendered pages must never print a full store path. Nix scans build outputs
-/// for store-path strings and records each as a real reference, so a listing
-/// of a system closure would make the docs derivation retain that entire
-/// closure — measured at 36 MiB of references from a 367-byte table. The hash
-/// is also noise in a size report; the name and version are the signal.
 pub fn store_name(path: &str) -> &str {
     let base = path.rsplit('/').next().unwrap_or(path);
-    // The hash is base32, which has no '-', so the first one ends it.
     base.split_once('-').map(|(_, name)| name).unwrap_or(base)
 }
 
-/// `glibc-2.42-67` -> `glibc`; a name with no version is returned whole.
-///
-/// nixpkgs spells store names `<name>-<version>` and a version starts with a
-/// digit, so the first `-` before a digit ends the name. Folding there is what
-/// makes a treemap of a real closure readable: the several outputs and
-/// versions of one package become one tile instead of a scatter of slivers.
 pub fn package_name(name: &str) -> &str {
     let b = name.as_bytes();
     for i in 0..b.len().saturating_sub(1) {
@@ -73,7 +52,6 @@ pub fn package_name(name: &str) -> &str {
     name
 }
 
-/// Thousands-separated count — closure path tallies run to five figures.
 pub fn human_count(n: usize) -> String {
     let s = n.to_string();
     let mut out = String::with_capacity(s.len() + s.len() / 3);
@@ -109,7 +87,6 @@ mod tests {
             store_name("/nix/store/0d8g8n0a11v6f5m2h416ajyxmnkwc3md-glibc-2.42-67"),
             "glibc-2.42-67"
         );
-        // Not a store path, or no hash to strip: left alone.
         assert_eq!(store_name("plain"), "plain");
         assert_eq!(store_name("/some/where/else"), "else");
     }
@@ -119,15 +96,11 @@ mod tests {
         assert_eq!(package_name("linux-6.12.9"), "linux");
         assert_eq!(package_name("glibc-2.42-67"), "glibc");
         assert_eq!(package_name("bash-5.2p37"), "bash");
-        // Multiple outputs of one package fold together.
         assert_eq!(package_name("gcc-13.2.0-lib"), "gcc");
-        // A python module keeps its interpreter prefix: the `-` before `12`
-        // is not preceded by a digit-starting segment boundary we want.
         assert_eq!(
             package_name("python3.12-requests-2.32.3"),
             "python3.12-requests"
         );
-        // No version at all.
         assert_eq!(package_name("playwright-chromium"), "playwright-chromium");
         assert_eq!(package_name(""), "");
         assert_eq!(package_name("-"), "-");
@@ -146,7 +119,6 @@ mod tests {
     fn dates_are_civil_and_utc() {
         assert_eq!(human_date(0), "1970-01-01");
         assert_eq!(human_date(1_700_000_000), "2023-11-14");
-        // a real flake.lock lastModified
         assert_eq!(human_date(1_787_498_568), "2026-08-23");
     }
 

@@ -1,13 +1,6 @@
-//! The facts.json contract between extraction (Nix projections) and rendering.
-//!
-//! Schema 2: only quasi-frozen, stack-agnostic surfaces (module-system
-//! introspection, firewall, users). Topology semantics come from `#:`
-//! annotations in the repo source, parsed at render time.
-
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-/// Bump on any breaking change to this model or to nix/projections/.
 pub const SCHEMA: u32 = 2;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,9 +10,6 @@ pub struct Facts {
 }
 
 impl Facts {
-    /// Canonical host order: nixos first, then darwin, each sorted by name.
-    /// Mode A discovery and mode B's alphabetical toJSON both normalize to
-    /// this, so the two modes render identical documents.
     pub fn normalize(&mut self) {
         self.hosts.sort_by(|k1, v1, k2, v2| {
             let rank = |h: &Host| match h {
@@ -85,8 +75,6 @@ pub struct DarwinHost {
     pub programs: Vec<EnabledUnit>,
 }
 
-/// A unit (service/program) that some module file enables.
-/// `files` are raw store paths; repo-relative resolution happens at render time.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EnabledUnit {
