@@ -3,11 +3,11 @@
     "data": {
       "flake": false,
       "locked": {
-        "lastModified": 1790455026,
-        "narHash": "sha256-dT+MlPmg/0C6TC+zQbO7DPV+NFZxRp1UetNKDUNEadE=",
+        "lastModified": 1790456601,
+        "narHash": "sha256-gY62qZzptKRzQvJneonNM0HXLd0JP9CMt6TbrB9kTkE=",
         "owner": "kucendro",
         "repo": "nixdiag",
-        "rev": "41bdc3b025cc470afbdcc7889a9c1ed494f0ca4d",
+        "rev": "1f9080c7df23fc80dd4245e29218aa9dc343b2b3",
         "type": "github"
       },
       "original": {

@@ -30,7 +30,7 @@ rec {
         cp ${../assets}/closures-light.svg book/src/closures.svg
         cp ${adapters-page}/adapters.md book/src/adapters.md
         mdbook build book --dest-dir $out
-        cp ${adapters-page}/status.json $out/status.json
+        cp -r ${adapters-page}/status.json ${adapters-page}/status $out/
         cp -r --no-preserve=mode ${demo-docs}/wiki/book $out/demo
       '';
 }
