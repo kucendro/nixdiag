@@ -78,34 +78,28 @@ rec {
             else
               closures
         else if closures then
-          let
-            wanted = builtins.filter (n: !(builtins.elem n excluded)) (builtins.attrNames nixosConfigs);
-            cyclic = builtins.filter (n: builtins.elem n serving) wanted;
-            kept = builtins.filter (n: !(builtins.elem n cyclic)) wanted;
-          in
-          if cyclic == [ ] then
-            kept
-          else
-            lib.warn ''
-              nixdiag: skipping closure metrics for ${lib.concatStringsSep ", " cyclic}.
-              Those hosts run services.nixdiag.serve, so their system closure contains an
-              nginx vhost rooted at a docs derivation; measuring them would make these docs
-              depend on a system that contains docs, which Nix reports as infinite recursion.
-              Say so and this warning stops, everything else stays automatic:
-                closuresExclude = [ ${lib.concatMapStringsSep " " (n: ''"${n}"'') cyclic} ];
-              If this build is not the one being served, ask for the hosts by name:
-                closures = [ ${lib.concatMapStringsSep " " (n: ''"${n}"'') (builtins.attrNames nixosConfigs)} ];
-            '' kept
+          builtins.filter (n: !(builtins.elem n excluded)) (builtins.attrNames nixosConfigs)
         else
           [ ];
+
+      withoutDocs =
+        cfg:
+        cfg.extendModules {
+          modules = [ { services.nixdiag.serve.docs = lib.mkForce pkgs.emptyDirectory; } ];
+        };
+
+      toplevelOf =
+        name: cfg:
+        (if builtins.elem name serving then withoutDocs cfg else cfg).config.system.build.toplevel;
 
       closureFile =
         if closureHosts == [ ] then
           null
         else
-          (import ./closures.nix { inherit pkgs lib; }).mkClosures (
-            lib.mapAttrs (_: cfg: cfg.config.system.build.toplevel) (lib.getAttrs closureHosts nixosConfigs)
-          );
+          (import ./closures.nix { inherit pkgs lib; }).mkClosures {
+            toplevels = lib.mapAttrs toplevelOf (lib.getAttrs closureHosts nixosConfigs);
+            served = builtins.filter (n: builtins.elem n serving) closureHosts;
+          };
       factsJson = pkgs.writeText "nixdiag-facts.json" (builtins.toJSON facts);
       nixdiag = self.packages.${pkgs.stdenv.hostPlatform.system}.nixdiag;
       pageFlags = lib.mapAttrsToList (t: p: "--extra-page ${lib.escapeShellArg "${t}=${p}"}") extraPages;

@@ -64,6 +64,9 @@ pub(super) fn page_closures(
     for (host, closure) in &hosts {
         let Some(h) = closure else { continue };
         o.push(fill(t::HOST, &[("host", host)]));
+        if closures.served.iter().any(|s| s == *host) {
+            o.push(t::SERVED.into());
+        }
 
         let tiles = treemap_tiles(closures, host);
         if !tiles.is_empty() {

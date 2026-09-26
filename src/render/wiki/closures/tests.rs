@@ -15,7 +15,11 @@ fn closures() -> Closures {
             }],
         },
     );
-    Closures { schema: 1, hosts }
+    Closures {
+        schema: 1,
+        hosts,
+        served: vec![],
+    }
 }
 
 #[test]
@@ -66,7 +70,11 @@ fn treemap_tiles_fold_a_packages_outputs_together() {
             ],
         },
     );
-    let c = Closures { schema: 1, hosts };
+    let c = Closures {
+        schema: 1,
+        hosts,
+        served: vec![],
+    };
     let tiles = treemap_tiles(&c, "nas");
     let seen: Vec<(&str, u64)> = tiles.iter().map(|t| (t.label.as_str(), t.value)).collect();
     assert_eq!(seen, vec![("linux", 300), ("glibc", 140)]);
@@ -83,7 +91,11 @@ fn the_treemap_tail_folds_into_one_counted_tile() {
         })
         .collect();
     hosts.insert("nas".to_string(), HostClosure { paths });
-    let c = Closures { schema: 1, hosts };
+    let c = Closures {
+        schema: 1,
+        hosts,
+        served: vec![],
+    };
     let tiles = treemap_tiles(&c, "nas");
     assert_eq!(tiles.len(), TREEMAP_TILES + 1);
     let last = tiles.last().unwrap();
@@ -117,7 +129,11 @@ fn three_hosts_stack_all_three_bands() {
             paths: vec![path("a", 100)],
         },
     );
-    let c = Closures { schema: 1, hosts };
+    let c = Closures {
+        schema: 1,
+        hosts,
+        served: vec![],
+    };
     let rows = bar_rows(&c, &[("a", c.hosts.get("a"))]);
     assert_eq!(
         rows[0].bands,

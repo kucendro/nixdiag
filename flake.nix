@@ -73,7 +73,7 @@
       checks = eachSystem (
         pkgs:
         import ./nix/checks.nix {
-          inherit pkgs;
+          inherit pkgs self nixpkgs;
           packages = packagesOf pkgs;
         }
       );

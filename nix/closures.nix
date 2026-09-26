@@ -19,19 +19,24 @@ let
 in
 {
   mkClosures =
-    toplevels:
+    {
+      toplevels,
+      served ? [ ],
+    }:
     let
       files = lib.mapAttrsToList perHost toplevels;
     in
     if files == [ ] then
-      pkgs.writeText "nixdiag-closures.json" ''{"schema":1,"hosts":{}}''
+      pkgs.writeText "nixdiag-closures.json" ''{"schema":1,"hosts":{},"served":[]}''
     else
       pkgs.runCommand "nixdiag-closures.json"
         {
           nativeBuildInputs = [ pkgs.jq ];
           preferLocalBuild = true;
+          served = builtins.toJSON served;
         }
         ''
-          jq -s '{ schema: 1, hosts: (add // {}) }' ${lib.escapeShellArgs files} > $out
+          jq -s --argjson served "$served" '{ schema: 1, hosts: (add // {}), served: $served }' \
+            ${lib.escapeShellArgs files} > $out
         '';
 }

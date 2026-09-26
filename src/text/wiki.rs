@@ -145,6 +145,7 @@ pub mod closures {
 | Sum of per-host closures | {sum} |
 | Saved by sharing | {saved} |";
     pub const HOST: &str = "## {host}";
+    pub const SERVED: &str = "Measured without the docs it serves.";
     pub const TREEMAP_CAPTION: &str = "{host} closure by package";
     pub const TREEMAP: &str = "![{caption}](./{file})";
     pub const MORE: &str = "{count} more";

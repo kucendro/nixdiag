@@ -8,6 +8,8 @@ pub const CLOSURES_SCHEMA: u32 = 1;
 pub struct Closures {
     pub schema: u32,
     pub hosts: IndexMap<String, HostClosure>,
+    #[serde(default)]
+    pub served: Vec<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -167,7 +169,11 @@ mod tests {
                 paths: vec![p("libc", 100), p("bash", 50), p("postgres", 400)],
             },
         );
-        Closures { schema: 1, hosts }
+        Closures {
+            schema: 1,
+            hosts,
+            served: vec![],
+        }
     }
 
     #[test]
@@ -257,7 +263,11 @@ mod tests {
                 paths: vec![path("a", "glibc-2.42-67", 100)],
             },
         );
-        let c = Closures { schema: 1, hosts };
+        let c = Closures {
+            schema: 1,
+            hosts,
+            served: vec![],
+        };
         assert_eq!(
             c.package_shares("luna"),
             vec![
@@ -308,7 +318,11 @@ mod tests {
                 paths: vec![p("libc", 100)],
             },
         );
-        let c = Closures { schema: 1, hosts };
+        let c = Closures {
+            schema: 1,
+            hosts,
+            served: vec![],
+        };
         assert_eq!(c.shared(), vec![("libc", 100)]);
         assert_eq!(c.deduped(), (1, 100));
         assert_eq!(

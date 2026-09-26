@@ -9,9 +9,8 @@ in
       type = lib.types.package;
       description = ''
         Docs derivation, typically nixdiag.lib.mkDocs { … }.
-        Rooting a vhost here puts the docs into this host's closure, so
-        `closures = true` skips this host; only an explicit `closures = [ … ]`
-        naming it reintroduces the cycle.
+        Closure metrics measure this host with an empty directory in its
+        place, so a build may document the host that serves it.
       '';
     };
     virtualHost = lib.mkOption {
