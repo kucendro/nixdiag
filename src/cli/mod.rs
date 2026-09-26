@@ -3,7 +3,6 @@ mod options;
 use crate::closures::Closures;
 use crate::facts::Facts;
 use crate::render::render_all;
-use crate::source::annotations;
 use crate::text::{cli as t, fill, messages as m};
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
@@ -11,7 +10,7 @@ use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(name = "nixdiag", version = annotations::VERSION, about = t::ABOUT)]
+#[command(name = "nixdiag", version, about = t::ABOUT)]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -41,38 +40,23 @@ pub struct RenderArgs {
     background: Option<String>,
     #[arg(long = "color", value_name = "NAME=#HEX", help = t::COLOR)]
     colors: Vec<String>,
-    #[arg(long = "domain", value_name = "KEY=DOMAIN", help = t::DOMAIN)]
-    domains: Vec<String>,
-    #[arg(long, value_name = "N", help = t::GRAMMAR)]
-    grammar: Option<u32>,
-    #[arg(long = "deny", value_name = "CATEGORY", value_parser = ["deprecated"], help = t::DENY)]
-    deny: Vec<String>,
 }
 
 #[derive(Subcommand)]
 enum Cmd {
     #[command(about = t::RENDER)]
-    Render(Box<RenderArgs>),
-    #[command(about = t::SYNTAX)]
-    Syntax,
+    Render(RenderArgs),
 }
 
 pub fn run() -> Result<()> {
-    match Cli::parse().cmd {
-        Cmd::Render(r) => {
-            let mut facts: Facts = read_json(&r.facts).context(m::PARSING_FACTS)?;
-            let closures: Option<Closures> = r
-                .closures
-                .as_deref()
-                .map(|p| read_json(p).context(m::PARSING_CLOSURES))
-                .transpose()?;
-            render_all(&mut facts, &options::to_render_opts(&r, closures)?)
-        }
-        Cmd::Syntax => {
-            print!("{}", include_str!("../../SYNTAX.md"));
-            Ok(())
-        }
-    }
+    let Cmd::Render(r) = Cli::parse().cmd;
+    let mut facts: Facts = read_json(&r.facts).context(m::PARSING_FACTS)?;
+    let closures: Option<Closures> = r
+        .closures
+        .as_deref()
+        .map(|p| read_json(p).context(m::PARSING_CLOSURES))
+        .transpose()?;
+    render_all(&mut facts, &options::to_render_opts(&r, closures)?)
 }
 
 fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {

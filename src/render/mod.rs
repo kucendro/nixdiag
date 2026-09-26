@@ -12,7 +12,6 @@ pub use wiki::WikiOpts;
 
 use crate::closures::{Closures, CLOSURES_SCHEMA};
 use crate::facts::{Facts, Host, SCHEMA};
-use crate::source::annotations::{self, Sev};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use crate::source::{doccomment, imports};
@@ -61,9 +60,6 @@ pub struct RenderOpts {
     pub wiki: WikiOpts,
     pub svg: bool,
     pub style: d2::D2Style,
-    pub domains: std::collections::BTreeMap<String, String>,
-    pub grammar: u32,
-    pub deny: Vec<String>,
     pub closures: Option<Closures>,
 }
 
@@ -94,26 +90,9 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
     let repo = Repo::new(opts.repo.clone());
     let mut out = Out::new(opts.out.clone());
 
-    let (model, diags) = annotations::collect(facts, &repo, &opts.domains, opts.grammar);
-    let deny_deprecated = opts.deny.iter().any(|d| d == "deprecated");
-    let mut errors = 0;
-    for d in &diags {
-        let template = if d.sev == Sev::Error || deny_deprecated {
-            errors += 1;
-            m::ERROR
-        } else {
-            m::WARNING
-        };
-        eprintln!("{}", fill(template, &[("message", &d.to_string())]));
-    }
-    if errors > 0 {
-        bail!(fill(
-            m::ANNOTATION_ERRORS,
-            &[("count", &errors.to_string())]
-        ));
-    }
-    if model.total == 0 {
-        eprintln!("{}", m::NO_ANNOTATIONS);
+    let model = crate::topology::build(facts)?;
+    if facts.bare() {
+        eprintln!("{}", m::NO_TOPOLOGY);
     }
 
     topology::generate(facts, &model, &mut out, opts.svg, &opts.style)?;

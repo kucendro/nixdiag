@@ -27,9 +27,9 @@ lan: "🏠 LAN" { shape: cloud; style: { fill: ${hostFill}; stroke: ${lan} } }
 
 luna: "🖥️ luna" {
   style: { fill: ${hostFill}; stroke: ${hostStroke}; bold: true }
-  tailscale: "tailscale\n(mesh node)" { class: app }
-  grafana: "grafana\n(monitor)" { class: infra }
   exporter: "exporter" { class: app }
+  grafana: "grafana\n(monitor)" { class: infra }
+  tailscale: "tailscale\n(mesh node)" { class: infra }
   base: "+ 11 system services" { class: base }
 }
 sol: "🖥️ sol" {
@@ -39,10 +39,10 @@ sol: "🖥️ sol" {
   base: "+ 11 system services" { class: base }
 }
 
-# data-flow edges
-internet -> sol.headscale: "hs.ts.example :443" { style.stroke: ${public} }
-luna.tailscale -> sol.headscale: "mesh" { style.stroke: ${mesh} }
-luna.tailscale -> lan: "advertise 192.168.1.0/24" { style.stroke: ${lan} }
+# connections
+internet -> sol.nginx: "hs.ts.example :443" { style.stroke: ${public} }
 luna.grafana -> luna.exporter: "scrapes" { style.stroke: ${mesh} }
+luna.tailscale -> sol.nginx: "mesh" { style.stroke: ${mesh} }
+luna.tailscale -> lan: "advertise 192.168.1.0/24" { style.stroke: ${lan} }
 sol.nginx -> luna.grafana: "grafana :3000" { style.stroke: ${mesh} }
 sol.nginx -> sol.headscale: "hs :8080" { style.stroke: ${mesh} }

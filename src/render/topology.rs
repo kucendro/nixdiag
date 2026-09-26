@@ -1,19 +1,28 @@
-use crate::facts::{Facts, Host};
+use crate::facts::{Expose, Facts, Host, Kind, Scope};
 use crate::render::d2::{preamble, write_and_render, D2Style};
 use crate::render::out::Out;
-use crate::source::annotations::{Endpoint, Model, NodeInfo, Scope};
 use crate::text::d2::topology as t;
 use crate::text::fill;
+use crate::topology::{scope_at, Endpoint, Model};
 use crate::util::sanitize;
 use anyhow::Result;
 use indexmap::IndexMap;
 
-fn role_style(role: &str) -> (&'static str, String) {
-    let class = match role {
-        "mesh-control" | "proxy" | "monitor" | "dns" | "storage" | "gateway" => "infra",
+fn class(kind: Option<Kind>) -> &'static str {
+    match kind {
+        Some(Kind::Infra) => "infra",
         _ => "app",
-    };
-    (class, role.replace('-', " "))
+    }
+}
+
+fn node_label(unit: &str, role: Option<&str>) -> String {
+    match role {
+        Some(r) => fill(
+            t::UNIT_WITH_ROLE,
+            &[("unit", unit), ("role", &r.replace('-', " "))],
+        ),
+        None => unit.to_string(),
+    }
 }
 
 fn endpoint_id(e: &Endpoint) -> String {
@@ -25,7 +34,7 @@ fn endpoint_id(e: &Endpoint) -> String {
     }
 }
 
-fn edge_color(a: &Endpoint, b: &Endpoint) -> &'static str {
+fn color(a: &Endpoint, b: &Endpoint) -> &'static str {
     if matches!(a, Endpoint::Internet) || matches!(b, Endpoint::Internet) {
         "${public}"
     } else if matches!(a, Endpoint::Lan) || matches!(b, Endpoint::Lan) {
@@ -35,16 +44,36 @@ fn edge_color(a: &Endpoint, b: &Endpoint) -> &'static str {
     }
 }
 
-fn edge(from: &Endpoint, to: &Endpoint, label: &str) -> String {
+fn connection(from: &Endpoint, to: &Endpoint, label: &str) -> String {
     fill(
-        t::EDGE,
+        t::CONNECTION,
         &[
             ("from", &endpoint_id(from)),
             ("to", &endpoint_id(to)),
             ("label", &label.replace('"', "'")),
-            ("color", edge_color(from, to)),
+            ("color", color(from, to)),
         ],
     )
+}
+
+fn cloud(scope: Option<Scope>) -> Option<Endpoint> {
+    match scope? {
+        Scope::Public => Some(Endpoint::Internet),
+        Scope::Lan => Some(Endpoint::Lan),
+        Scope::Mesh => None,
+    }
+}
+
+fn expose_label(name: Option<&str>, port: Option<u32>, udp: bool) -> String {
+    let port = port.map(|p| p.to_string()).unwrap_or_default();
+    let proto = if udp { t::UDP_SUFFIX } else { "" };
+    match name {
+        Some(n) => fill(
+            t::EXPOSE_NAMED,
+            &[("name", n), ("port", &port), ("proto", proto)],
+        ),
+        None => fill(t::EXPOSE, &[("port", &port), ("proto", proto)]),
+    }
 }
 
 fn fmt_ports(tcp: &[u32], udp: &[u32]) -> String {
@@ -68,26 +97,24 @@ pub fn generate(
 ) -> Result<()> {
     let mut per_host: IndexMap<&str, IndexMap<&str, (&'static str, String)>> = facts
         .hosts
-        .keys()
-        .map(|h| (h.as_str(), IndexMap::new()))
+        .iter()
+        .map(|(host, f)| {
+            let units = f
+                .topology()
+                .units
+                .iter()
+                .map(|(u, info)| {
+                    (
+                        u.as_str(),
+                        (class(info.kind), node_label(u, info.role.as_deref())),
+                    )
+                })
+                .collect();
+            (host.as_str(), units)
+        })
         .collect();
-    for ((host, unit), info) in &model.units {
-        let (class, label) = match &info.role {
-            Some(r) => {
-                let (class, role) = role_style(r);
-                (
-                    class,
-                    fill(t::UNIT_WITH_ROLE, &[("unit", unit), ("role", &role)]),
-                )
-            }
-            None => ("app", unit.clone()),
-        };
-        if let Some(m) = per_host.get_mut(host.as_str()) {
-            m.insert(unit.as_str(), (class, label));
-        }
-    }
-    for e in &model.edges {
-        for ep in [&e.from, &e.to] {
+    for c in &model.connections {
+        for ep in [&c.from, &c.to] {
             if let Endpoint::Unit(h, u) = ep {
                 if let Some(m) = per_host.get_mut(h.as_str()) {
                     m.entry(u.as_str()).or_insert(("app", u.clone()));
@@ -96,41 +123,45 @@ pub fn generate(
         }
     }
 
-    let mut expose_edges: Vec<(Endpoint, Endpoint, String)> = Vec::new();
-    let mut collect = |node: Endpoint, host: &str, unit: Option<&str>, info: &NodeInfo| {
-        for e in &info.exposes {
-            let cloud = match model.effective_scope(host, unit, e) {
-                Some(Scope::Public) => Endpoint::Internet,
-                Some(Scope::Lan) => Endpoint::Lan,
-                _ => continue,
-            };
-            let proto = if e.udp { t::UDP_SUFFIX } else { "" };
-            let port = e.port.to_string();
-            let label = match &e.name {
-                Some(n) => fill(
-                    t::EXPOSE_NAMED,
-                    &[("name", n), ("port", &port), ("proto", proto)],
-                ),
-                None => fill(t::EXPOSE, &[("port", &port), ("proto", proto)]),
-            };
-            expose_edges.push((cloud, node.clone(), label));
+    let mut clouds: Vec<(Endpoint, Endpoint, String)> = Vec::new();
+    for (host, f) in &facts.hosts {
+        let topo = f.topology();
+        let mut collect = |node: Endpoint, unit: Option<&str>, exposes: &[Expose]| {
+            for e in exposes {
+                if let Some(c) = cloud(e.scope.or_else(|| topo.scope_of(unit))) {
+                    clouds.push((
+                        c,
+                        node.clone(),
+                        expose_label(e.name.as_deref(), Some(e.port), e.udp),
+                    ));
+                }
+            }
+        };
+        collect(Endpoint::Host(host.clone()), None, &topo.expose);
+        for (unit, u) in &topo.units {
+            collect(
+                Endpoint::Unit(host.clone(), unit.clone()),
+                Some(unit),
+                &u.expose,
+            );
         }
-    };
-    for (host, info) in &model.hosts {
-        collect(Endpoint::Host(host.clone()), host, None, info);
     }
-    for ((host, unit), info) in &model.units {
-        collect(
-            Endpoint::Unit(host.clone(), unit.clone()),
-            host,
-            Some(unit),
-            info,
-        );
+    for ne in &model.named {
+        if let Some(c) = cloud(ne.scope.or_else(|| scope_at(facts, &ne.node))) {
+            clouds.push((
+                c,
+                ne.node.clone(),
+                expose_label(Some(&ne.name), ne.port, false),
+            ));
+        }
     }
 
     let used = |cloud: Endpoint| {
-        expose_edges.iter().any(|(c, ..)| *c == cloud)
-            || model.edges.iter().any(|e| e.from == cloud || e.to == cloud)
+        clouds.iter().any(|(c, ..)| *c == cloud)
+            || model
+                .connections
+                .iter()
+                .any(|c| c.from == cloud || c.to == cloud)
     };
 
     let mut o = preamble(style);
@@ -165,7 +196,7 @@ pub fn generate(
                 ],
             ));
         }
-        if model.total == 0 {
+        if facts.bare() {
             if let Some(n) = f.as_nixos() {
                 let ports = fmt_ports(&n.tcp, &n.udp);
                 if !ports.is_empty() {
@@ -177,12 +208,12 @@ pub fn generate(
         o.push(t::HOST_CLOSE.into());
     }
     o.push(String::new());
-    o.push(t::EDGES.into());
-    for (cloud, node, label) in &expose_edges {
-        o.push(edge(cloud, node, label));
+    o.push(t::CONNECTIONS.into());
+    for (c, node, label) in &clouds {
+        o.push(connection(c, node, label));
     }
-    for e in &model.edges {
-        o.push(edge(&e.from, &e.to, &e.label));
+    for c in &model.connections {
+        o.push(connection(&c.from, &c.to, &c.label));
     }
 
     write_and_render(out, "topology", &o, render_svg, style)

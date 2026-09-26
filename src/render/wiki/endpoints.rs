@@ -1,9 +1,9 @@
 use super::super::out::Out;
 use super::page;
-use crate::facts::Facts;
-use crate::source::annotations::{Endpoint, Model, NodeInfo};
+use crate::facts::{Expose, Facts};
 use crate::text::fill;
 use crate::text::wiki::{endpoints as t, NONE};
+use crate::topology::{scope_at, Endpoint, Model};
 use anyhow::Result;
 use std::path::Path;
 
@@ -14,43 +14,43 @@ pub(super) fn page_endpoints(
     model: &Model,
 ) -> Result<()> {
     let mut rows: Vec<(String, String, String, String, String)> = Vec::new();
-    let mut push = |host: &str, unit: Option<&str>, info: &NodeInfo| {
-        for e in &info.exposes {
+    for (host, h) in &facts.hosts {
+        let topo = h.topology();
+        let mut push = |unit: Option<&str>, e: &Expose| {
             let endpoint = e.name.clone().unwrap_or_else(|| {
                 fill(t::UNNAMED, &[("host", host), ("port", &e.port.to_string())])
             });
             let port = format!("{}{}", e.port, if e.udp { t::UDP } else { "" });
-            let scope = model
-                .effective_scope(host, unit, e)
+            let scope = e
+                .scope
+                .or_else(|| topo.scope_of(unit))
                 .map(|s| s.label().to_string())
                 .unwrap_or_else(|| NONE.into());
             rows.push((
                 endpoint,
                 port,
                 scope,
-                host.to_string(),
+                host.clone(),
                 unit.unwrap_or(NONE).to_string(),
             ));
+        };
+        for e in &topo.expose {
+            push(None, e);
         }
-    };
-    for host in facts.hosts.keys() {
-        if let Some(info) = model.hosts.get(host) {
-            push(host, None, info);
-        }
-        for ((h, unit), info) in &model.units {
-            if h == host {
-                push(host, Some(unit), info);
+        for (unit, u) in &topo.units {
+            for e in &u.expose {
+                push(Some(unit), e);
             }
         }
     }
     for ne in &model.named {
-        let (host, unit) = match &ne.node {
-            Endpoint::Host(h) => (h.clone(), None),
-            Endpoint::Unit(h, u) => (h.clone(), Some(u.clone())),
+        let host = match &ne.node {
+            Endpoint::Host(h) | Endpoint::Unit(h, _) => h.clone(),
             _ => continue,
         };
-        let scope = model
-            .node_scope(&host, unit.as_deref())
+        let scope = ne
+            .scope
+            .or_else(|| scope_at(facts, &ne.node))
             .map(|s| s.label().to_string())
             .unwrap_or_else(|| NONE.into());
         let service = match &ne.target {

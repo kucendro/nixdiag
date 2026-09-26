@@ -1,6 +1,7 @@
 { lib, helpers }:
 {
   role = "mesh-node";
+  kind = "infra";
   maintainers = [ "kucendro" ];
   reads = {
     up = [ "services.tailscale.extraUpFlags" ];
@@ -14,7 +15,7 @@
       routes = lib.concatMap (lib.splitString ",") (helpers.flagValues "--advertise-routes" flags);
     in
     {
-      edges = [
+      connections = [
         {
           to = if server == null then "internet" else server;
           label = "mesh";

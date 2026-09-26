@@ -25,24 +25,7 @@ pub fn leading_doc(text: &str) -> Option<String> {
 
 pub fn from_file(path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
-    let doc = strip_directives(&leading_doc(&text)?);
-    if doc.is_empty() {
-        None
-    } else {
-        Some(doc)
-    }
-}
-
-fn strip_directives(doc: &str) -> String {
-    doc.lines()
-        .filter(|l| {
-            let t = l.trim_start();
-            !t.starts_with("#:") && !t.starts_with("nixdiag:")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_string()
+    leading_doc(&text).filter(|d| !d.is_empty())
 }
 
 fn dedent(s: &str) -> String {

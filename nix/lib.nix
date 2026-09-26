@@ -16,7 +16,7 @@ rec {
       project = cfgs: lib.genAttrs (pick (builtins.attrNames cfgs)) (n: factsOf cfgs.${n});
     in
     {
-      schema = 2;
+      schema = 3;
       hosts = project (flake.nixosConfigurations or { }) // project (flake.darwinConfigurations or { });
     };
 
@@ -35,9 +35,6 @@ rec {
       theme ? null,
       background ? null,
       colors ? { },
-      domains ? { },
-      grammar ? null,
-      deny ? [ ],
       closures ? false,
       closuresExclude ? [ ],
     }:
@@ -108,9 +105,6 @@ rec {
         lib.optional (theme != null) "--theme ${theme}"
         ++ lib.optional (background != null) "--background ${lib.escapeShellArg background}"
         ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors
-        ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains
-        ++ lib.optional (grammar != null) "--grammar ${toString grammar}"
-        ++ map (d: "--deny ${lib.escapeShellArg d}") deny
         ++ lib.optional (closureFile != null) "--closures ${closureFile}";
     in
     pkgs.runCommand "nixdiag-docs"

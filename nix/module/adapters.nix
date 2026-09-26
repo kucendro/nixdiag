@@ -32,6 +32,7 @@ let
 
   scalars = [
     "role"
+    "kind"
     "scope"
   ];
 
@@ -39,7 +40,11 @@ let
     name: adapter:
     lib.mkIf (readAny (adapter.enable or [ "services.${name}.enable" ]) == true) (
       lib.mapAttrs (k: v: if builtins.elem k scalars then lib.mkDefault v else v) (
-        { inherit (adapter) role; } // adapter.topology (lib.mapAttrs (_: readAny) adapter.reads)
+        {
+          inherit (adapter) role;
+          kind = adapter.kind or null;
+        }
+        // adapter.topology (lib.mapAttrs (_: readAny) adapter.reads)
       )
     );
 in

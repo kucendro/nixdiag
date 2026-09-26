@@ -1,4 +1,3 @@
-pub mod annotations;
 pub mod doccomment;
 pub mod flakelock;
 pub mod imports;

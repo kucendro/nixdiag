@@ -1,7 +1,6 @@
 use super::{abs, RenderArgs};
 use crate::closures::Closures;
 use crate::render::{d2, RenderOpts, WikiOpts};
-use crate::source::annotations;
 use crate::text::cli::DEFAULT_TITLE;
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
@@ -35,11 +34,6 @@ pub(super) fn to_render_opts(r: &RenderArgs, closures: Option<Closures>) -> Resu
         },
         svg: !r.no_svg,
         style: to_style(r)?,
-        domains: pairs(&r.domains, "--domain", "KEY=DOMAIN")?
-            .into_iter()
-            .collect(),
-        grammar: annotations::resolve_edition(r.grammar)?,
-        deny: r.deny.clone(),
         closures,
     })
 }

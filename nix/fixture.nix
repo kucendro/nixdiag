@@ -13,7 +13,8 @@ let
         modules = [
           "${src}/hosts/${name}"
           { nixpkgs.hostPlatform = "x86_64-linux"; }
-        ];
+        ]
+        ++ nixpkgs.lib.optional (name == "luna") ../nix/module;
       }
     );
   };
@@ -27,7 +28,6 @@ in
       fixture-docs = self.lib.mkDocs {
         inherit pkgs flake;
         buildWiki = false;
-        domains.ts = "ts.example";
       };
 
       fixture-facts = pkgs.writeText "facts.json" (builtins.toJSON (self.lib.mkFacts { inherit flake; }));
@@ -40,8 +40,7 @@ in
           }
           ''
             nixdiag render --facts "$facts" --repo ${src} \
-              --closures ${src}/closures.json \
-              --domain ts=ts.example --out $out --no-svg
+              --closures ${src}/closures.json --out $out --no-svg
           '';
     };
 }

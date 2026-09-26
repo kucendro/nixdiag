@@ -1,6 +1,7 @@
 { lib, helpers }:
 {
   role = "mesh-control";
+  kind = "infra";
   maintainers = [ "kucendro" ];
   reads = {
     port = [ "services.headscale.port" ];

@@ -24,8 +24,8 @@ classes: {
     pub const UDP: &str = "udp {ports}";
     pub const TCP_AND_UDP: &str = "{tcp} · {udp}";
     pub const BASE: &str = "  base: \"+ {count} system services\" { class: base }";
-    pub const EDGES: &str = "# data-flow edges";
-    pub const EDGE: &str = "{from} -> {to}: \"{label}\" { style.stroke: {color} }";
+    pub const CONNECTIONS: &str = "# connections";
+    pub const CONNECTION: &str = "{from} -> {to}: \"{label}\" { style.stroke: {color} }";
     pub const EXPOSE: &str = ":{port}{proto}";
     pub const EXPOSE_NAMED: &str = "{name} :{port}{proto}";
     pub const UDP_SUFFIX: &str = "/udp";

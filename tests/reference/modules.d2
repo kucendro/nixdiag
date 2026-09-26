@@ -38,7 +38,6 @@ modules: "modules" {
   monitoring_nix: "monitoring.nix" { shape: page
     svc_grafana: "grafana" { shape: oval; style.fill: ${appFill} }
   }
-  upstreams_nix: "upstreams.nix" { shape: page }
   web_nix: "web.nix" { shape: page
     svc_nginx: "nginx" { shape: oval; style.fill: ${appFill} }
   }
@@ -54,4 +53,3 @@ hosts.luna.default_nix -> modules.monitoring_nix
 hosts.sol.default_nix -> modules.common_nix
 hosts.sol.default_nix -> modules.mesh_nix
 hosts.sol.default_nix -> modules.web_nix
-modules.web_nix -> modules.upstreams_nix

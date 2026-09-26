@@ -14,15 +14,13 @@ wiki: build
     ./target/debug/nixdiag render \
       --facts "$facts" --repo tests/fixture \
       --closures tests/fixture/closures.json \
-      --domain ts=ts.example --title 'Example fleet' \
-      --out .dev/docs
+      --title 'Example fleet' --out .dev/docs
     mdbook serve .dev/docs/wiki --open
 
 _site-assets:
     cp -f assets/topology-light.svg site/src/topology.svg
     cp -f assets/modules-light.svg site/src/modules.svg
     cp -f assets/closures-light.svg site/src/closures.svg
-    cp -f SYNTAX.md site/src/syntax.md
 
 build:
     cargo build
@@ -55,8 +53,7 @@ assets: build
       ./target/debug/nixdiag render \
         --facts "$facts" --repo tests/fixture \
         --closures tests/fixture/closures.json \
-        --domain ts=ts.example --title 'Example fleet' \
-        --theme "$theme" --out "$out"
+        --title 'Example fleet' --theme "$theme" --out "$out"
       suffix=""
       if [ "$theme" = light ]; then suffix="-light"; fi
       for d in topology modules inputs; do

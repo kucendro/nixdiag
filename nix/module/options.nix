@@ -31,7 +31,7 @@ let
       name = optional types.str;
     };
   };
-  edge = types.submodule {
+  connection = types.submodule {
     options = {
       to = mkOption { type = types.str; };
       label = mkOption {
@@ -46,12 +46,18 @@ let
   unit = types.submodule {
     options = {
       role = optional types.str;
+      kind = optional (
+        types.enum [
+          "infra"
+          "app"
+        ]
+      );
       inherit scope;
       description = optional types.lines;
       names = list types.str;
       ports = list types.port;
       expose = list expose;
-      edges = list edge;
+      connections = list connection;
     };
   };
 in

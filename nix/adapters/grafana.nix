@@ -1,6 +1,7 @@
 { lib, helpers }:
 {
   role = "monitor";
+  kind = "infra";
   maintainers = [ "kucendro" ];
   reads = {
     port = [

@@ -8,7 +8,6 @@ rec {
     inherit pkgs;
     flake = fixtureFlake;
     title = "Example fleet";
-    domains.ts = "ts.example";
     theme = "light";
   };
 
@@ -20,7 +19,6 @@ rec {
       ''
         cp -r ${../site} book
         chmod -R u+w book
-        cp ${../SYNTAX.md} book/src/syntax.md
         cp ${../assets}/topology-light.svg book/src/topology.svg
         cp ${../assets}/modules-light.svg book/src/modules.svg
         cp ${../assets}/closures-light.svg book/src/closures.svg
