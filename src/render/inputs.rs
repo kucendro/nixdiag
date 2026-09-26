@@ -1,6 +1,8 @@
-use super::d2::{write_and_render, D2Style, D2_HEADER};
+use super::d2::{preamble, write_and_render, D2Style};
 use super::out::Out;
 use crate::source::flakelock::Lock;
+use crate::text::d2::inputs as t;
+use crate::text::fill;
 use crate::util::sanitize;
 use anyhow::Result;
 use std::collections::BTreeSet;
@@ -13,29 +15,28 @@ pub fn generate(lock: &Lock, out: &mut Out, render_svg: bool, style: &D2Style) -
         .flat_map(|d| d.nodes())
         .collect();
 
-    let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
-    o.extend(super::d2::vars_block(style));
-    o.push("direction: right".into());
+    let mut o = preamble(style);
     o.push(String::new());
-
-    o.push(format!(
-        "{}: \"this flake\" {{ style.fill: ${{hostCloud}}; style.bold: true }}",
-        sanitize(&lock.root)
-    ));
+    o.push(fill(t::ROOT, &[("id", &sanitize(&lock.root))]));
     for (name, locked) in lock.inputs() {
-        let label = if flagged.contains(name.as_str()) {
-            format!("{name} {}", locked.short_rev())
+        let (label, stroke) = if flagged.contains(name.as_str()) {
+            (
+                fill(
+                    t::FLAGGED_LABEL,
+                    &[("name", name), ("rev", &locked.short_rev())],
+                ),
+                t::FLAGGED_STROKE,
+            )
         } else {
-            name.clone()
+            (name.clone(), t::STROKE)
         };
-        let stroke = if flagged.contains(name.as_str()) {
-            "style.stroke: ${public}; style.stroke-width: 2"
-        } else {
-            "style.stroke: ${baseStroke}"
-        };
-        o.push(format!(
-            "{}: \"{label}\" {{ style.fill: ${{baseFill}}; {stroke} }}",
-            sanitize(name)
+        o.push(fill(
+            t::INPUT,
+            &[
+                ("id", &sanitize(name)),
+                ("label", &label),
+                ("stroke", stroke),
+            ],
         ));
     }
 
@@ -45,24 +46,23 @@ pub fn generate(lock: &Lock, out: &mut Out, render_svg: bool, style: &D2Style) -
         let label = if input == child {
             String::new()
         } else {
-            format!(": \"{input}\"")
+            fill(t::EDGE_LABEL, &[("input", &input)])
         };
-        let (a, b) = (sanitize(&parent), sanitize(&child));
+        let (from, to) = (sanitize(&parent), sanitize(&child));
+        let vars = [("from", from.as_str()), ("to", &to), ("label", &label)];
         if is_follows {
-            follows.push(format!(
-                "{a} -> {b}{label} {{ style.stroke: ${{mesh}}; style.stroke-dash: 3 }}"
-            ));
+            follows.push(fill(t::FOLLOWS, &vars));
         } else {
-            direct.push(format!("{a} -> {b}{label}"));
+            direct.push(fill(t::EDGE, &vars));
         }
     }
 
     o.push(String::new());
-    o.push("# direct inputs".into());
+    o.push(t::DIRECT_EDGES.into());
     o.extend(direct);
     if !follows.is_empty() {
         o.push(String::new());
-        o.push("# follows (deduplication)".into());
+        o.push(t::FOLLOWS_EDGES.into());
         o.extend(follows);
     }
 

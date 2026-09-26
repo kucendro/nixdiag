@@ -1,3 +1,4 @@
+pub mod d2;
 pub mod wiki;
 
 pub fn fill(template: &str, vars: &[(&str, &str)]) -> String {

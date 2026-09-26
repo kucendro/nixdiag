@@ -1,11 +1,10 @@
 use super::unmask::unmask;
 use crate::render::out::Out;
+use crate::text::d2::{DIRECTION, HEADER};
 use anyhow::{bail, Result};
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::process::Command;
-
-pub const D2_HEADER: [&str; 1] = ["# Auto-generated from the Nix config by nixdiag. Do not edit."];
 
 #[derive(Default)]
 pub struct D2Style {
@@ -45,8 +44,12 @@ pub fn color<'a>(style: &'a D2Style, name: &str, default: (&'a str, &'a str)) ->
     }
 }
 
-pub fn vars_block(style: &D2Style) -> Vec<String> {
-    let mut o = vec!["vars: {".to_string()];
+pub fn preamble(style: &D2Style) -> Vec<String> {
+    let mut o = vec![HEADER.to_string()];
+    if let Some(bg) = &style.background {
+        o.push(format!("style.fill: \"{bg}\""));
+    }
+    o.push("vars: {".into());
     for (name, light, dark) in PALETTE {
         o.push(format!(
             "  {name}: \"{}\"",
@@ -54,6 +57,7 @@ pub fn vars_block(style: &D2Style) -> Vec<String> {
         ));
     }
     o.push("}".into());
+    o.push(DIRECTION.into());
     o
 }
 
@@ -64,10 +68,6 @@ pub fn write_and_render(
     render_svg: bool,
     style: &D2Style,
 ) -> Result<()> {
-    let mut lines = lines.to_vec();
-    if let Some(bg) = &style.background {
-        lines.insert(D2_HEADER.len(), format!("style.fill: \"{bg}\""));
-    }
     let d2_rel = PathBuf::from(format!("{stem}.d2"));
     out.write_auto(&d2_rel, &lines.join("\n"))?;
     if !render_svg {

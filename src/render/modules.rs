@@ -1,8 +1,10 @@
-use super::d2::{write_and_render, D2Style, D2_HEADER};
+use super::d2::{preamble, write_and_render, D2Style};
 use super::out::Out;
 use crate::facts::{Facts, Host};
 use crate::source::imports::{build_import_graph, host_entry_modules, rel_str};
 use crate::source::repo::{rel_from_store, Repo};
+use crate::text::d2::modules as t;
+use crate::text::fill;
 use crate::util::sanitize;
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet};
@@ -37,35 +39,34 @@ impl Tree {
 
     fn emit(&self, out: &mut Vec<String>, indent: usize) {
         let pad = "  ".repeat(indent);
+        let line = |template: &str, name: &str| {
+            fill(
+                template,
+                &[("pad", &pad), ("id", &sanitize(name)), ("name", name)],
+            )
+        };
         for (name, sub) in &self.dirs {
-            out.push(format!("{pad}{}: \"{name}\" {{", sanitize(name)));
+            out.push(line(t::DIR_OPEN, name));
             sub.emit(out, indent + 1);
-            out.push(format!("{pad}}}"));
+            out.push(line(t::CLOSE, ""));
         }
         for (fname, meta) in &self.files {
-            let fid = sanitize(fname);
             if meta.svcs.is_empty() && meta.progs.is_empty() {
-                out.push(format!("{pad}{fid}: \"{fname}\" {{ shape: page }}"));
+                out.push(line(t::FILE, fname));
                 continue;
             }
-            out.push(format!("{pad}{fid}: \"{fname}\" {{ shape: page"));
+            out.push(line(t::FILE_OPEN, fname));
             let mut svcs = meta.svcs.clone();
             svcs.sort();
             for s in svcs {
-                out.push(format!(
-                    "{pad}  svc_{}: \"{s}\" {{ shape: oval; style.fill: ${{appFill}} }}",
-                    sanitize(&s)
-                ));
+                out.push(line(t::SERVICE, &s));
             }
             let mut progs = meta.progs.clone();
             progs.sort();
             for p in progs {
-                out.push(format!(
-                    "{pad}  prog_{}: \"{p}\" {{ shape: hexagon; style.fill: ${{progFill}} }}",
-                    sanitize(&p)
-                ));
+                out.push(line(t::PROGRAM, &p));
             }
-            out.push(format!("{pad}}}"));
+            out.push(line(t::CLOSE, ""));
         }
     }
 }
@@ -94,7 +95,7 @@ pub fn generate(
             import_edges.insert((d2_path(a), d2_path(b)));
         }
         for e in &entries {
-            host_edges.push((host.clone(), d2_path(&rel_str(e, repo))));
+            host_edges.push((sanitize(host), d2_path(&rel_str(e, repo))));
         }
 
         let (services, programs) = match f {
@@ -131,28 +132,20 @@ pub fn generate(
         }
     }
 
-    let mut o: Vec<String> = D2_HEADER.iter().map(|s| s.to_string()).collect();
-    o.extend(super::d2::vars_block(style));
-    o.push("direction: right".into());
+    let edge = |(from, to): &(String, String)| fill(t::EDGE, &[("from", from), ("to", to)]);
+    let mut o = preamble(style);
     o.push(String::new());
     for host in facts.hosts.keys() {
-        o.push(format!(
-            "{}: \"{host}\" {{ shape: cloud; style.fill: ${{hostCloud}}; style.bold: true }}",
-            sanitize(host)
-        ));
+        o.push(fill(t::HOST, &[("id", &sanitize(host)), ("host", host)]));
     }
     o.push(String::new());
     tree.emit(&mut o, 0);
     o.push(String::new());
-    o.push("# host -> entry module".into());
-    for (host, fid) in &host_edges {
-        o.push(format!("{} -> {fid}", sanitize(host)));
-    }
+    o.push(t::HOST_EDGES.into());
+    o.extend(host_edges.iter().map(edge));
     o.push(String::new());
-    o.push("# module imports".into());
-    for (a, b) in &import_edges {
-        o.push(format!("{a} -> {b}"));
-    }
+    o.push(t::IMPORT_EDGES.into());
+    o.extend(import_edges.iter().map(edge));
 
     write_and_render(out, "modules", &o, render_svg, style)
 }
