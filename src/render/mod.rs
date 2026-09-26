@@ -1,4 +1,3 @@
-mod api;
 mod chart;
 pub mod d2;
 mod inputs;
@@ -8,7 +7,6 @@ mod topology;
 mod unmask;
 mod wiki;
 
-pub use api::ApiOpts;
 pub use out::{Out, WKind};
 pub use wiki::WikiOpts;
 
@@ -66,7 +64,6 @@ pub struct RenderOpts {
     pub grammar: u32,
     pub deny: Vec<String>,
     pub closures: Option<Closures>,
-    pub api: Option<ApiOpts>,
 }
 
 pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
@@ -134,21 +131,7 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<Out> {
             model: &model,
             lock: lock.as_ref(),
             closures: opts.closures.as_ref(),
-            api: opts.api.is_some(),
         },
     )?;
-    if let Some(api_opts) = &opts.api {
-        api::generate(
-            &mut out,
-            api_opts,
-            &api::ApiData {
-                facts,
-                repo: &repo,
-                model: &model,
-                lock: lock.as_ref(),
-                closures: opts.closures.as_ref(),
-            },
-        )?;
-    }
     Ok(out)
 }

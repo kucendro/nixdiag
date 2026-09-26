@@ -20,9 +20,6 @@ pub struct FlakeConfig {
     pub domains: BTreeMap<String, String>,
     pub grammar: Option<u32>,
     pub deny: Vec<String>,
-    pub api: Option<bool>,
-    pub revision: Option<String>,
-    pub revision_time: Option<i64>,
 }
 
 #[derive(Clone, Copy, PartialEq)]

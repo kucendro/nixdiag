@@ -46,9 +46,6 @@ rec {
       deny ? [ ],
       closures ? false,
       closuresExclude ? [ ],
-      api ? true,
-      revision ? (flake.rev or flake.dirtyRev or null),
-      revisionTime ? (flake.lastModified or null),
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -126,10 +123,7 @@ rec {
         ++ lib.mapAttrsToList (k: v: "--domain ${lib.escapeShellArg "${k}=${v}"}") domains
         ++ lib.optional (grammar != null) "--grammar ${toString grammar}"
         ++ map (d: "--deny ${lib.escapeShellArg d}") deny
-        ++ lib.optional (closureFile != null) "--closures ${closureFile}"
-        ++ lib.optional (!api) "--no-api"
-        ++ lib.optional (api && revision != null) "--revision ${lib.escapeShellArg revision}"
-        ++ lib.optional (api && revisionTime != null) "--revision-time ${toString revisionTime}";
+        ++ lib.optional (closureFile != null) "--closures ${closureFile}";
     in
     pkgs.runCommand "nixdiag-docs"
       {

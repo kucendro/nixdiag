@@ -1,8 +1,7 @@
 use super::RenderArgs;
-use crate::api;
 use crate::closures::Closures;
 use crate::eval;
-use crate::render::{d2, ApiOpts, RenderOpts, WikiOpts};
+use crate::render::{d2, RenderOpts, WikiOpts};
 use crate::source::annotations;
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
@@ -59,7 +58,6 @@ pub(super) fn to_render_opts(
     }
     let mut deny = cfg.deny.clone();
     deny.extend(r.deny.iter().cloned());
-    let grammar = annotations::resolve_edition(r.grammar.or(cfg.grammar))?;
     Ok(RenderOpts {
         repo,
         out,
@@ -75,27 +73,10 @@ pub(super) fn to_render_opts(
         svg: !r.no_svg,
         style: to_style(r, cfg)?,
         domains,
-        grammar,
+        grammar: annotations::resolve_edition(r.grammar.or(cfg.grammar))?,
         deny,
         closures,
-        api: to_api_opts(r, cfg, grammar),
     })
-}
-
-fn to_api_opts(r: &RenderArgs, cfg: &eval::FlakeConfig, grammar: u32) -> Option<ApiOpts> {
-    if r.no_api || cfg.api == Some(false) {
-        return None;
-    }
-    let revision = r
-        .revision
-        .clone()
-        .or_else(|| cfg.revision.clone())
-        .map(|id| api::Revision {
-            dirty: id.ends_with("-dirty"),
-            id,
-            time: r.revision_time.or(cfg.revision_time),
-        });
-    Some(ApiOpts { grammar, revision })
 }
 
 fn to_style(r: &RenderArgs, cfg: &eval::FlakeConfig) -> Result<d2::D2Style> {

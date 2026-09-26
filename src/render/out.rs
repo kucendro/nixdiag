@@ -6,15 +6,12 @@ pub const MARKER_WORD: &str = "Auto-generated";
 
 pub const MD_MARKER: &str = "<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->";
 
-pub const JSON_MARKER: &str = "Auto-generated from the Nix config by nixdiag. Do not edit.";
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WKind {
     Auto,
     Once,
     Svg,
     Extra,
-    Volatile,
 }
 
 pub struct Written {
@@ -73,26 +70,6 @@ impl Out {
         write_text(&path, text)
     }
 
-    pub fn write_json<T: serde::Serialize>(
-        &mut self,
-        rel: &Path,
-        value: &T,
-        kind: WKind,
-    ) -> Result<()> {
-        let path = self.guard(rel)?;
-        let body = serde_json::to_string_pretty(value)
-            .with_context(|| format!("serializing {}", rel.display()))?;
-        debug_assert!(
-            body.contains(MARKER_WORD),
-            "{} serialized without the {MARKER_WORD} marker; it could not be \
-             regenerated over itself",
-            rel.display()
-        );
-        write_text(&path, &body)?;
-        self.record(rel, kind);
-        Ok(())
-    }
-
     pub fn record_svg(&mut self, rel: &Path) {
         self.record(rel, WKind::Svg);
     }
@@ -126,7 +103,6 @@ mod tests {
     #[test]
     fn every_marker_satisfies_the_guard() {
         assert!(MD_MARKER.contains(MARKER_WORD));
-        assert!(JSON_MARKER.contains(MARKER_WORD));
     }
 
     #[test]
@@ -137,39 +113,5 @@ mod tests {
         assert!(out.guard(Path::new("notes.md")).is_err());
         fs::write(dir.join("gen.md"), MD_MARKER).unwrap();
         assert!(out.guard(Path::new("gen.md")).is_ok());
-    }
-
-    #[test]
-    fn json_written_once_can_be_written_again() {
-        #[derive(serde::Serialize)]
-        struct Doc {
-            meta: Meta,
-        }
-        #[derive(serde::Serialize)]
-        struct Meta {
-            generator: &'static str,
-        }
-        let doc = Doc {
-            meta: Meta {
-                generator: JSON_MARKER,
-            },
-        };
-
-        let dir = scratch("json-rewrite");
-        let rel = Path::new("api/v1/thing.json");
-        let mut out = Out::new(dir.clone());
-        out.write_json(rel, &doc, WKind::Auto).unwrap();
-        out.write_json(rel, &doc, WKind::Auto).unwrap();
-
-        let body = fs::read_to_string(dir.join(rel)).unwrap();
-        assert!(body.contains(MARKER_WORD));
-        assert_eq!(out.manifest.len(), 2);
-        assert_eq!(out.manifest[0].kind, WKind::Auto);
-    }
-
-    #[test]
-    fn volatile_is_not_auto() {
-        assert_ne!(WKind::Volatile, WKind::Auto);
-        assert_ne!(WKind::Volatile, WKind::Svg);
     }
 }

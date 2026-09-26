@@ -1,4 +1,3 @@
-mod api;
 mod cli;
 mod closures;
 mod eval;
