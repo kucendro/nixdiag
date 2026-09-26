@@ -50,13 +50,13 @@ enum Cmd {
 
 pub fn run() -> Result<()> {
     let Cmd::Render(r) = Cli::parse().cmd;
-    let mut facts: Facts = read_json(&r.facts).context(m::PARSING_FACTS)?;
+    let facts: Facts = read_json(&r.facts).context(m::PARSING_FACTS)?;
     let closures: Option<Closures> = r
         .closures
         .as_deref()
         .map(|p| read_json(p).context(m::PARSING_CLOSURES))
         .transpose()?;
-    render_all(&mut facts, &options::to_render_opts(&r, closures)?)
+    render_all(&facts, &options::to_render_opts(&r, closures)?)
 }
 
 fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {

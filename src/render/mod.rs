@@ -27,7 +27,7 @@ pub struct RenderOpts {
     pub closures: Option<Closures>,
 }
 
-pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
+pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
     let mismatch = |template: &str, found: u32, expected: u32| {
         fill(
             template,
@@ -50,7 +50,6 @@ pub fn render_all(facts: &mut Facts, opts: &RenderOpts) -> Result<()> {
             ));
         }
     }
-    facts.normalize();
     let repo = Repo::new(opts.repo.clone());
     let mut out = Out::new(opts.out.clone());
 

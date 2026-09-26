@@ -10,16 +10,6 @@ pub struct Facts {
 }
 
 impl Facts {
-    pub fn normalize(&mut self) {
-        self.hosts.sort_by(|k1, v1, k2, v2| {
-            let rank = |h: &Host| match h {
-                Host::Nixos(_) => 0,
-                Host::Darwin(_) => 1,
-            };
-            rank(v1).cmp(&rank(v2)).then(k1.cmp(k2))
-        });
-    }
-
     pub fn bare(&self) -> bool {
         self.hosts.values().all(|h| h.topology().is_empty())
     }
