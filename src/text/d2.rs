@@ -1,4 +1,3 @@
-pub const HEADER: &str = "# Auto-generated from the Nix config by nixdiag. Do not edit.";
 pub const DIRECTION: &str = "direction: right";
 
 pub mod topology {

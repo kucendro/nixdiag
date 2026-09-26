@@ -8,7 +8,7 @@ use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-pub(super) fn page_services(out: &mut Out, src: &Path, facts: &Facts, repo: &Repo) -> Result<()> {
+pub(super) fn page_services(out: &Out, src: &Path, facts: &Facts, repo: &Repo) -> Result<()> {
     let mut index: BTreeMap<String, (BTreeSet<String>, BTreeSet<String>)> = BTreeMap::new();
     for (host, f) in &facts.hosts {
         let Some(n) = f.as_nixos() else { continue };

@@ -18,7 +18,7 @@ fn join_or_dash(items: &[String]) -> String {
 }
 
 pub(super) fn page_hosts(
-    out: &mut Out,
+    out: &Out,
     src: &Path,
     facts: &Facts,
     repo: &Repo,

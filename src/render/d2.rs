@@ -1,6 +1,6 @@
 use super::unmask::unmask;
 use crate::render::out::Out;
-use crate::text::d2::{DIRECTION, HEADER};
+use crate::text::d2::DIRECTION;
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::io::ErrorKind;
@@ -46,7 +46,7 @@ pub fn color<'a>(style: &'a D2Style, name: &str, default: (&'a str, &'a str)) ->
 }
 
 pub fn preamble(style: &D2Style) -> Vec<String> {
-    let mut o = vec![HEADER.to_string()];
+    let mut o = Vec::new();
     if let Some(bg) = &style.background {
         o.push(format!("style.fill: \"{bg}\""));
     }
@@ -63,14 +63,14 @@ pub fn preamble(style: &D2Style) -> Vec<String> {
 }
 
 pub fn write_and_render(
-    out: &mut Out,
+    out: &Out,
     stem: &str,
     lines: &[String],
     render_svg: bool,
     style: &D2Style,
 ) -> Result<()> {
     let d2_rel = PathBuf::from(format!("{stem}.d2"));
-    out.write_auto(&d2_rel, &lines.join("\n"))?;
+    out.write(&d2_rel, &lines.join("\n"))?;
     if !render_svg {
         return Ok(());
     }

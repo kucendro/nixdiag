@@ -7,12 +7,7 @@ use crate::topology::{scope_at, Endpoint, Model};
 use anyhow::Result;
 use std::path::Path;
 
-pub(super) fn page_endpoints(
-    out: &mut Out,
-    src: &Path,
-    facts: &Facts,
-    model: &Model,
-) -> Result<()> {
+pub(super) fn page_endpoints(out: &Out, src: &Path, facts: &Facts, model: &Model) -> Result<()> {
     let mut rows: Vec<(String, String, String, String, String)> = Vec::new();
     for (host, h) in &facts.hosts {
         let topo = h.topology();

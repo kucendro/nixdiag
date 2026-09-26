@@ -92,12 +92,6 @@ in a `vars` block at the top of each `.d2`, editable by hand.
 `theme` also picks the mdBook theme the seeded `book.toml` starts with:
 `navy` for dark, `light` with `coal` for dark-preferring viewers otherwise.
 
-## What you may edit
-
-`wiki/src/index.md` and `wiki/book.toml` are written once and never
-overwritten; everything else is rewritten on every run. Pass `indexPage` and
-`bookToml` to own the two from the flake.
-
 ## Serving it
 
 ```nix

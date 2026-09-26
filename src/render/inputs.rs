@@ -7,7 +7,7 @@ use crate::util::sanitize;
 use anyhow::Result;
 use std::collections::BTreeSet;
 
-pub fn generate(lock: &Lock, out: &mut Out, render_svg: bool, style: &D2Style) -> Result<()> {
+pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &D2Style) -> Result<()> {
     let dups = lock.duplicates();
     let flagged: BTreeSet<&str> = dups
         .iter()

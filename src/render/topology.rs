@@ -91,7 +91,7 @@ fn fmt_ports(tcp: &[u32], udp: &[u32]) -> String {
 pub fn generate(
     facts: &Facts,
     model: &Model,
-    out: &mut Out,
+    out: &Out,
     render_svg: bool,
     style: &D2Style,
 ) -> Result<()> {

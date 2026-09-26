@@ -4,7 +4,7 @@ use crate::text::wiki::ARCHITECTURE;
 use anyhow::Result;
 use std::path::Path;
 
-pub(super) fn page_architecture(out: &mut Out, src: &Path) -> Result<()> {
+pub(super) fn page_architecture(out: &Out, src: &Path) -> Result<()> {
     for svg in ["topology.svg", "modules.svg"] {
         let from = out.root.join(svg);
         if from.exists() {

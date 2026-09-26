@@ -15,7 +15,7 @@ use inputs::page_inputs;
 use services::page_services;
 
 use super::d2::D2Style;
-use super::out::{Out, MD_MARKER};
+use super::out::Out;
 use crate::closures::Closures;
 use crate::facts::{Facts, NixosHost};
 use crate::source::flakelock::Lock;
@@ -39,8 +39,8 @@ pub struct WikiOpts {
     pub extra_links: Vec<(String, String)>,
 }
 
-pub(super) fn page(out: &mut Out, rel: &Path, sections: &[String]) -> Result<()> {
-    out.write_auto(rel, &format!("{MD_MARKER}\n\n{}", sections.join("\n\n")))
+pub(super) fn page(out: &Out, rel: &Path, sections: &[String]) -> Result<()> {
+    out.write(rel, &sections.join("\n\n"))
 }
 
 pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<String>> {
@@ -54,7 +54,7 @@ pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<
     svcs
 }
 
-pub fn generate(out: &mut Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -> Result<()> {
+pub fn generate(out: &Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -> Result<()> {
     let wiki = PathBuf::from("wiki");
     let src = wiki.join("src");
 

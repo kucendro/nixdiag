@@ -5,13 +5,13 @@ use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
-pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str, dark: bool) -> Result<()> {
+pub(super) fn book_toml(out: &Out, wiki: &Path, title: &str, dark: bool) -> Result<()> {
     let (default, preferred_dark) = if dark {
         ("navy", "navy")
     } else {
         ("light", "coal")
     };
-    out.write_once(
+    out.write(
         &wiki.join("book.toml"),
         &fill(
             BOOK,
@@ -25,7 +25,7 @@ pub(super) fn book_toml(out: &mut Out, wiki: &Path, title: &str, dark: bool) -> 
 }
 
 pub(super) fn copy_extra_pages(
-    out: &mut Out,
+    out: &Out,
     src: &Path,
     pages: &[(String, PathBuf)],
 ) -> Result<Vec<(String, String)>> {
@@ -60,7 +60,7 @@ pub(super) fn copy_extra_pages(
 }
 
 pub(super) fn page_summary(
-    out: &mut Out,
+    out: &Out,
     src: &Path,
     extra: &[(String, String)],
     has_inputs: bool,
@@ -83,6 +83,6 @@ pub(super) fn page_summary(
     )
 }
 
-pub(super) fn page_index(out: &mut Out, src: &Path) -> Result<()> {
-    out.write_once(&src.join("index.md"), INDEX)
+pub(super) fn page_index(out: &Out, src: &Path) -> Result<()> {
+    out.write(&src.join("index.md"), INDEX)
 }

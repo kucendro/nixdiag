@@ -84,7 +84,7 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
 
 fn lock_dates(
     o: &mut Vec<String>,
-    out: &mut Out,
+    out: &Out,
     src: &Path,
     lock: &Lock,
     style: &D2Style,
@@ -108,7 +108,7 @@ fn lock_dates(
     };
 
     let svg = chart::timeline(t::DATES_CAPTION, &marks, style);
-    out.write_auto(&src.join("inputs-timeline.svg"), &svg)?;
+    out.write(&src.join("inputs-timeline.svg"), &svg)?;
 
     o.push(t::DATES.into());
     let days = (hi - lo) / 86_400;
@@ -118,7 +118,7 @@ fn lock_dates(
     Ok(())
 }
 
-pub(super) fn page_inputs(out: &mut Out, src: &Path, lock: &Lock, style: &D2Style) -> Result<()> {
+pub(super) fn page_inputs(out: &Out, src: &Path, lock: &Lock, style: &D2Style) -> Result<()> {
     let from = out.root.join("inputs.svg");
     if from.exists() {
         let rel = src.join("inputs.svg");

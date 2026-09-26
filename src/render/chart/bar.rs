@@ -83,7 +83,6 @@ pub fn bars(caption: &str, rows: &[Row], style: &D2Style) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::out::MD_MARKER;
 
     fn row(label: &str, bands: Vec<(Band, u64)>, note: &str) -> Row {
         Row {
@@ -183,13 +182,13 @@ mod tests {
     }
 
     #[test]
-    fn labels_are_xml_escaped_and_the_marker_leads() {
+    fn labels_are_xml_escaped() {
         let svg = bars(
             "a & b",
             &[row("<host>", vec![(Band::Solid, 1)], "1 B")],
             &D2Style::default(),
         );
-        assert!(svg.starts_with(MD_MARKER), "{svg}");
+        assert!(svg.starts_with("<svg"), "{svg}");
         assert!(svg.contains("<title>a &amp; b</title>"), "{svg}");
         assert!(svg.contains("&lt;host&gt;"), "{svg}");
     }

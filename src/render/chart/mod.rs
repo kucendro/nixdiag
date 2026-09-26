@@ -7,7 +7,6 @@ pub use timeline::{timeline, Mark};
 pub use treemap::{treemap, Tile};
 
 use super::d2::{color, D2Style};
-use super::out::MD_MARKER;
 use crate::text::chart as t;
 
 const W: u64 = 720;
@@ -90,7 +89,7 @@ fn rect(o: &mut String, x: u64, y: u64, w: u64, h: u64, fill: &str) {
 
 fn svg_open(caption: &str, h: u64, style: &D2Style) -> String {
     let mut o = format!(
-        "{MD_MARKER}\n\
+        "\
          <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {h}\" \
          width=\"{W}\" height=\"{h}\" role=\"img\" \
          font-family=\"ui-sans-serif, system-ui, sans-serif\">\n\

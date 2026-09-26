@@ -1,5 +1,3 @@
-<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->
-
 # Endpoints
 
 | Endpoint | Port | Scope | Host | Service |

@@ -51,21 +51,21 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         }
     }
     let repo = Repo::new(opts.repo.clone());
-    let mut out = Out::new(opts.out.clone());
+    let out = Out::new(opts.out.clone());
 
     let model = crate::topology::build(facts)?;
     if facts.bare() {
         eprintln!("{}", m::NO_TOPOLOGY);
     }
 
-    topology::generate(facts, &model, &mut out, opts.svg, &opts.style)?;
-    modules::generate(facts, &repo, &mut out, opts.svg, &opts.style)?;
+    topology::generate(facts, &model, &out, opts.svg, &opts.style)?;
+    modules::generate(facts, &repo, &out, opts.svg, &opts.style)?;
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
-        inputs::generate(lock, &mut out, opts.svg, &opts.style)?;
+        inputs::generate(lock, &out, opts.svg, &opts.style)?;
     }
     wiki::generate(
-        &mut out,
+        &out,
         &opts.wiki,
         &opts.style,
         &wiki::WikiData {

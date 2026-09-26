@@ -74,7 +74,7 @@ impl Tree {
 pub fn generate(
     facts: &Facts,
     repo: &Repo,
-    out: &mut Out,
+    out: &Out,
     render_svg: bool,
     style: &D2Style,
 ) -> Result<()> {

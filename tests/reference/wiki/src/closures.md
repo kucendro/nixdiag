@@ -1,5 +1,3 @@
-<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->
-
 # Closures
 
 ![System closure size by host](./closures.svg)

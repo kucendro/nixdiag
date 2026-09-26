@@ -18,7 +18,7 @@ use std::path::Path;
 const TOP_PATHS: usize = 10;
 
 pub(super) fn page_closures(
-    out: &mut Out,
+    out: &Out,
     src: &Path,
     facts: &Facts,
     closures: &Closures,
@@ -34,7 +34,7 @@ pub(super) fn page_closures(
     let mut o = vec![t::TITLE.to_string()];
     if !hosts.is_empty() {
         let svg = chart::bars(t::CHART_CAPTION, &bar_rows(closures, &hosts), style);
-        out.write_auto(&src.join("closures.svg"), &svg)?;
+        out.write(&src.join("closures.svg"), &svg)?;
         o.push(fill(t::CHART, &[("caption", t::CHART_CAPTION)]));
     }
     o.push(fill(
@@ -72,7 +72,7 @@ pub(super) fn page_closures(
         if !tiles.is_empty() {
             let file = format!("closures-{}.svg", sanitize(host));
             let caption = fill(t::TREEMAP_CAPTION, &[("host", host)]);
-            out.write_auto(&src.join(&file), &chart::treemap(&caption, &tiles, style))?;
+            out.write(&src.join(&file), &chart::treemap(&caption, &tiles, style))?;
             o.push(fill(t::TREEMAP, &[("caption", &caption), ("file", &file)]));
         }
 

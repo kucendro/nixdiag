@@ -108,7 +108,6 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::out::MD_MARKER;
 
     fn mark(label: &str, at: Option<i64>, direct: bool) -> Mark {
         Mark {
@@ -227,9 +226,9 @@ mod tests {
     }
 
     #[test]
-    fn labels_are_xml_escaped_and_the_marker_leads() {
+    fn labels_are_xml_escaped() {
         let svg = timeline("a & b", &[mark("<in>", Some(1), true)], &D2Style::default());
-        assert!(svg.starts_with(MD_MARKER), "{svg}");
+        assert!(svg.starts_with("<svg"), "{svg}");
         assert!(svg.contains("<title>a &amp; b</title>"), "{svg}");
         assert!(svg.contains("&lt;in&gt;"), "{svg}");
     }

@@ -1,5 +1,3 @@
-<!-- Auto-generated from the Nix config by nixdiag. Do not edit. -->
-
 # Inputs
 
 Dashed edges are `follows`, which *removes* a duplicate.
