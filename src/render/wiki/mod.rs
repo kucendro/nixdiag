@@ -6,13 +6,13 @@ mod hosts;
 mod inputs;
 mod services;
 
-use architecture::page_architecture;
-use book::{book_toml, copy_extra_pages, page_index, page_summary};
-use closures::page_closures;
-use endpoints::page_endpoints;
-use hosts::page_hosts;
-use inputs::page_inputs;
-use services::page_services;
+use architecture::Architecture;
+use book::{book_toml, copy_extra_pages, index, summary};
+use closures::ClosuresPage;
+use endpoints::Endpoints;
+use hosts::Hosts;
+use inputs::Inputs;
+use services::Services;
 
 use super::out::Out;
 use super::style::Style;
@@ -25,6 +25,7 @@ use crate::text::wiki::{self as text, code, NONE};
 use crate::topology::Model;
 use anyhow::Result;
 use std::collections::BTreeMap;
+use std::iter::once;
 use std::path::PathBuf;
 use tabled::builder::Builder;
 use tabled::settings::Style as Grid;
@@ -46,10 +47,10 @@ pub struct WikiOpts {
     pub extra_links: Vec<(String, String)>,
 }
 
-impl Wiki<'_> {
-    fn page(&self, name: &str, sections: &[String]) -> Result<()> {
-        self.src.write(name, &sections.join("\n\n"))
-    }
+pub trait Page {
+    fn file(&self) -> &'static str;
+    fn title(&self) -> &'static str;
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>>;
 }
 
 fn table<const N: usize>(head: [&str; N], rows: impl IntoIterator<Item = [String; N]>) -> String {
@@ -83,19 +84,23 @@ pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<S
 
 pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
     book_toml(w, &opts.title)?;
-    let mut extra = copy_extra_pages(w, &opts.extra_pages)?;
-    extra.extend(opts.extra_links.iter().cloned());
-    page_summary(w, &extra)?;
-    page_index(w)?;
-    page_architecture(w)?;
-    page_hosts(w)?;
-    page_services(w)?;
-    page_endpoints(w)?;
-    if let Some(lock) = w.lock {
-        page_inputs(w, lock)?;
+    index(w)?;
+    let pages: [&dyn Page; 6] = [
+        &Architecture,
+        &Hosts,
+        &Services,
+        &Endpoints,
+        &Inputs,
+        &ClosuresPage,
+    ];
+    let mut listed = Vec::new();
+    for p in pages {
+        let Some(body) = p.body(w)? else { continue };
+        let sections: Vec<String> = once(text::heading(p.title())).chain(body).collect();
+        w.src.write(p.file(), &sections.join("\n\n"))?;
+        listed.push((p.title().to_string(), p.file().to_string()));
     }
-    if let Some(closures) = w.closures {
-        page_closures(w, closures)?;
-    }
-    Ok(())
+    listed.extend(copy_extra_pages(w, &opts.extra_pages)?);
+    listed.extend(opts.extra_links.iter().cloned());
+    summary(w, &listed)
 }

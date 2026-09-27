@@ -12,14 +12,18 @@ pub fn size_paths(size: impl Display, paths: impl Display) -> String {
     format!("{size} ({paths} paths)")
 }
 
+pub fn heading(title: &str) -> String {
+    format!("# {title}")
+}
+
 pub const INDEX: &str = "\
 # Infrastructure wiki
 
 _Hand-written overview goes here_ — the big picture, and *why* things are the way they are. Every other page is generated from the Nix configuration; pass `indexPage` to `mkDocs` to own this one.";
 
-pub const ARCHITECTURE: &str = "\
-# Architecture
-
+pub mod architecture {
+    pub const TITLE: &str = "Architecture";
+    pub const BODY: &str = "\
 ## Data-flow topology
 
 ![Data-flow topology](./topology.svg)
@@ -27,25 +31,19 @@ pub const ARCHITECTURE: &str = "\
 ## Module tree
 
 ![Module tree](./modules.svg)";
+}
 
 pub mod summary {
     pub const TITLE: &str = "# Summary";
-    pub const FIXED: &str = "\
-- [Overview](./index.md)
-- [Architecture](./architecture.md)
-- [Hosts](./hosts.md)
-- [Services](./services.md)
-- [Endpoints](./endpoints.md)";
-    pub const INPUTS: &str = "- [Inputs](./inputs.md)";
-    pub const CLOSURES: &str = "- [Closures](./closures.md)";
+    pub const OVERVIEW: &str = "Overview";
 
-    pub fn extra(title: &str, file: &str) -> String {
+    pub fn entry(title: &str, file: &str) -> String {
         format!("- [{title}](./{file})")
     }
 }
 
 pub mod hosts {
-    pub const TITLE: &str = "# Hosts";
+    pub const TITLE: &str = "Hosts";
     pub const DARWIN_INTRO: &str = "_nix-darwin host._";
     pub const PLATFORM: &str = "Platform";
     pub const UNKNOWN_PLATFORM: &str = "?";
@@ -82,7 +80,7 @@ pub mod hosts {
 }
 
 pub mod services {
-    pub const TITLE: &str = "# Services";
+    pub const TITLE: &str = "Services";
     pub const HEAD: [&str; 3] = ["Service", "Hosts", "Defined in"];
 
     pub fn name(name: &str) -> String {
@@ -95,7 +93,7 @@ pub mod services {
 }
 
 pub mod endpoints {
-    pub const TITLE: &str = "# Endpoints";
+    pub const TITLE: &str = "Endpoints";
     pub const HEAD: [&str; 5] = ["Endpoint", "Port", "Scope", "Host", "Service"];
     pub const HTTP: &str = "http";
     pub const HTTPS: &str = "https";
@@ -111,7 +109,7 @@ pub mod endpoints {
 }
 
 pub mod inputs {
-    pub const TITLE: &str = "# Inputs";
+    pub const TITLE: &str = "Inputs";
     pub const INTRO: &str = "\
 Dashed edges are `follows`, which *removes* a duplicate.
 
@@ -157,7 +155,7 @@ One revision under several node names. Harmless; a `follows` drops the extra fet
 }
 
 pub mod closures {
-    pub const TITLE: &str = "# Closures";
+    pub const TITLE: &str = "Closures";
     pub const CHART_CAPTION: &str = "System closure size by host";
     pub const HEAD: [&str; 4] = ["Host", "Closure", "Paths", "Unique"];
     pub const FLEET: &str = "## Fleet";

@@ -4,6 +4,7 @@ use crate::text::messages::Fail;
 use crate::text::wiki::{summary as t, INDEX};
 use anyhow::{bail, Result};
 use serde_json::json;
+use std::iter::once;
 use std::path::PathBuf;
 
 pub(super) fn book_toml(w: &Wiki, title: &str) -> Result<()> {
@@ -40,20 +41,17 @@ pub(super) fn copy_extra_pages(
     Ok(links)
 }
 
-pub(super) fn page_summary(w: &Wiki, extra: &[(String, String)]) -> Result<()> {
-    let mut entries = vec![t::FIXED.to_string()];
-    if w.lock.is_some() {
-        entries.push(t::INPUTS.into());
-    }
-    if w.closures.is_some() {
-        entries.push(t::CLOSURES.into());
-    }
-    for (title, file) in extra {
-        entries.push(t::extra(title, file));
-    }
-    w.page(page::SUMMARY, &[t::TITLE.to_string(), entries.join("\n")])
+pub(super) fn summary(w: &Wiki, pages: &[(String, String)]) -> Result<()> {
+    let entries = pages.iter().map(|(title, file)| t::entry(title, file));
+    let entries: Vec<String> = once(t::entry(t::OVERVIEW, page::INDEX))
+        .chain(entries)
+        .collect();
+    w.src.write(
+        page::SUMMARY,
+        &format!("{}\n\n{}", t::TITLE, entries.join("\n")),
+    )
 }
 
-pub(super) fn page_index(w: &Wiki) -> Result<()> {
+pub(super) fn index(w: &Wiki) -> Result<()> {
     w.src.write(page::INDEX, INDEX)
 }

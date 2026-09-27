@@ -1,4 +1,4 @@
-use super::{code, codes, repo_services, size_paths, table, Wiki};
+use super::{code, codes, repo_services, size_paths, table, Page, Wiki};
 use crate::closures::Closures;
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Host, NixosHost};
@@ -14,15 +14,27 @@ fn join_or_dash(items: &[String]) -> String {
     }
 }
 
-pub(super) fn page_hosts(w: &Wiki) -> Result<()> {
-    let mut o = vec![t::TITLE.to_string()];
-    for (host, f) in &w.facts.hosts {
-        match f {
-            Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
-            Host::Darwin(d) => host_darwin(&mut o, host, d),
-        }
+pub(super) struct Hosts;
+
+impl Page for Hosts {
+    fn file(&self) -> &'static str {
+        page::HOSTS
     }
-    w.page(page::HOSTS, &o)
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        let mut o = Vec::new();
+        for (host, f) in &w.facts.hosts {
+            match f {
+                Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
+                Host::Darwin(d) => host_darwin(&mut o, host, d),
+            }
+        }
+        Ok(Some(o))
+    }
 }
 
 fn host_nixos(

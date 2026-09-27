@@ -1,5 +1,5 @@
 use super::super::chart::{self, Mark};
-use super::{code, codes, table, Wiki};
+use super::{code, codes, table, Page, Wiki};
 use crate::conf::files::{chart as svg, diagram, page};
 use crate::human::{Date, DAY};
 use crate::source::flakelock::{short, Dup, Lock, Locked};
@@ -88,18 +88,30 @@ fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
+pub(super) struct Inputs;
+
+impl Page for Inputs {
+    fn file(&self) -> &'static str {
+        page::INPUTS
+    }
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        w.lock.map(|lock| body(w, lock)).transpose()
+    }
+}
+
+fn body(w: &Wiki, lock: &Lock) -> Result<Vec<String>> {
     w.src.mirror(w.out, &format!("{}.svg", diagram::INPUTS))?;
 
     let rows = lock
         .inputs()
         .into_iter()
         .map(|(name, l)| [code(name), code(l.source()), code(l.short_rev()), date(l)]);
-    let mut o = vec![
-        t::TITLE.to_string(),
-        t::INTRO.to_string(),
-        table(t::HEAD, rows),
-    ];
+    let mut o = vec![t::INTRO.to_string(), table(t::HEAD, rows)];
 
     lock_dates(&mut o, w, lock)?;
 
@@ -120,6 +132,5 @@ pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
         o.push(t::REDUNDANT.into());
         o.push(rows.collect::<Vec<_>>().join("\n"));
     }
-
-    w.page(page::INPUTS, &o)
+    Ok(o)
 }

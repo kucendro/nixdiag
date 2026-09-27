@@ -1,4 +1,4 @@
-use super::{code, table, Wiki};
+use super::{code, table, Page, Wiki};
 use crate::conf::files::page;
 use crate::facts::Scope;
 use crate::text::wiki::{endpoints as t, NONE};
@@ -40,7 +40,26 @@ fn scope(s: Option<Scope>) -> String {
     s.map_or(NONE, Scope::label).into()
 }
 
-pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
+pub(super) struct Endpoints;
+
+impl Page for Endpoints {
+    fn file(&self) -> &'static str {
+        page::ENDPOINTS
+    }
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        Ok(Some(vec![table(
+            t::HEAD,
+            rows(w).into_iter().map(Row::cells),
+        )]))
+    }
+}
+
+fn rows(w: &Wiki) -> Vec<Row> {
     let exposed = w.model.exposed.iter().map(|x| Row {
         endpoint: x
             .name
@@ -70,6 +89,5 @@ pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
     });
     let mut rows: Vec<Row> = exposed.chain(named).collect();
     rows.sort();
-    let table = table(t::HEAD, rows.into_iter().map(Row::cells));
-    w.page(page::ENDPOINTS, &[t::TITLE.to_string(), table])
+    rows
 }

@@ -3,7 +3,7 @@ mod charts;
 mod tests;
 
 use super::super::chart;
-use super::{code, size_paths, table, Wiki};
+use super::{code, size_paths, table, Page, Wiki};
 use crate::closures::{Closures, HostClosure};
 use crate::conf::files::{chart as svg, page};
 use crate::conf::limits::TOP_PATHS;
@@ -13,7 +13,23 @@ use crate::util::{sanitize, store_name};
 use anyhow::Result;
 use charts::{bar_rows, treemap_tiles};
 
-pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
+pub(super) struct ClosuresPage;
+
+impl Page for ClosuresPage {
+    fn file(&self) -> &'static str {
+        page::CLOSURES
+    }
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        w.closures.map(|c| body(w, c)).transpose()
+    }
+}
+
+fn body(w: &Wiki, closures: &Closures) -> Result<Vec<String>> {
     let hosts: Vec<(&str, Option<&HostClosure>)> = w
         .facts
         .hosts
@@ -22,7 +38,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
         .map(|(n, _)| (n.as_str(), closures.hosts.get(n.as_str())))
         .collect();
 
-    let mut o = vec![t::TITLE.to_string()];
+    let mut o = Vec::new();
     if !hosts.is_empty() {
         let bars = chart::bars(&bar_rows(closures, &hosts), w.style)?;
         w.src.write(svg::CLOSURES, &bars)?;
@@ -69,8 +85,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
         o.push(t::LARGEST.into());
         o.push(table(t::LARGEST_HEAD, rows));
     }
-
-    w.page(page::CLOSURES, &o)
+    Ok(o)
 }
 
 fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<[String; 4]> {
