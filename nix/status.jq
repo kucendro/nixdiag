@@ -2,7 +2,7 @@ def adapters(states): [.audit[] | select(.status as $s | states | index($s)) | .
 def verdict:
   adapters(["broken"]) as $broken
   | adapters(["renamed", "unaudited"]) as $renamed
-  | if .eval != "ok" then ["topology changed", "red"]
+  | if .vm == "failed" then ["vm failed", "red"]
     elif $broken != [] then ["broken: \($broken | join(", "))", "red"]
     elif $renamed != [] then ["renamed: \($renamed | join(", "))", "yellow"]
     else ["ok", "brightgreen"] end;

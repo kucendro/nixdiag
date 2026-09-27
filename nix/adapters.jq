@@ -17,7 +17,7 @@ $meta[0] as $m
    | "\n## \($ref)\n",
      "| | \($runs | map(.date) | cells) |",
      "|---|\($runs | map("---") | join("|"))|",
-     "| topology | \($runs | map(if .eval == "ok" then "✓" else "✗" end) | cells) |",
+     "| vm | \($runs | map(if .vm == null then "–" elif .vm == "ok" then "✓" else "✗" end) | cells) |",
      ($m | keys[] as $a
       | "| `\($a)` | \($runs | map([.audit[] | select(.adapter == $a) | .status] | if . == [] then "–" else worst | glyph end) | cells) |"),
      "\nLast run at nixpkgs `\($runs[-1].rev[:7])`.")

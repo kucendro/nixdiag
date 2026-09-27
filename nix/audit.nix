@@ -26,7 +26,7 @@ pkgs.writeShellApplication {
       shift
     fi
     refs=("$@")
-    if [ "$#" -eq 0 ]; then refs=(nixos-unstable nixos-25.05); fi
+    if [ "$#" -eq 0 ]; then refs=(nixos-unstable nixos-26.05); fi
     tmp=$(mktemp -d)
     trap 'rm -rf "$tmp"' EXIT
     options() {

@@ -19,36 +19,6 @@ let
       bash ${../tests/checks}/${name}.sh
       touch $out
     '';
-
-  serving = rec {
-    flake = {
-      outPath = ../tests/fixture;
-      nixosConfigurations.web = nixpkgs.lib.nixosSystem {
-        modules = [
-          ../nix/module
-          {
-            nixpkgs.hostPlatform = pkgs.stdenv.hostPlatform.system;
-            system.stateVersion = "25.05";
-            fileSystems."/" = {
-              device = "/dev/sda";
-              fsType = "ext4";
-            };
-            boot.loader.grub.device = "/dev/sda";
-            services.nixdiag.serve = {
-              enable = true;
-              inherit docs;
-              virtualHost = "docs.example";
-            };
-          }
-        ];
-      };
-    };
-    docs = self.lib.mkDocs {
-      inherit pkgs flake;
-      buildWiki = false;
-      closures = [ "web" ];
-    };
-  };
 in
 {
   build = packages.nixdiag;
@@ -76,11 +46,9 @@ in
     closures = mkClosures { toplevels.nixdiag = packages.nixdiag; };
   };
 }
-// pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-  closures-serving =
-    pkgs.runCommand "nixdiag-closures-serving"
-      { drv = builtins.unsafeDiscardStringContext serving.docs.drvPath; }
-      ''
-        echo "$drv" > $out
-      '';
-}
+// pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
+  import ./vm {
+    inherit pkgs nixpkgs;
+    inherit (self.lib) adapters mkDocs;
+  }
+)

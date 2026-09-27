@@ -82,23 +82,9 @@ Unresolved fails the build.
 
 ## Adding an adapter
 
-```nix
-{ lib, helpers }:
-{
-  role = "monitor";
-  kind = "infra";
-  maintainers = [ "you" ];
-  reads.port = [
-    "services.foo.settings.port"
-    "services.foo.port"
-  ];
-  topology = { port }: { ports = lib.optional (port != null) port; };
-}
-```
-
-`nix/adapters/foo.nix`. First candidate present wins, a missing one reads
-`null`, `<name>` walks an `attrsOf`. Enabled by `services.foo.enable` unless
-`enable` says otherwise.
+Copy `nix/adapters/example.nix` to `nix/adapters/foo.nix`. Every field is
+explained there. `tests` is required: `nix flake check` boots the VMs it names
+and compares the adapter's claims to what runs.
 
 ## Audit
 
@@ -108,8 +94,9 @@ nix run github:kucendro/nixdiag#audit -- nixos-unstable github:NixOS/nixpkgs/mas
 
 Checks every read against `options.json`, downloaded for a channel or built
 for any nixpkgs ref: `ok`, `renamed`, `unaudited`, `broken`; `--json` for
-rows. Every day at 20:00 Prague time the monitor workflow runs it and the
-fixture render against `master`, `nixos-unstable` and `nixos-25.05`, and
-records both on the `data` branch. An adapter that is not `ok` gets an
+rows. Every day at 20:00 Prague time the monitor workflow runs it against
+`master`, `nixos-unstable` and `nixos-26.05`, boots the adapter VMs on both
+channels, evaluates them on `master`, and records both on the `data` branch.
+An adapter that is not `ok` gets an
 issue mentioning its `maintainers`, which are GitHub handles; it closes once
 every head is `ok` again.

@@ -17,6 +17,7 @@ in
     firewall = [ "networking.firewall.enable" ];
     tcp = [ "networking.firewall.allowedTCPPorts" ];
   };
+
   topology =
     {
       forceSSL,
@@ -83,4 +84,25 @@ in
       connections = lib.concatMap connectionsOf names;
       expose = lib.concatMap exposeOf names;
     };
+
+  # Required VM tests -------------------------------------------------
+  tests = {
+    vm = [ "web" ];
+
+    # Minimum setup for successful bootstrap
+    minimum.services.nginx.virtualHosts."secure.test" = {
+      sslCertificate = "/etc/vm/cert.pem";
+      sslCertificateKey = "/etc/vm/key.pem";
+    };
+
+    # Values for reads the defaults leave idle
+    probe = {
+      proxyPass = {
+        "grafana.test"."/" = "http://mon:3000";
+        "secure.test"."/" = "http://mon:3000";
+      };
+      forceSSL."secure.test" = true;
+      tcp = [ 80 ];
+    };
+  };
 }

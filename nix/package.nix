@@ -8,7 +8,14 @@
 rustPlatform.buildRustPackage {
   pname = "nixdiag";
   version = (builtins.fromTOML (builtins.readFile ../Cargo.toml)).package.version;
-  src = ../.;
+  src = lib.fileset.toSource {
+    root = ../.;
+    fileset = lib.fileset.unions [
+      ../Cargo.toml
+      ../Cargo.lock
+      ../src
+    ];
+  };
   cargoLock.lockFile = ../Cargo.lock;
 
   nativeBuildInputs = [ makeWrapper ];
