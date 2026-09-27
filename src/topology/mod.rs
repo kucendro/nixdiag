@@ -1,6 +1,6 @@
 mod model;
 mod resolve;
-pub mod url;
+pub mod target;
 
 pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
 
