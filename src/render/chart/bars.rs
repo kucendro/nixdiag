@@ -1,4 +1,4 @@
-use super::{bar_axis, height, mib, options, paint, Band, Style};
+use super::{bar_axis, height, mib, one_line, options, paint, Band, Style};
 use crate::text::chart as t;
 use anyhow::Result;
 use charts_rs::HorizontalBarChart;
@@ -48,5 +48,5 @@ pub fn bars(rows: &[Row], style: &Style) -> Result<String> {
     extra["y_axis_configs"][0]["axis_formatter"] = t::MIB.into();
     let mut chart = HorizontalBarChart::from_json(&options(style, height(rows.len()), extra))?;
     paint(&mut chart, style);
-    Ok(chart.svg()?)
+    one_line(&chart.svg()?)
 }

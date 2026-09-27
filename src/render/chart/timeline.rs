@@ -1,4 +1,4 @@
-use super::{bar_axis, height, options, paint, Style};
+use super::{bar_axis, height, one_line, options, paint, Style};
 use crate::conf::palette::chart as paint_color;
 use crate::human::DAY;
 use crate::text::chart as t;
@@ -46,5 +46,5 @@ pub fn timeline(marks: &[Mark], style: &Style) -> Result<String> {
     extra["series_label_formatter"] = t::DAYS.into();
     let mut chart = HorizontalBarChart::from_json(&options(style, height(order.len()), extra))?;
     paint(&mut chart, style);
-    Ok(chart.svg()?)
+    one_line(&chart.svg()?)
 }

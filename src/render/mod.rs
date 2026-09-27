@@ -4,6 +4,7 @@ mod inputs;
 mod modules;
 pub mod out;
 pub mod style;
+mod svg;
 mod topology;
 mod wiki;
 

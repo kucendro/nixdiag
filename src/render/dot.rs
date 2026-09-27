@@ -1,4 +1,5 @@
 use super::style::Style;
+use super::svg::one_line;
 use crate::conf::palette::{diagram as p, Color};
 use crate::conf::tools::{DOT, DOT_FONT};
 use crate::render::out::Out;
@@ -117,9 +118,10 @@ impl Dot<'_> {
                 let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
                 bail!(Fail::RenderOutput("dot", stem.into(), stderr))
             }
-            Ok(o) => self
-                .out
-                .write(format!("{stem}.svg"), &String::from_utf8(o.stdout)?),
+            Ok(o) => self.out.write(
+                format!("{stem}.svg"),
+                &one_line(&String::from_utf8(o.stdout)?)?,
+            ),
         }
     }
 }

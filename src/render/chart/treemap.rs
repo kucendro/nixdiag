@@ -1,4 +1,4 @@
-use super::{mib, options, paint, Band, Style};
+use super::{mib, one_line, options, paint, Band, Style};
 use crate::conf::palette::chart::TILE_INK;
 use crate::text::chart as t;
 use anyhow::Result;
@@ -28,5 +28,5 @@ pub fn treemap(tiles: &[Tile], style: &Style) -> Result<String> {
     });
     let mut chart = TreemapChart::from_json(&options(style, TREE_H, extra))?;
     paint(&mut chart, style);
-    Ok(chart.svg()?)
+    one_line(&chart.svg()?)
 }

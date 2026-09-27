@@ -7,6 +7,7 @@ pub use timeline::{timeline, Mark};
 pub use treemap::{treemap, Tile};
 
 use super::style::Style;
+use super::svg::one_line;
 use crate::conf::palette::{chart as paint, Color};
 use crate::text::chart as t;
 use charts_rs::ChartBase;
