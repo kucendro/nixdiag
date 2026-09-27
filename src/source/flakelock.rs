@@ -32,6 +32,14 @@ pub enum InputRef {
     Follows(Vec<String>),
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct Edge {
+    pub parent: String,
+    pub input: String,
+    pub child: String,
+    pub follows: bool,
+}
+
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Locked {
@@ -119,32 +127,31 @@ impl Lock {
         Some(at)
     }
 
-    pub fn edges(&self) -> Vec<(String, String, String, bool)> {
+    fn target(&self, r: &InputRef) -> Option<String> {
+        match r {
+            InputRef::Node(n) => Some(n.clone()),
+            InputRef::Follows(p) => self.resolve(p),
+        }
+    }
+
+    pub fn edges(&self) -> Vec<Edge> {
         let mut out = Vec::new();
         for (parent, node) in &self.nodes {
-            for (name, r) in &node.inputs {
-                let (child, follows) = match r {
-                    InputRef::Node(n) => (Some(n.clone()), false),
-                    InputRef::Follows(p) => (self.resolve(p), true),
-                };
-                if let Some(child) = child {
-                    out.push((parent.clone(), name.clone(), child, follows));
-                }
+            for (input, r) in &node.inputs {
+                out.extend(self.target(r).map(|child| Edge {
+                    parent: parent.clone(),
+                    input: input.clone(),
+                    child,
+                    follows: matches!(r, InputRef::Follows(_)),
+                }));
             }
         }
-        out.sort();
         out
     }
 
-    pub fn parents_of(&self, child: &str) -> Vec<(String, String)> {
-        let mut out: Vec<(String, String)> = self
-            .edges()
-            .into_iter()
-            .filter(|(_, _, c, follows)| c == child && !follows)
-            .map(|(p, name, _, _)| (p, name))
-            .collect();
-        out.sort();
-        out
+    pub fn parents_of(&self, child: &str) -> Vec<Edge> {
+        let edges = self.edges().into_iter();
+        edges.filter(|e| e.child == child && !e.follows).collect()
     }
 
     pub fn inputs(&self) -> Vec<(&String, &Locked)> {
@@ -164,10 +171,7 @@ impl Lock {
         };
         root.inputs
             .values()
-            .filter_map(|r| match r {
-                InputRef::Node(n) => Some(n.clone()),
-                InputRef::Follows(p) => self.resolve(p),
-            })
+            .filter_map(|r| self.target(r))
             .collect()
     }
 

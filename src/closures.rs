@@ -1,3 +1,7 @@
+#[cfg(test)]
+mod tests;
+
+use crate::util::{package_name, store_name};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -23,13 +27,38 @@ pub struct ClosurePath {
     pub nar_size: u64,
 }
 
-impl HostClosure {
-    pub fn total(&self) -> u64 {
-        self.paths.iter().map(|p| p.nar_size).sum()
-    }
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Total {
+    pub paths: usize,
+    pub size: u64,
+}
 
-    pub fn len(&self) -> usize {
-        self.paths.len()
+impl<'a> FromIterator<&'a ClosurePath> for Total {
+    fn from_iter<I: IntoIterator<Item = &'a ClosurePath>>(iter: I) -> Self {
+        iter.into_iter().fold(Total::default(), |t, p| Total {
+            paths: t.paths + 1,
+            size: t.size + p.nar_size,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Share {
+    pub name: String,
+    pub size: u64,
+    pub holders: usize,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Split {
+    pub shared: u64,
+    pub partial: u64,
+    pub unique: u64,
+}
+
+impl HostClosure {
+    pub fn total(&self) -> Total {
+        self.paths.iter().collect()
     }
 
     pub fn largest(&self, n: usize) -> Vec<&ClosurePath> {
@@ -41,295 +70,99 @@ impl HostClosure {
 }
 
 impl Closures {
-    fn occurrences(&self) -> BTreeMap<&str, (usize, u64)> {
-        let mut seen: BTreeMap<&str, (usize, u64)> = BTreeMap::new();
-        for host in self.hosts.values() {
-            for p in &host.paths {
-                let e = seen.entry(p.path.as_str()).or_insert((0, p.nar_size));
-                e.0 += 1;
-            }
+    fn holders(&self) -> BTreeMap<&str, (usize, &ClosurePath)> {
+        let mut seen = BTreeMap::new();
+        for p in self.hosts.values().flat_map(|h| &h.paths) {
+            seen.entry(p.path.as_str()).or_insert((0, p)).0 += 1;
         }
         seen
     }
 
-    pub fn shared(&self) -> Vec<(&str, u64)> {
+    fn paths(&self, host: &str) -> impl Iterator<Item = &ClosurePath> {
+        self.hosts.get(host).into_iter().flat_map(|h| &h.paths)
+    }
+
+    pub fn shared(&self) -> Total {
         let n = self.hosts.len();
-        self.occurrences()
-            .into_iter()
-            .filter(|(_, (count, _))| *count == n)
-            .map(|(p, (_, size))| (p, size))
+        let holders = self.holders().into_values();
+        holders.filter(|(c, _)| *c == n).map(|(_, p)| p).collect()
+    }
+
+    pub fn unique(&self, host: &str) -> Total {
+        let holders = self.holders();
+        self.paths(host)
+            .filter(|p| holders[p.path.as_str()].0 == 1)
             .collect()
     }
 
-    pub fn unique(&self, host: &str) -> Vec<(&str, u64)> {
-        let occ = self.occurrences();
-        let Some(h) = self.hosts.get(host) else {
-            return Vec::new();
-        };
-        let mut v: Vec<(&str, u64)> = h
-            .paths
-            .iter()
-            .filter(|p| occ.get(p.path.as_str()).map(|(c, _)| *c) == Some(1))
-            .map(|p| (p.path.as_str(), p.nar_size))
-            .collect();
-        v.sort();
-        v
-    }
-
-    pub fn deduped(&self) -> (usize, u64) {
-        let occ = self.occurrences();
-        (occ.len(), occ.values().map(|(_, size)| size).sum())
+    pub fn deduped(&self) -> Total {
+        self.holders().into_values().map(|(_, p)| p).collect()
     }
 
     pub fn naive_sum(&self) -> u64 {
-        self.hosts.values().map(HostClosure::total).sum()
+        self.hosts.values().map(|h| h.total().size).sum()
     }
 
-    pub fn path_shares(&self, host: &str) -> Vec<(&str, u64, usize)> {
-        let occ = self.occurrences();
-        let Some(h) = self.hosts.get(host) else {
-            return Vec::new();
-        };
-        h.paths
-            .iter()
-            .map(|p| {
-                let count = occ.get(p.path.as_str()).map_or(0, |(c, _)| *c);
-                (p.path.as_str(), p.nar_size, count)
+    fn path_shares(&self, host: &str) -> Vec<Share> {
+        let holders = self.holders();
+        self.paths(host)
+            .map(|p| Share {
+                name: p.path.clone(),
+                size: p.nar_size,
+                holders: holders[p.path.as_str()].0,
             })
             .collect()
     }
 
-    pub fn package_shares(&self, host: &str) -> Vec<(String, u64, usize)> {
+    pub fn package_shares(&self, host: &str) -> Vec<Share> {
+        let paths = self.path_shares(host);
         let mut groups: BTreeMap<(&str, usize), u64> = BTreeMap::new();
-        for (path, size, count) in self.path_shares(host) {
+        for p in &paths {
             *groups
-                .entry((
-                    crate::util::package_name(crate::util::store_name(path)),
-                    count,
-                ))
-                .or_default() += size;
+                .entry((package_name(store_name(&p.name)), p.holders))
+                .or_default() += p.size;
         }
-        let mut v: Vec<(String, u64, usize)> = groups
+        let mut v: Vec<Share> = groups
             .into_iter()
-            .map(|((name, count), size)| (name.to_string(), size, count))
+            .map(|((name, holders), size)| Share {
+                name: name.into(),
+                size,
+                holders,
+            })
             .collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        v.sort_by(|a, b| b.size.cmp(&a.size).then(a.name.cmp(&b.name)));
         v
     }
 
     pub fn split(&self, host: &str) -> Split {
         let n = self.hosts.len();
-        let occ = self.occurrences();
         let mut s = Split::default();
-        let Some(h) = self.hosts.get(host) else {
-            return s;
-        };
-        for p in &h.paths {
-            match occ.get(p.path.as_str()).map(|(count, _)| *count) {
-                Some(c) if c == n => s.shared += p.nar_size,
-                Some(1) => s.unique += p.nar_size,
-                _ => s.partial += p.nar_size,
+        for p in self.path_shares(host) {
+            match p.holders {
+                c if c == n => s.shared += p.size,
+                1 => s.unique += p.size,
+                _ => s.partial += p.size,
             }
         }
         s
     }
-}
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Split {
-    pub shared: u64,
-    pub partial: u64,
-    pub unique: u64,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn p(path: &str, nar_size: u64) -> ClosurePath {
-        ClosurePath {
+    #[cfg(test)]
+    pub fn of(hosts: Vec<(&str, Vec<(&str, u64)>)>) -> Closures {
+        let path = |(path, nar_size): (&str, u64)| ClosurePath {
             path: path.into(),
             nar_size,
-        }
-    }
-
-    fn fixture() -> Closures {
-        let mut hosts = IndexMap::new();
-        hosts.insert(
-            "luna".to_string(),
-            HostClosure {
-                paths: vec![p("libc", 100), p("bash", 50), p("nginx", 10)],
-            },
-        );
-        hosts.insert(
-            "sol".to_string(),
-            HostClosure {
-                paths: vec![p("libc", 100), p("bash", 50), p("postgres", 400)],
-            },
-        );
+        };
         Closures {
             schema: 1,
-            hosts,
+            hosts: hosts
+                .into_iter()
+                .map(|(h, ps)| {
+                    let paths = ps.into_iter().map(path).collect();
+                    (h.to_string(), HostClosure { paths })
+                })
+                .collect(),
             served: vec![],
         }
-    }
-
-    #[test]
-    fn totals_are_derived_from_the_path_list() {
-        let c = fixture();
-        assert_eq!(c.hosts["luna"].total(), 160);
-        assert_eq!(c.hosts["luna"].len(), 3);
-    }
-
-    #[test]
-    fn shared_is_what_every_host_carries() {
-        assert_eq!(fixture().shared(), vec![("bash", 50), ("libc", 100)]);
-    }
-
-    #[test]
-    fn unique_excludes_anything_another_host_also_has() {
-        let c = fixture();
-        assert_eq!(c.unique("luna"), vec![("nginx", 10)]);
-        assert_eq!(c.unique("sol"), vec![("postgres", 400)]);
-        assert_eq!(c.unique("nope"), vec![]);
-    }
-
-    #[test]
-    fn deduplication_counts_a_shared_path_once() {
-        let c = fixture();
-        assert_eq!(c.deduped(), (4, 560));
-        assert_eq!(c.naive_sum(), 710);
-    }
-
-    #[test]
-    fn largest_is_size_descending_and_bounded() {
-        let c = fixture();
-        let top = c.hosts["sol"].largest(2);
-        assert_eq!(top.len(), 2);
-        assert_eq!(top[0].path, "postgres");
-        assert_eq!(top[1].path, "libc");
-    }
-
-    #[test]
-    fn a_split_partitions_the_host_total() {
-        let c = fixture();
-        assert_eq!(
-            c.split("luna"),
-            Split {
-                shared: 150,
-                partial: 0,
-                unique: 10
-            }
-        );
-        assert_eq!(
-            c.split("luna").shared + c.split("luna").unique,
-            c.hosts["luna"].total()
-        );
-        assert_eq!(c.split("nope"), Split::default());
-    }
-
-    #[test]
-    fn path_shares_carries_the_holder_count_per_path() {
-        let c = fixture();
-        assert_eq!(
-            c.path_shares("luna"),
-            vec![("libc", 100, 2), ("bash", 50, 2), ("nginx", 10, 1)]
-        );
-        assert_eq!(c.path_shares("nope"), vec![]);
-    }
-
-    #[test]
-    fn package_shares_fold_outputs_and_keep_the_holder_count() {
-        let path = |n: &str, name: &str, size| ClosurePath {
-            path: format!("/nix/store/0000000000000000000000000000000{n}-{name}"),
-            nar_size: size,
-        };
-        let mut hosts = IndexMap::new();
-        hosts.insert(
-            "luna".to_string(),
-            HostClosure {
-                paths: vec![
-                    path("a", "glibc-2.42-67", 100),
-                    path("b", "glibc-2.42-67-bin", 40),
-                    path("c", "nginx-1.28", 10),
-                ],
-            },
-        );
-        hosts.insert(
-            "sol".to_string(),
-            HostClosure {
-                paths: vec![path("a", "glibc-2.42-67", 100)],
-            },
-        );
-        let c = Closures {
-            schema: 1,
-            hosts,
-            served: vec![],
-        };
-        assert_eq!(
-            c.package_shares("luna"),
-            vec![
-                ("glibc".to_string(), 100, 2),
-                ("glibc".to_string(), 40, 1),
-                ("nginx".to_string(), 10, 1),
-            ]
-        );
-        assert!(c
-            .package_shares("luna")
-            .iter()
-            .all(|(n, ..)| !n.contains("/nix/store")));
-    }
-
-    #[test]
-    fn a_third_host_makes_the_partial_band_possible() {
-        let mut c = fixture();
-        c.hosts.insert(
-            "terra".to_string(),
-            HostClosure {
-                paths: vec![p("libc", 100), p("bash", 50), p("nginx", 10)],
-            },
-        );
-        assert_eq!(
-            c.split("luna"),
-            Split {
-                shared: 150,
-                partial: 10,
-                unique: 0
-            }
-        );
-        assert_eq!(
-            c.split("sol"),
-            Split {
-                shared: 150,
-                partial: 0,
-                unique: 400
-            }
-        );
-    }
-
-    #[test]
-    fn a_single_host_shares_everything_with_itself() {
-        let mut hosts = IndexMap::new();
-        hosts.insert(
-            "only".to_string(),
-            HostClosure {
-                paths: vec![p("libc", 100)],
-            },
-        );
-        let c = Closures {
-            schema: 1,
-            hosts,
-            served: vec![],
-        };
-        assert_eq!(c.shared(), vec![("libc", 100)]);
-        assert_eq!(c.deduped(), (1, 100));
-        assert_eq!(
-            c.split("only"),
-            Split {
-                shared: 100,
-                partial: 0,
-                unique: 0
-            }
-        );
     }
 }

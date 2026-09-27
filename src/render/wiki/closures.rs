@@ -35,19 +35,17 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
 
     let measured = hosts.iter().filter(|(_, c)| c.is_some()).count();
     if measured > 1 {
-        let shared = closures.shared();
-        let shared_size: u64 = shared.iter().map(|(_, s)| s).sum();
-        let (dedup_n, dedup_size) = closures.deduped();
+        let (shared, deduped) = (closures.shared(), closures.deduped());
         let naive = closures.naive_sum();
         o.push(fill(
             t::FLEET,
             &[
-                ("shared", &human_size(shared_size)),
-                ("shared_paths", &human_count(shared.len())),
-                ("deduped", &human_size(dedup_size)),
-                ("deduped_paths", &human_count(dedup_n)),
+                ("shared", &human_size(shared.size)),
+                ("shared_paths", &human_count(shared.paths)),
+                ("deduped", &human_size(deduped.size)),
+                ("deduped_paths", &human_count(deduped.paths)),
                 ("sum", &human_size(naive)),
-                ("saved", &human_size(naive.saturating_sub(dedup_size))),
+                ("saved", &human_size(naive.saturating_sub(deduped.size))),
             ],
         ));
     }
@@ -98,14 +96,14 @@ fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> 
         .iter()
         .map(|(host, closure)| match closure {
             Some(h) => {
-                let unique: u64 = closures.unique(host).iter().map(|(_, s)| s).sum();
+                let total = h.total();
                 fill(
                     t::ROW,
                     &[
                         ("host", host),
-                        ("closure", &human_size(h.total())),
-                        ("paths", &human_count(h.len())),
-                        ("unique", &human_size(unique)),
+                        ("closure", &human_size(total.size)),
+                        ("paths", &human_count(total.paths)),
+                        ("unique", &human_size(closures.unique(host).size)),
                     ],
                 )
             }

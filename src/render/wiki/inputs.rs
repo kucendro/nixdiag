@@ -14,13 +14,13 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
     }
     parents
         .iter()
-        .map(|(parent, input)| {
-            if *parent == lock.root {
+        .map(|e| {
+            if e.parent == lock.root {
                 t::THIS_FLAKE.to_string()
-            } else if parent == input {
-                fill(t::PARENT, &[("parent", parent)])
+            } else if e.parent == e.input {
+                fill(t::PARENT, &[("parent", &e.parent)])
             } else {
-                fill(t::PARENT_AS, &[("parent", parent), ("input", input)])
+                fill(t::PARENT_AS, &[("parent", &e.parent), ("input", &e.input)])
             }
         })
         .collect::<Vec<_>>()
@@ -29,12 +29,12 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
 
 fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     let mut rows = Vec::new();
-    for (rev, nodes) in &d.revs {
-        for n in nodes {
+    for r in &d.revs {
+        for n in &r.nodes {
             rows.push(fill(
                 t::DIAMOND_ROW,
                 &[
-                    ("rev", &short(rev)),
+                    ("rev", &short(&r.rev)),
                     ("node", n),
                     ("parents", &pulled_in_by(lock, n)),
                 ],
@@ -58,13 +58,17 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
         if n == target {
             continue;
         }
-        for (parent, input) in lock.parents_of(n) {
-            if parent == lock.root {
+        for e in lock.parents_of(n) {
+            if e.parent == lock.root {
                 continue;
             }
             fixes.push(fill(
                 t::FIX_LINE,
-                &[("parent", &parent), ("input", &input), ("target", &target)],
+                &[
+                    ("parent", &e.parent),
+                    ("input", &e.input),
+                    ("target", &target),
+                ],
             ));
         }
     }

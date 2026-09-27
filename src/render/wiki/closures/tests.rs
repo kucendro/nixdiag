@@ -1,25 +1,12 @@
 use super::*;
-use crate::closures::ClosurePath;
 use crate::conf::limits::TREEMAP_TILES;
 use crate::render::chart::Band;
-use indexmap::IndexMap;
 
 fn closures() -> Closures {
-    let mut hosts = IndexMap::new();
-    hosts.insert(
-        "nas".to_string(),
-        HostClosure {
-            paths: vec![ClosurePath {
-                path: "/nix/store/0000000000000000000000000000000a-bash-5.2".into(),
-                nar_size: 1024,
-            }],
-        },
-    );
-    Closures {
-        schema: 1,
-        hosts,
-        served: vec![],
-    }
+    Closures::of(vec![(
+        "nas",
+        vec![("/nix/store/0000000000000000000000000000000a-bash-5.2", 1024)],
+    )])
 }
 
 #[test]
@@ -55,26 +42,14 @@ fn a_lone_measured_host_gets_one_plain_band() {
 
 #[test]
 fn treemap_tiles_fold_a_packages_outputs_together() {
-    let mut hosts = IndexMap::new();
-    let path = |n: &str, name: &str, size| ClosurePath {
-        path: format!("/nix/store/0000000000000000000000000000000{n}-{name}"),
-        nar_size: size,
-    };
-    hosts.insert(
-        "nas".to_string(),
-        HostClosure {
-            paths: vec![
-                path("a", "glibc-2.42-67", 100),
-                path("b", "glibc-2.42-67-bin", 40),
-                path("c", "linux-6.12.9", 300),
-            ],
-        },
-    );
-    let c = Closures {
-        schema: 1,
-        hosts,
-        served: vec![],
-    };
+    let c = Closures::of(vec![(
+        "nas",
+        vec![
+            ("/nix/store/a-glibc-2.42-67", 100),
+            ("/nix/store/b-glibc-2.42-67-bin", 40),
+            ("/nix/store/c-linux-6.12.9", 300),
+        ],
+    )]);
     let tiles = treemap_tiles(&c, "nas");
     let seen: Vec<(&str, u64)> = tiles.iter().map(|t| (t.label.as_str(), t.value)).collect();
     assert_eq!(seen, vec![("linux", 300), ("glibc", 140)]);
@@ -83,19 +58,14 @@ fn treemap_tiles_fold_a_packages_outputs_together() {
 
 #[test]
 fn the_treemap_tail_folds_into_one_counted_tile() {
-    let mut hosts = IndexMap::new();
-    let paths = (0..TREEMAP_TILES + 3)
-        .map(|i| ClosurePath {
-            path: format!("/nix/store/0000000000000000000000000000{i:04}-pkg{i:03}-1.0"),
-            nar_size: if i < TREEMAP_TILES { 1000 } else { 7 },
-        })
+    let names: Vec<String> = (0..TREEMAP_TILES + 3)
+        .map(|i| format!("/nix/store/0000000000000000000000000000{i:04}-pkg{i:03}-1.0"))
         .collect();
-    hosts.insert("nas".to_string(), HostClosure { paths });
-    let c = Closures {
-        schema: 1,
-        hosts,
-        served: vec![],
-    };
+    let paths = names.iter().enumerate().map(|(i, p)| {
+        let size = if i < TREEMAP_TILES { 1000 } else { 7 };
+        (p.as_str(), size)
+    });
+    let c = Closures::of(vec![("nas", paths.collect())]);
     let tiles = treemap_tiles(&c, "nas");
     assert_eq!(tiles.len(), TREEMAP_TILES + 1);
     let last = tiles.last().unwrap();
@@ -106,34 +76,11 @@ fn the_treemap_tail_folds_into_one_counted_tile() {
 
 #[test]
 fn three_hosts_stack_all_three_bands() {
-    let mut hosts = IndexMap::new();
-    let path = |n: &str, size| ClosurePath {
-        path: format!("/nix/store/0000000000000000000000000000000{n}-p"),
-        nar_size: size,
-    };
-    hosts.insert(
-        "a".to_string(),
-        HostClosure {
-            paths: vec![path("a", 100), path("b", 20), path("c", 3)],
-        },
-    );
-    hosts.insert(
-        "b".to_string(),
-        HostClosure {
-            paths: vec![path("a", 100), path("b", 20)],
-        },
-    );
-    hosts.insert(
-        "c".to_string(),
-        HostClosure {
-            paths: vec![path("a", 100)],
-        },
-    );
-    let c = Closures {
-        schema: 1,
-        hosts,
-        served: vec![],
-    };
+    let c = Closures::of(vec![
+        ("a", vec![("a-p", 100), ("b-p", 20), ("c-p", 3)]),
+        ("b", vec![("a-p", 100), ("b-p", 20)]),
+        ("c", vec![("a-p", 100)]),
+    ]);
     let rows = bar_rows(&c, &[("a", c.hosts.get("a"))]);
     assert_eq!(
         rows[0].bands,

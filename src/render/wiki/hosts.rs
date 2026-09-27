@@ -51,12 +51,12 @@ fn host_nixos(
     rows.push(fill(t::USERS, &[("users", &join_or_dash(&f.users))]));
     rows.push(fill(t::PACKAGES, &[("count", &f.pkg_count.to_string())]));
     if let Some(cs) = closures {
-        let closure = match cs.hosts.get(host) {
+        let closure = match cs.hosts.get(host).map(|c| c.total()) {
             Some(c) => fill(
                 t::CLOSURE_SIZE,
                 &[
-                    ("size", &human_size(c.total())),
-                    ("paths", &human_count(c.len())),
+                    ("size", &human_size(c.size)),
+                    ("paths", &human_count(c.paths)),
                 ],
             ),
             None => t::NOT_MEASURED.into(),

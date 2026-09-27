@@ -44,15 +44,15 @@ pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &Style) -> Resu
 
     let mut direct: Vec<String> = Vec::new();
     let mut follows: Vec<String> = Vec::new();
-    for (parent, input, child, is_follows) in lock.edges() {
-        let label = if input == child {
+    for e in lock.edges() {
+        let label = if e.input == e.child {
             String::new()
         } else {
-            fill(t::EDGE_LABEL, &[("input", &input)])
+            fill(t::EDGE_LABEL, &[("input", &e.input)])
         };
-        let (from, to) = (sanitize(&parent), sanitize(&child));
+        let (from, to) = (sanitize(&e.parent), sanitize(&e.child));
         let vars = [("from", from.as_str()), ("to", &to), ("label", &label)];
-        if is_follows {
+        if e.follows {
             follows.push(fill(t::FOLLOWS, &vars));
         } else {
             direct.push(fill(t::EDGE, &vars));

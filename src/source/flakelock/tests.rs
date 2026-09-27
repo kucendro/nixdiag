@@ -24,6 +24,15 @@ fn lock() -> Lock {
     serde_json::from_str(LOCK).unwrap()
 }
 
+fn edge(parent: &str, input: &str, child: &str, follows: bool) -> Edge {
+    Edge {
+        parent: parent.into(),
+        input: input.into(),
+        child: child.into(),
+        follows,
+    }
+}
+
 #[test]
 fn root_has_no_locked() {
     let l = lock();
@@ -49,8 +58,8 @@ fn follows_resolves_through_the_root() {
 fn follows_edges_are_marked() {
     let l = lock();
     let e = l.edges();
-    assert!(e.contains(&("stylix".into(), "systems".into(), "utils".into(), true)));
-    assert!(e.contains(&("stylix".into(), "nixpkgs".into(), "nixpkgs_2".into(), false)));
+    assert!(e.contains(&edge("stylix", "systems", "utils", true)));
+    assert!(e.contains(&edge("stylix", "nixpkgs", "nixpkgs_2", false)));
 }
 
 #[test]
@@ -79,7 +88,7 @@ fn dedup_target_is_the_roots_own_input_name() {
     assert_eq!(l.root_input_for(&id), Some("nixpkgs".to_string()));
     assert_eq!(
         l.parents_of("nixpkgs_2"),
-        vec![("stylix".into(), "nixpkgs".into())]
+        vec![edge("stylix", "nixpkgs", "nixpkgs_2", false)]
     );
 }
 

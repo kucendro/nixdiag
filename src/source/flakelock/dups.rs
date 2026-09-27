@@ -1,11 +1,17 @@
-use super::{InputRef, Lock};
+use super::Lock;
 use std::collections::BTreeMap;
+
+#[derive(Debug)]
+pub struct Revision {
+    pub rev: String,
+    pub nodes: Vec<String>,
+}
 
 #[derive(Debug)]
 pub struct Dup {
     pub identity: String,
     pub source: String,
-    pub revs: Vec<(String, Vec<String>)>,
+    pub revs: Vec<Revision>,
 }
 
 impl Dup {
@@ -16,7 +22,7 @@ impl Dup {
     pub fn nodes(&self) -> Vec<&str> {
         self.revs
             .iter()
-            .flat_map(|(_, ns)| ns.iter().map(String::as_str))
+            .flat_map(|r| r.nodes.iter().map(String::as_str))
             .collect()
     }
 }
@@ -39,7 +45,10 @@ impl Lock {
             .map(|(identity, (source, revs))| Dup {
                 identity,
                 source,
-                revs: revs.into_iter().collect(),
+                revs: revs
+                    .into_iter()
+                    .map(|(rev, nodes)| Revision { rev, nodes })
+                    .collect(),
             })
             .collect();
         dups.sort_by(|a, b| {
@@ -53,10 +62,7 @@ impl Lock {
     pub fn root_input_for(&self, identity: &str) -> Option<String> {
         let root = self.nodes.get(&self.root)?;
         for (name, r) in &root.inputs {
-            let node = match r {
-                InputRef::Node(n) => n.clone(),
-                InputRef::Follows(p) => self.resolve(p)?,
-            };
+            let node = self.target(r)?;
             let locked = self.nodes.get(&node).and_then(|n| n.locked.as_ref());
             if locked.map(|l| l.identity()) == Some(identity.to_string()) {
                 return Some(name.clone());
