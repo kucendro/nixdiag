@@ -2,7 +2,7 @@
   "ref": "nixos-unstable",
   "rev": "e158d9ed9b51c98974c5e66e1ba1c9e0255fecaa",
   "date": "2026-09-27",
-  "eval": "ok",
+  "vm": "ok",
   "audit": [
     {
       "adapter": "grafana",

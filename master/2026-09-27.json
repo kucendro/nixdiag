@@ -1,8 +1,8 @@
 {
   "ref": "master",
-  "rev": "e96c6cd23e7145076d0d4a3ef2c298a1615aa9d9",
+  "rev": "568ef1dab44d2e907db23299ca24dd7a09862046",
   "date": "2026-09-27",
-  "eval": "ok",
+  "vm": "ok",
   "audit": [
     {
       "adapter": "grafana",
