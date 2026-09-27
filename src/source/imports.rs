@@ -1,8 +1,9 @@
 use super::repo::Repo;
 use crate::conf::repo::{DEFAULT, ENTRY_KEYS, HOSTS};
+use path_clean::PathClean;
 use regex::Regex;
 use std::collections::HashSet;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 static IMPORTS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"imports\s*=").unwrap());
@@ -15,20 +16,6 @@ static ENTRIES: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         .map(|k| Regex::new(&format!(r"{k}\s*=\s*(\.\S+?)\s*;")).unwrap())
         .collect()
 });
-
-fn normalize(p: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for c in p.components() {
-        match c {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                out.pop();
-            }
-            other => out.push(other),
-        }
-    }
-    out
-}
 
 fn with_nix_ext(mut p: PathBuf) -> PathBuf {
     if p.is_dir() {
@@ -52,7 +39,7 @@ pub fn host_entry_modules(host: &str, flake_text: &str, repo: &Repo) -> Vec<Path
     let mut files: Vec<PathBuf> = ENTRIES
         .iter()
         .filter_map(|re| re.captures(block))
-        .map(|m| with_nix_ext(normalize(&repo.root.join(&m[1]))))
+        .map(|m| with_nix_ext(repo.root.join(&m[1]).clean()))
         .filter(|p| p.exists())
         .collect();
     if files.is_empty() {
@@ -94,7 +81,7 @@ pub fn build_import_graph(
         nodes.insert(rf.clone());
         for tok in parse_imports(&f) {
             let base = f.parent().unwrap_or(Path::new("."));
-            let child = with_nix_ext(normalize(&base.join(&tok)));
+            let child = with_nix_ext(base.join(&tok).clean());
             if !child.exists() {
                 continue;
             }
