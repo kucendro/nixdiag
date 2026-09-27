@@ -1,19 +1,20 @@
 use super::Wiki;
-use crate::conf::files::{page, BOOK as BOOK_FILE};
-use crate::text::wiki::{summary as t, BOOK, INDEX};
+use crate::conf::files::{page, BOOK};
+use crate::text::wiki::{summary as t, INDEX};
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
+use serde_json::json;
 use std::path::PathBuf;
 
 pub(super) fn book_toml(w: &Wiki, title: &str) -> Result<()> {
     let b = w.style.theme.book();
-    w.out.write(
-        BOOK_FILE,
-        &fill(
-            BOOK,
-            &[("title", title), ("default", b.default), ("dark", b.dark)],
-        ),
-    )
+    let html = json!({
+        "default-theme": b.default,
+        "preferred-dark-theme": b.dark,
+        "no-section-label": true,
+    });
+    let book = json!({ "book": { "title": title, "src": "src" }, "output": { "html": html } });
+    w.out.write(BOOK, &toml::to_string(&book)?)
 }
 
 pub(super) fn copy_extra_pages(

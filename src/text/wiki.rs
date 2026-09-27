@@ -7,16 +7,6 @@ pub const INDEX: &str = "\
 
 _Hand-written overview goes here_ — the big picture, and *why* things are the way they are. Every other page is generated from the Nix configuration; pass `indexPage` to `mkDocs` to own this one.";
 
-pub const BOOK: &str = "\
-[book]
-title = \"{title}\"
-src = \"src\"
-
-[output.html]
-default-theme = \"{default}\"
-preferred-dark-theme = \"{dark}\"
-no-section-label = true";
-
 pub const ARCHITECTURE: &str = "\
 # Architecture
 
