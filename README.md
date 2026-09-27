@@ -14,7 +14,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs.svg"><img alt="flake inputs" src="assets/inputs-light.svg"></picture>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs-timeline.svg"><img alt="input lock dates" src="assets/inputs-timeline-light.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs-timeline.svg"><img alt="days each input trails the newest lock" src="assets/inputs-timeline-light.svg"></picture>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/closures.svg"><img alt="fleet closure sizes" src="assets/closures-light.svg"></picture>
 
