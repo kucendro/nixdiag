@@ -1,37 +1,65 @@
+use quick_xml::events::{BytesStart, Event};
+use quick_xml::Reader;
+use std::ops::Range;
+
 pub(super) fn unmask(svg: &str) -> String {
-    let mut out = String::with_capacity(svg.len());
-    let mut rest = svg;
-    let mut rewrites: Vec<(String, bool)> = Vec::new();
-    while let Some(i) = rest.find("<mask") {
-        let after = rest[i + "<mask".len()..].chars().next();
-        let Some(len) = rest[i..].find("</mask>") else {
-            break;
-        };
-        let elem = &rest[i..i + len + "</mask>".len()];
-        out.push_str(&rest[..i]);
-        match parse_mask(elem).filter(|_| matches!(after, Some(' ') | Some('>'))) {
-            Some(m) => {
-                let keep = !m.holes.is_empty();
-                if keep {
-                    out.push_str(&m.clip_path());
-                }
-                rewrites.push((m.id, keep));
-            }
-            None => out.push_str(elem),
-        }
-        rest = &rest[i + elem.len()..];
+    let masks = masks(svg);
+    let mut out = svg.to_string();
+    for (at, m) in masks.iter().rev() {
+        out.replace_range(at.clone(), &m.clip_path());
     }
-    out.push_str(rest);
-    for (id, keep) in rewrites {
-        let from = format!(" mask=\"url(#{id})\"");
-        let to = if keep {
-            format!(" clip-path=\"url(#{id})\"")
-        } else {
-            String::new()
-        };
-        out = out.replace(&from, &to);
+    for (_, m) in &masks {
+        out = out.replace(&format!(" mask=\"url(#{})\"", m.id), &m.reference());
     }
     out
+}
+
+fn masks(svg: &str) -> Vec<(Range<usize>, Mask)> {
+    let mut reader = Reader::from_str(svg);
+    let mut found = Vec::new();
+    loop {
+        let start = reader.buffer_position() as usize;
+        match reader.read_event() {
+            Ok(Event::Start(e)) if e.name().as_ref() == "mask" => {
+                if let Some(m) = mask(&mut reader, &e) {
+                    found.push((start..reader.buffer_position() as usize, m));
+                }
+            }
+            Ok(Event::Eof) | Err(_) => return found,
+            _ => {}
+        }
+    }
+}
+
+fn mask(reader: &mut Reader<&[u8]>, open: &BytesStart) -> Option<Mask> {
+    let id = attr(open, "id")?.to_string();
+    let (mut base, mut holes) = (None, Vec::new());
+    loop {
+        match reader.read_event().ok()? {
+            Event::Start(e) | Event::Empty(e) if e.name().as_ref() == "rect" => {
+                let rect = Rect::from_tag(&e)?;
+                match (attr(&e, "fill")?.as_ref(), base) {
+                    ("white", None) => base = Some(rect),
+                    ("black", Some(_)) => holes.push(rect),
+                    _ => return None,
+                }
+            }
+            Event::End(e) if e.name().as_ref() == "rect" => {}
+            Event::End(e) if e.name().as_ref() == "mask" => {
+                return Some(Mask {
+                    id,
+                    base: base?,
+                    holes,
+                })
+            }
+            Event::Text(t) if t.trim().is_empty() => {}
+            _ => return None,
+        }
+    }
+}
+
+fn attr<'a>(e: &'a BytesStart, name: &str) -> Option<std::borrow::Cow<'a, str>> {
+    Some(e.try_get_attribute(name).ok()??.value)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -77,7 +105,7 @@ impl Rect {
         .collect()
     }
 
-    fn from_tag(tag: &str) -> Option<Rect> {
+    fn from_tag(tag: &BytesStart) -> Option<Rect> {
         let num = |name: &str| attr(tag, name)?.parse::<f64>().ok();
         Some(Rect {
             x: num("x")?,
@@ -95,7 +123,17 @@ struct Mask {
 }
 
 impl Mask {
+    fn reference(&self) -> String {
+        if self.holes.is_empty() {
+            return String::new();
+        }
+        format!(" clip-path=\"url(#{})\"", self.id)
+    }
+
     fn clip_path(&self) -> String {
+        if self.holes.is_empty() {
+            return String::new();
+        }
         let mut region = vec![self.base];
         for hole in &self.holes {
             region = region.into_iter().flat_map(|r| r.minus(*hole)).collect();
@@ -110,48 +148,6 @@ impl Mask {
             d.join("")
         )
     }
-}
-
-fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
-    let key = format!(" {name}=\"");
-    let start = tag.find(&key)? + key.len();
-    let end = tag[start..].find('"')? + start;
-    Some(&tag[start..end])
-}
-
-fn parse_mask(elem: &str) -> Option<Mask> {
-    let open_end = elem.find('>')?;
-    let id = attr(&elem[..open_end], "id")?.to_string();
-    let body = &elem[open_end + 1..elem.len() - "</mask>".len()];
-    let mut parts = body.split('<');
-    if !parts.next()?.trim().is_empty() {
-        return None;
-    }
-    let mut base = None;
-    let mut holes = Vec::new();
-    for part in parts {
-        let (tag, text) = part.split_once('>')?;
-        if !text.trim().is_empty() {
-            return None;
-        }
-        if tag == "/rect" {
-            continue;
-        }
-        if !tag.starts_with("rect ") {
-            return None;
-        }
-        let rect = Rect::from_tag(tag)?;
-        match (attr(tag, "fill")?, base) {
-            ("white", None) => base = Some(rect),
-            ("black", Some(_)) => holes.push(rect),
-            _ => return None,
-        }
-    }
-    Some(Mask {
-        id,
-        base: base?,
-        holes,
-    })
 }
 
 #[cfg(test)]

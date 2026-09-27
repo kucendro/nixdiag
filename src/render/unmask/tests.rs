@@ -99,10 +99,3 @@ fn unfamiliar_mask_is_left_alone() {
         assert_eq!(unmask(&foreign), foreign);
     }
 }
-
-#[test]
-fn attr_needs_the_leading_space() {
-    let tag = "<path style=\"stroke-width:2\" width=\"7\"";
-    assert_eq!(attr(tag, "width"), Some("7"));
-    assert_eq!(attr("<path stroke-width=\"2\"", "width"), None);
-}
