@@ -1,65 +1,57 @@
+use super::dot::{id, Dot, Paint};
 use crate::conf::files::diagram;
+use crate::conf::palette::{diagram as p, Color};
 use crate::facts::{Facts, Host, Kind, Scope};
-use crate::render::d2::D2;
-use crate::text::d2::topology as t;
-use crate::text::fill;
+use crate::text::dot::topology as t;
 use crate::topology::{Connection, Endpoint, Model, INTERNET, LAN};
-use crate::util::sanitize;
 use anyhow::Result;
+use dot_writer::Attributes;
 use indexmap::IndexMap;
+use std::iter::once;
 
-struct Node {
-    class: &'static str,
-    label: String,
+struct Unit {
+    infra: bool,
+    role: Option<String>,
 }
 
-impl Node {
-    fn declared(unit: &str, kind: Option<Kind>, role: Option<&str>) -> Node {
-        Node {
-            class: match kind {
-                Some(Kind::Infra) => "infra",
-                _ => "app",
-            },
-            label: match role {
-                Some(r) => fill(
-                    t::UNIT_WITH_ROLE,
-                    &[("unit", unit), ("role", &r.replace('-', " "))],
-                ),
-                None => unit.to_string(),
-            },
+impl Unit {
+    fn declared(kind: Option<Kind>, role: Option<&str>) -> Unit {
+        Unit {
+            infra: matches!(kind, Some(Kind::Infra)),
+            role: role.map(t::role),
+        }
+    }
+
+    fn colors(&self) -> (Color, Color) {
+        match self.infra {
+            true => (p::INFRA_FILL, p::INFRA_STROKE),
+            false => (p::APP_FILL, p::APP_STROKE),
         }
     }
 }
 
-fn endpoint_id(e: &Endpoint) -> String {
+fn base(host: &str) -> String {
+    id(&format!("{host}/+base"))
+}
+
+fn node(e: &Endpoint) -> String {
     match e {
-        Endpoint::Host(h) => sanitize(h),
-        Endpoint::Unit(h, u) => format!("{}.{}", sanitize(h), sanitize(u)),
-        Endpoint::Internet => INTERNET.into(),
-        Endpoint::Lan => LAN.into(),
+        Endpoint::Host(h) => base(h),
+        Endpoint::Unit(h, u) => id(&format!("{h}/{u}")),
+        Endpoint::Internet => id(INTERNET),
+        Endpoint::Lan => id(LAN),
     }
 }
 
-fn color(a: &Endpoint, b: &Endpoint) -> &'static str {
-    if matches!(a, Endpoint::Internet) || matches!(b, Endpoint::Internet) {
-        "${public}"
-    } else if matches!(a, Endpoint::Lan) || matches!(b, Endpoint::Lan) {
-        "${lan}"
+fn scope_color(c: &Connection) -> Color {
+    let touches = |e: Endpoint| c.from == e || c.to == e;
+    if touches(Endpoint::Internet) {
+        p::PUBLIC
+    } else if touches(Endpoint::Lan) {
+        p::LAN
     } else {
-        "${mesh}"
+        p::MESH
     }
-}
-
-fn connection(c: &Connection) -> String {
-    fill(
-        t::CONNECTION,
-        &[
-            ("from", &endpoint_id(&c.from)),
-            ("to", &endpoint_id(&c.to)),
-            ("label", &c.label.replace('"', "'")),
-            ("color", color(&c.from, &c.to)),
-        ],
-    )
 }
 
 fn cloud(scope: Option<Scope>) -> Option<Endpoint> {
@@ -70,39 +62,28 @@ fn cloud(scope: Option<Scope>) -> Option<Endpoint> {
     }
 }
 
-fn expose_label(name: Option<&str>, port: Option<u32>, udp: bool) -> String {
-    let port = port.map(|p| p.to_string()).unwrap_or_default();
-    let proto = if udp { t::UDP_SUFFIX } else { "" };
-    match name {
-        Some(n) => fill(
-            t::EXPOSE_NAMED,
-            &[("name", n), ("port", &port), ("proto", proto)],
-        ),
-        None => fill(t::EXPOSE, &[("port", &port), ("proto", proto)]),
-    }
-}
-
-fn fmt_ports(tcp: &[u32], udp: &[u32]) -> String {
+fn ports(tcp: &[u32], udp: &[u32]) -> Option<String> {
     let list = |ps: &[u32]| ps.iter().map(u32::to_string).collect::<Vec<_>>().join(", ");
-    let tcp = fill(t::TCP, &[("ports", &list(tcp))]);
-    let udp = fill(t::UDP, &[("ports", &list(udp))]);
-    match (tcp.is_empty(), udp.is_empty()) {
-        (false, false) => fill(t::TCP_AND_UDP, &[("tcp", &tcp), ("udp", &udp)]),
-        (false, true) => tcp,
-        (true, false) => udp,
-        (true, true) => String::new(),
+    let mut parts = Vec::new();
+    if !tcp.is_empty() {
+        parts.push(t::tcp(&list(tcp)));
     }
+    if !udp.is_empty() {
+        parts.push(t::udp(&list(udp)));
+    }
+    (!parts.is_empty()).then(|| parts.join(t::PORTS_SEP))
 }
 
-pub fn generate(facts: &Facts, model: &Model, d2: &D2) -> Result<()> {
-    let mut per_host: IndexMap<&str, IndexMap<&str, Node>> = facts
+pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
+    let mut per_host: IndexMap<&str, IndexMap<&str, Unit>> = facts
         .hosts
         .iter()
         .map(|(host, f)| {
-            let units = f.topology().units.iter().map(|(u, info)| {
-                let node = Node::declared(u, info.kind, info.role.as_deref());
-                (u.as_str(), node)
-            });
+            let units = f
+                .topology()
+                .units
+                .iter()
+                .map(|(u, info)| (u.as_str(), Unit::declared(info.kind, info.role.as_deref())));
             (host.as_str(), units.collect())
         })
         .collect();
@@ -111,7 +92,7 @@ pub fn generate(facts: &Facts, model: &Model, d2: &D2) -> Result<()> {
             if let Endpoint::Unit(h, u) = ep {
                 if let Some(m) = per_host.get_mut(h.as_str()) {
                     m.entry(u.as_str())
-                        .or_insert_with(|| Node::declared(u, None, None));
+                        .or_insert_with(|| Unit::declared(None, None));
                 }
             }
         }
@@ -121,66 +102,65 @@ pub fn generate(facts: &Facts, model: &Model, d2: &D2) -> Result<()> {
         Some(Connection {
             from: cloud(x.scope)?,
             to: x.node(),
-            label: expose_label(x.name.as_deref(), Some(x.port), x.udp),
+            label: t::expose(x.name.as_deref(), Some(x.port), x.udp),
         })
     });
     let named = model.named.iter().filter_map(|ne| {
         Some(Connection {
             from: cloud(ne.scope)?,
             to: ne.node.clone(),
-            label: expose_label(Some(&ne.name), ne.port, false),
+            label: t::expose(Some(&ne.name), ne.port, false),
         })
     });
     let edges: Vec<Connection> = exposed.chain(named).collect();
     let edges: Vec<&Connection> = edges.iter().chain(&model.connections).collect();
-    let used = |cloud: Endpoint| edges.iter().any(|c| c.from == cloud || c.to == cloud);
+    let used = |cloud: &Endpoint| edges.iter().any(|c| &c.from == cloud || &c.to == cloud);
 
-    let mut o = d2.preamble();
-    o.push(t::CLASSES.into());
-    o.push(String::new());
-    if used(Endpoint::Internet) {
-        o.push(fill(
-            t::INTERNET,
-            &[("id", &endpoint_id(&Endpoint::Internet))],
-        ));
-    }
-    if used(Endpoint::Lan) {
-        o.push(fill(t::LAN, &[("id", &endpoint_id(&Endpoint::Lan))]));
-    }
-    o.push(String::new());
-    for (host, f) in &facts.hosts {
-        let icon = match f {
-            Host::Darwin(_) => t::DARWIN_ICON,
-            Host::Nixos(_) => t::NIXOS_ICON,
-        };
-        o.push(fill(
-            t::HOST_OPEN,
-            &[("id", &sanitize(host)), ("icon", icon), ("host", host)],
-        ));
-        for (unit, node) in per_host.get(host.as_str()).into_iter().flatten() {
-            o.push(fill(
-                t::UNIT,
-                &[
-                    ("id", &sanitize(unit)),
-                    ("label", &node.label.replace('"', "'")),
-                    ("class", node.class),
-                ],
-            ));
+    dot.render(diagram::TOPOLOGY, |g| {
+        let clouds = [
+            (Endpoint::Internet, t::INTERNET, p::PUBLIC),
+            (Endpoint::Lan, t::LAN, p::LAN),
+        ];
+        for (cloud, label, stroke) in clouds.iter().filter(|(c, _, _)| used(c)) {
+            g.node_named(node(cloud))
+                .text(&[label])
+                .shape("ellipse")
+                .fill(dot.color(&p::HOST_FILL))
+                .stroke(dot.color(stroke));
         }
-        if facts.bare() {
-            if let Some(n) = f.as_nixos() {
-                let ports = fmt_ports(&n.tcp, &n.udp);
-                if !ports.is_empty() {
-                    o.push(fill(t::PORTS, &[("ports", &ports)]));
-                }
+        for (host, f) in &facts.hosts {
+            let icon = match f {
+                Host::Darwin(_) => t::DARWIN_ICON,
+                Host::Nixos(_) => t::NIXOS_ICON,
+            };
+            let mut c = g.cluster();
+            c.bold(&t::host(icon, host))
+                .fill(dot.color(&p::HOST_FILL))
+                .stroke(dot.color(&p::HOST_STROKE))
+                .set("style", "rounded,filled", true);
+            for (unit, u) in per_host.get(host.as_str()).into_iter().flatten() {
+                let (fill, stroke) = u.colors();
+                let lines: Vec<&str> = once(*unit).chain(u.role.as_deref()).collect();
+                c.node_named(id(&format!("{host}/{unit}")))
+                    .text(&lines)
+                    .fill(dot.color(&fill))
+                    .stroke(dot.color(&stroke));
             }
+            let open = f.as_nixos().and_then(|n| ports(&n.tcp, &n.udp));
+            if let Some(open) = open.filter(|_| facts.bare()) {
+                c.node_named(id(&format!("{host}/+ports")))
+                    .text(&[&open])
+                    .set_font_size(11.0);
+            }
+            c.node_named(base(host))
+                .text(&[&t::base(f.svc_count())])
+                .set_font_size(11.0);
         }
-        o.push(fill(t::BASE, &[("count", &f.svc_count().to_string())]));
-        o.push(t::HOST_CLOSE.into());
-    }
-    o.push(String::new());
-    o.push(t::CONNECTIONS.into());
-    o.extend(edges.into_iter().map(connection));
-
-    d2.write(diagram::TOPOLOGY, &o)
+        for e in &edges {
+            g.edge(node(&e.from), node(&e.to))
+                .attributes()
+                .text(&[&e.label])
+                .stroke(dot.color(&scope_color(e)));
+        }
+    })
 }

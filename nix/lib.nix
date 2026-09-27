@@ -111,11 +111,7 @@ rec {
     in
     pkgs.runCommand "nixdiag-docs"
       {
-        nativeBuildInputs = [
-          nixdiag
-          (import ./d2.nix pkgs.d2)
-        ]
-        ++ lib.optional buildWiki pkgs.mdbook;
+        nativeBuildInputs = [ nixdiag ] ++ lib.optional buildWiki pkgs.mdbook;
       }
       ''
         nixdiag --facts ${factsJson} --repo ${flake} --out $out \

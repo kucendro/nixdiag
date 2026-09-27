@@ -1,4 +1,4 @@
-use crate::conf::palette::{chart, diagram, DIAGRAM};
+use crate::conf::palette::{chart, diagram};
 use crate::render::style::Theme;
 use crate::text::cli as t;
 use crate::text::messages::BadArg;
@@ -45,10 +45,8 @@ fn pair<V: From<String>>(s: &str) -> Result<(String, V), BadArg> {
 
 fn color(s: &str) -> Result<(String, String), BadArg> {
     let (name, hex) = pair::<String>(s)?;
-    let text = [diagram::INK, diagram::LINE];
-    let known: Vec<&str> = DIAGRAM
+    let known: Vec<&str> = diagram::ALL
         .iter()
-        .chain(&text)
         .chain(chart::ALL)
         .map(|c| c.name)
         .collect();

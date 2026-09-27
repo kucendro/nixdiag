@@ -1,12 +1,10 @@
 pub mod chart;
-pub mod d2;
 pub mod dot;
 mod inputs;
 mod modules;
 pub mod out;
 pub mod style;
 mod topology;
-mod unmask;
 mod wiki;
 
 pub use out::Out;
@@ -40,17 +38,12 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         eprintln!("{}", m::NO_TOPOLOGY);
     }
 
-    let d2 = d2::D2 {
-        out: &out,
-        style: &opts.style,
-        svg: opts.svg,
-    };
     let dot = dot::Dot {
         out: &out,
         style: &opts.style,
         svg: opts.svg,
     };
-    topology::generate(facts, &model, &d2)?;
+    topology::generate(facts, &model, &dot)?;
     modules::generate(facts, &repo, &dot)?;
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {

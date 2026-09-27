@@ -9,22 +9,6 @@ const fn c(name: &'static str, light: &'static str, dark: &'static str) -> Color
     Color { name, light, dark }
 }
 
-pub const DIAGRAM: &[Color] = &[
-    diagram::APP_FILL,
-    diagram::APP_STROKE,
-    diagram::INFRA_FILL,
-    diagram::INFRA_STROKE,
-    diagram::BASE_FILL,
-    diagram::BASE_STROKE,
-    diagram::HOST_FILL,
-    diagram::HOST_STROKE,
-    diagram::PROG_FILL,
-    diagram::HOST_CLOUD,
-    diagram::PUBLIC,
-    diagram::LAN,
-    diagram::MESH,
-];
-
 pub mod diagram {
     use super::{c, Color};
 
@@ -43,6 +27,23 @@ pub mod diagram {
     pub const MESH: Color = c("mesh", "#4a76c4", "#7fa7e8");
     pub const INK: Color = c("ink", "#1f2328", "#cdd6f4");
     pub const LINE: Color = c("line", "#57606a", "#a6adc8");
+    pub const ALL: &[Color] = &[
+        APP_FILL,
+        APP_STROKE,
+        INFRA_FILL,
+        INFRA_STROKE,
+        BASE_FILL,
+        BASE_STROKE,
+        HOST_FILL,
+        HOST_STROKE,
+        PROG_FILL,
+        HOST_CLOUD,
+        PUBLIC,
+        LAN,
+        MESH,
+        INK,
+        LINE,
+    ];
 }
 
 pub mod chart {

@@ -1,5 +1,5 @@
 use crate::conf::palette::Color;
-use crate::conf::tools::{Book, BOOK_DARK, BOOK_LIGHT, D2_DARK};
+use crate::conf::tools::{Book, BOOK_DARK, BOOK_LIGHT};
 use clap::ValueEnum;
 
 #[derive(Clone, Copy, Default, ValueEnum)]
@@ -10,13 +10,6 @@ pub enum Theme {
 }
 
 impl Theme {
-    pub fn d2(self) -> &'static [&'static str] {
-        match self {
-            Theme::Dark => &D2_DARK,
-            Theme::Light => &[],
-        }
-    }
-
     pub fn book(self) -> Book {
         match self {
             Theme::Dark => BOOK_DARK,

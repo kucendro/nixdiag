@@ -2,7 +2,6 @@
   lib,
   rustPlatform,
   makeWrapper,
-  d2,
   graphviz,
 }:
 
@@ -21,12 +20,7 @@ rustPlatform.buildRustPackage {
 
   nativeBuildInputs = [ makeWrapper ];
   postInstall = ''
-    wrapProgram $out/bin/nixdiag --suffix PATH : ${
-      lib.makeBinPath [
-        (import ./d2.nix d2)
-        graphviz
-      ]
-    }
+    wrapProgram $out/bin/nixdiag --suffix PATH : ${lib.makeBinPath [ graphviz ]}
   '';
 
   meta = {
