@@ -1,52 +1,14 @@
-mod options;
+mod args;
 
 use crate::closures::Closures;
 use crate::facts::Facts;
-use crate::render::render_all;
-use crate::text::{cli as t, fill, messages as m};
+use crate::render::{d2::D2Style, render_all, RenderOpts, WikiOpts};
+use crate::text::{fill, messages as m};
 use anyhow::{Context, Result};
-use clap::{Args, Parser, Subcommand};
+use args::{Cli, Cmd};
+use clap::Parser;
 use serde::de::DeserializeOwned;
-use std::path::{Path, PathBuf};
-
-#[derive(Parser)]
-#[command(name = "nixdiag", version, about = t::ABOUT)]
-struct Cli {
-    #[command(subcommand)]
-    cmd: Cmd,
-}
-
-#[derive(Args)]
-pub struct RenderArgs {
-    #[arg(long, help = t::FACTS)]
-    facts: PathBuf,
-    #[arg(long, default_value = ".", help = t::REPO)]
-    repo: PathBuf,
-    #[arg(long, help = t::CLOSURES)]
-    closures: Option<PathBuf>,
-    #[arg(long, default_value = "docs", help = t::OUT)]
-    out: PathBuf,
-    #[arg(long, help = t::TITLE)]
-    title: Option<String>,
-    #[arg(long = "extra-page", value_name = "TITLE=FILE", help = t::EXTRA_PAGE)]
-    extra_pages: Vec<String>,
-    #[arg(long = "extra-link", value_name = "TITLE=NAME.md", help = t::EXTRA_LINK)]
-    extra_links: Vec<String>,
-    #[arg(long, help = t::NO_SVG)]
-    no_svg: bool,
-    #[arg(long, value_parser = ["light", "dark"], help = t::THEME)]
-    theme: Option<String>,
-    #[arg(long, help = t::BACKGROUND)]
-    background: Option<String>,
-    #[arg(long = "color", value_name = "NAME=#HEX", help = t::COLOR)]
-    colors: Vec<String>,
-}
-
-#[derive(Subcommand)]
-enum Cmd {
-    #[command(about = t::RENDER)]
-    Render(RenderArgs),
-}
+use std::path::Path;
 
 pub fn run() -> Result<()> {
     let Cmd::Render(r) = Cli::parse().cmd;
@@ -56,7 +18,25 @@ pub fn run() -> Result<()> {
         .as_deref()
         .map(|p| read_json(p).context(m::PARSING_CLOSURES))
         .transpose()?;
-    render_all(&facts, &options::to_render_opts(&r, closures)?)
+    render_all(
+        &facts,
+        &RenderOpts {
+            repo: r.repo,
+            out: r.out,
+            wiki: WikiOpts {
+                title: r.title,
+                extra_pages: r.extra_pages,
+                extra_links: r.extra_links,
+            },
+            svg: !r.no_svg,
+            style: D2Style {
+                dark: r.theme == "dark",
+                background: Some(r.background),
+                colors: r.colors,
+            },
+            closures,
+        },
+    )
 }
 
 fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
@@ -67,12 +47,4 @@ fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
             .with_context(|| fill(m::READING, &[("path", &path.display().to_string())]))?
     };
     Ok(serde_json::from_str(&text)?)
-}
-
-fn abs(p: &Path) -> PathBuf {
-    if p.is_absolute() {
-        p.to_path_buf()
-    } else {
-        std::env::current_dir().unwrap_or_default().join(p)
-    }
 }

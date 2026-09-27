@@ -11,6 +11,6 @@ pub const EXTRA_PAGE: &str = "Extra hand-written wiki page as TITLE=FILE;";
 pub const EXTRA_LINK: &str =
     "SUMMARY entry as TITLE=NAME.md for a page written into wiki/src by another tool; repeatable";
 pub const NO_SVG: &str = "Skip SVG rendering (d2)";
-pub const THEME: &str = "Color theme: dark (default) or light";
-pub const BACKGROUND: &str = "Diagram canvas fill (default transparent)";
+pub const THEME: &str = "Color theme";
+pub const BACKGROUND: &str = "Diagram canvas fill";
 pub const COLOR: &str = "Palette override as NAME=#HEX (names: the vars block in the d2 output, plus chartShared/chartPartial/chartUnique/chartInk/chartMuted/chartTrack for the SVG charts); repeatable";

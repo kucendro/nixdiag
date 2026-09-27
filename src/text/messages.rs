@@ -2,7 +2,7 @@ pub const WROTE: &str = "wrote {path}";
 pub const READING: &str = "reading {path}";
 pub const PARSING_FACTS: &str = "parsing facts.json";
 pub const PARSING_CLOSURES: &str = "parsing closures.json";
-pub const BAD_PAIR: &str = "{flag} expects {shape}, got: {value}";
+pub const BAD_PAIR: &str = "needs text on both sides of =";
 pub const UNKNOWN_COLOR: &str = "unknown color {name}; palette: {palette}";
 pub const EXTRA_PAGE_NO_NAME: &str = "--extra-page {title}: source has no file name";
 pub const EXTRA_PAGE_MISSING: &str = "--extra-page {title}: {path} not found";
