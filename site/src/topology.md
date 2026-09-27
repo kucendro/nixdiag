@@ -82,23 +82,9 @@ Unresolved fails the build.
 
 ## Adding an adapter
 
-```nix
-{ lib, helpers }:
-{
-  role = "monitor";
-  kind = "infra";
-  maintainers = [ "you" ];
-  reads.port = [
-    "services.foo.settings.port"
-    "services.foo.port"
-  ];
-  topology = { port }: { ports = lib.optional (port != null) port; };
-}
-```
-
-`nix/adapters/foo.nix`. First candidate present wins, a missing one reads
-`null`, `<name>` walks an `attrsOf`. Enabled by `services.foo.enable` unless
-`enable` says otherwise.
+Copy `nix/adapters/example.nix` to `nix/adapters/foo.nix`. Every field is
+explained there. `tests` is required: `nix flake check` boots the VMs it names
+and compares the adapter's claims to what runs.
 
 ## Audit
 
