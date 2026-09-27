@@ -3,6 +3,7 @@ let
   helpers = import ./lib.nix { inherit lib; };
   skip = [
     "default.nix"
+    "example.nix"
     "lib.nix"
   ];
   files = builtins.filter (n: lib.hasSuffix ".nix" n && !(builtins.elem n skip)) (
