@@ -6,6 +6,7 @@ pub use dups::Dup;
 
 use crate::conf::{limits::SHORT_REV, repo, schema};
 use crate::text::messages as m;
+use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -152,14 +153,11 @@ impl Lock {
     }
 
     pub fn inputs(&self) -> Vec<(&String, &Locked)> {
-        let mut out: Vec<(&String, &Locked)> = self
-            .nodes
+        self.nodes
             .iter()
             .filter(|(name, _)| *name != &self.root)
             .filter_map(|(name, n)| n.locked.as_ref().map(|l| (name, l)))
-            .collect();
-        out.sort_by(|a, b| a.0.cmp(b.0));
-        out
+            .collect()
     }
 
     pub fn root_inputs(&self) -> BTreeSet<String> {
@@ -173,11 +171,10 @@ impl Lock {
     }
 
     pub fn date_span(&self) -> Option<(i64, i64)> {
-        let dates: Vec<i64> = self
+        let dates = self
             .inputs()
             .into_iter()
-            .filter_map(|(_, l)| l.last_modified)
-            .collect();
-        Some((*dates.iter().min()?, *dates.iter().max()?))
+            .filter_map(|(_, l)| l.last_modified);
+        dates.minmax().into_option()
     }
 }

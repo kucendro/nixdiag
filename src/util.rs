@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 pub fn sanitize(seg: &str) -> String {
     seg.chars()
         .map(|c| {
@@ -16,13 +18,9 @@ pub fn store_name(path: &str) -> &str {
 }
 
 pub fn package_name(name: &str) -> &str {
-    let b = name.as_bytes();
-    for i in 0..b.len().saturating_sub(1) {
-        if b[i] == b'-' && b[i + 1].is_ascii_digit() {
-            return &name[..i];
-        }
-    }
-    name
+    let version = |(a, b): (&u8, &u8)| *a == b'-' && b.is_ascii_digit();
+    let at = name.as_bytes().iter().tuple_windows().position(version);
+    at.map_or(name, |i| &name[..i])
 }
 
 #[cfg(test)]

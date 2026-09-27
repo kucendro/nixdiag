@@ -4,6 +4,7 @@ use crate::human::DAY;
 use crate::text::chart as t;
 use anyhow::Result;
 use charts_rs::HorizontalBarChart;
+use itertools::Itertools;
 use serde_json::json;
 
 pub struct Mark {
@@ -14,9 +15,8 @@ pub struct Mark {
 }
 
 pub fn timeline(marks: &[Mark], style: &Style) -> Result<String> {
-    let mut order: Vec<&Mark> = marks.iter().collect();
-    order.sort_by_key(|m| (m.at.is_none(), m.at, m.label.clone()));
-    order.reverse();
+    let key = |m: &&Mark| (m.at.is_none(), m.at, m.label.clone());
+    let order: Vec<&Mark> = marks.iter().sorted_by_key(key).rev().collect();
     let newest = marks.iter().filter_map(|m| m.at).max().unwrap_or(0);
     let kinds = [
         (true, t::DIRECT, paint_color::MARK),

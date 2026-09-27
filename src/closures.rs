@@ -3,7 +3,9 @@ mod tests;
 
 use crate::util::{package_name, store_name};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::cmp::Reverse;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,10 +64,8 @@ impl HostClosure {
     }
 
     pub fn largest(&self, n: usize) -> Vec<&ClosurePath> {
-        let mut v: Vec<&ClosurePath> = self.paths.iter().collect();
-        v.sort_by(|a, b| b.nar_size.cmp(&a.nar_size).then(a.path.cmp(&b.path)));
-        v.truncate(n);
-        v
+        let key = |p: &&ClosurePath| (Reverse(p.nar_size), p.path.clone());
+        self.paths.iter().sorted_by_key(key).take(n).collect()
     }
 }
 
@@ -115,23 +115,22 @@ impl Closures {
     }
 
     pub fn package_shares(&self, host: &str) -> Vec<Share> {
-        let paths = self.path_shares(host);
-        let mut groups: BTreeMap<(&str, usize), u64> = BTreeMap::new();
-        for p in &paths {
-            *groups
-                .entry((package_name(store_name(&p.name)), p.holders))
-                .or_default() += p.size;
-        }
-        let mut v: Vec<Share> = groups
+        let package = |p: Share| {
+            let name = package_name(store_name(&p.name)).to_string();
+            ((name, p.holders), p.size)
+        };
+        let groups = self.path_shares(host).into_iter().map(package);
+        groups
+            .into_grouping_map()
+            .sum()
             .into_iter()
             .map(|((name, holders), size)| Share {
-                name: name.into(),
+                name,
                 size,
                 holders,
             })
-            .collect();
-        v.sort_by(|a, b| b.size.cmp(&a.size).then(a.name.cmp(&b.name)));
-        v
+            .sorted_by_key(|s| (Reverse(s.size), s.name.clone(), s.holders))
+            .collect()
     }
 
     pub fn split(&self, host: &str) -> Split {

@@ -2,6 +2,7 @@ use super::{codes, repo_services, table, Page, Wiki};
 use crate::conf::files::page;
 use crate::text::wiki::services as t;
 use anyhow::Result;
+use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) struct Services;
@@ -30,10 +31,9 @@ fn body(w: &Wiki) -> Vec<String> {
             e.1.extend(files);
         }
     }
-    let rows = index.iter().map(|(name, (hosts, files))| {
-        let hosts = hosts.iter().cloned().collect::<Vec<_>>().join(", ");
-        [t::name(name), hosts, codes(files, " ")]
-    });
+    let rows = index
+        .iter()
+        .map(|(name, (hosts, files))| [t::name(name), hosts.iter().join(", "), codes(files, " ")]);
     let mut o = vec![table(t::HEAD, rows)];
     let mut described: BTreeMap<&str, &str> = BTreeMap::new();
     for f in w.facts.hosts.values() {

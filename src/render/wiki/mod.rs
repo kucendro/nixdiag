@@ -24,6 +24,7 @@ use crate::source::repo::Repo;
 use crate::text::wiki::{self as text, code, NONE};
 use crate::topology::Model;
 use anyhow::Result;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::path::PathBuf;
@@ -67,19 +68,15 @@ fn size_paths(t: &Total) -> String {
 }
 
 fn codes<S: AsRef<str>>(items: impl IntoIterator<Item = S>, sep: &str) -> String {
-    let items: Vec<String> = items.into_iter().map(|s| code(s.as_ref())).collect();
-    items.join(sep)
+    items.into_iter().map(|s| code(s.as_ref())).join(sep)
 }
 
 pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<String>> {
-    let mut svcs = BTreeMap::new();
-    for item in &b.services {
-        let files = repo.files(&item.files);
-        if !files.is_empty() {
-            svcs.insert(item.name.clone(), files);
-        }
-    }
-    svcs
+    let files = b
+        .services
+        .iter()
+        .map(|i| (i.name.clone(), repo.files(&i.files)));
+    files.filter(|(_, f)| !f.is_empty()).collect()
 }
 
 pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
@@ -96,8 +93,8 @@ pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
     let mut listed = Vec::new();
     for p in pages {
         let Some(body) = p.body(w)? else { continue };
-        let sections: Vec<String> = once(text::heading(p.title())).chain(body).collect();
-        w.src.write(p.file(), &sections.join("\n\n"))?;
+        let page = once(text::heading(p.title())).chain(body).join("\n\n");
+        w.src.write(p.file(), &page)?;
         listed.push((p.title().to_string(), p.file().to_string()));
     }
     listed.extend(copy_extra_pages(w, &opts.extra_pages)?);

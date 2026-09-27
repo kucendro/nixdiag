@@ -3,6 +3,7 @@ use crate::conf::files::{page, BOOK};
 use crate::text::messages::Fail;
 use crate::text::wiki::{summary as t, INDEX};
 use anyhow::{bail, Result};
+use itertools::Itertools;
 use serde_json::json;
 use std::iter::once;
 use std::path::PathBuf;
@@ -43,9 +44,7 @@ pub(super) fn copy_extra_pages(
 
 pub(super) fn summary(w: &Wiki, pages: &[(String, String)]) -> Result<()> {
     let entries = pages.iter().map(|(title, file)| t::entry(title, file));
-    let entries: Vec<String> = once(t::entry(t::OVERVIEW, page::INDEX))
-        .chain(entries)
-        .collect();
+    let mut entries = once(t::entry(t::OVERVIEW, page::INDEX)).chain(entries);
     w.src.write(
         page::SUMMARY,
         &format!("{}\n\n{}", t::TITLE, entries.join("\n")),

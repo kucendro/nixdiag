@@ -6,6 +6,7 @@ use crate::text::messages::{self as m, Fail};
 use anyhow::{bail, Result};
 pub use dot_writer::Scope as Graph;
 use dot_writer::{Attributes, DotWriter, RankDirection};
+use itertools::Itertools;
 use quick_xml::escape::escape;
 use std::io::ErrorKind;
 use std::process::Command;
@@ -43,8 +44,7 @@ pub trait Paint: Attributes {
     }
 
     fn text(&mut self, lines: &[&str]) -> &mut Self {
-        let lines: Vec<String> = lines.iter().map(|l| quote(l)).collect();
-        self.set("label", &lines.join("\\n"), true)
+        self.set("label", &lines.iter().map(|l| quote(l)).join("\\n"), true)
     }
 
     fn bold(&mut self, s: &str) -> &mut Self {

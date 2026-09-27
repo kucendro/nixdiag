@@ -6,6 +6,7 @@ use crate::text::dot::topology as t;
 use crate::topology::{Connection, Endpoint, Model, INTERNET, LAN};
 use dot_writer::Attributes;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use std::iter::once;
 
 struct Unit {
@@ -62,7 +63,7 @@ fn cloud(scope: Option<Scope>) -> Option<Endpoint> {
 }
 
 fn ports(tcp: &[u32], udp: &[u32]) -> Option<String> {
-    let list = |ps: &[u32]| ps.iter().map(u32::to_string).collect::<Vec<_>>().join(", ");
+    let list = |ps: &[u32]| ps.iter().join(", ");
     let mut parts = Vec::new();
     if !tcp.is_empty() {
         parts.push(t::tcp(&list(tcp)));

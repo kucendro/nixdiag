@@ -18,7 +18,7 @@ const ROW_H: f32 = 30.0;
 const CHROME_H: f32 = 64.0;
 const MIB: f32 = 1_048_576.0;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Band {
     Solid,
     Shared,

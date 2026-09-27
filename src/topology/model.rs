@@ -3,7 +3,7 @@ use crate::facts::Scope;
 pub const INTERNET: &str = "internet";
 pub const LAN: &str = "lan";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Endpoint {
     Host(String),
     Unit(String, String),

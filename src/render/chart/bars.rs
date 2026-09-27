@@ -2,6 +2,7 @@ use super::{bar_axis, height, mib, options, paint, Band, Style};
 use crate::text::chart as t;
 use anyhow::Result;
 use charts_rs::HorizontalBarChart;
+use itertools::Itertools;
 use serde_json::json;
 
 pub struct Row {
@@ -24,12 +25,13 @@ impl Row {
 
 pub fn bars(rows: &[Row], style: &Style) -> Result<String> {
     let rows: Vec<&Row> = rows.iter().rev().collect();
-    let mut bands: Vec<Band> = Vec::new();
-    for (b, v) in rows.iter().flat_map(|r| &r.bands) {
-        if *v > 0 && !bands.contains(b) {
-            bands.push(*b);
-        }
-    }
+    let bands: Vec<Band> = rows
+        .iter()
+        .flat_map(|r| &r.bands)
+        .filter(|(_, v)| *v > 0)
+        .map(|(b, _)| *b)
+        .unique()
+        .collect();
     let series: Vec<_> = bands
         .iter()
         .map(|b| {

@@ -12,6 +12,7 @@ charts-rs = "1"
 clap = { version = "4", features = ["derive"] }
 dot-writer = "0.1"
 indexmap = { version = "2", features = ["serde"] }
+itertools = "0.15"
 jiff = { version = "0.2", default-features = false, features = ["std"] }
 num-format = "0.4"
 path-clean = "1"

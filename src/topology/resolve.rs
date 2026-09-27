@@ -2,6 +2,7 @@ use super::target::Target;
 use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
 use crate::text::messages::Unresolved;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 struct Entry {
@@ -48,25 +49,16 @@ impl Book {
         let Some(entries) = self.0.get(name) else {
             return Ok(None);
         };
-        let mut nodes = unique(entries.iter().filter(|e| port.is_some() && e.port == port));
+        let on_port = entries.iter().filter(|e| port.is_some() && e.port == port);
+        let mut nodes: Vec<&Endpoint> = on_port.map(|e| &e.node).unique().collect();
         if nodes.is_empty() {
-            nodes = unique(entries.iter());
+            nodes = entries.iter().map(|e| &e.node).unique().collect();
         }
         match nodes.as_slice() {
-            [n] => Ok(Some(n.clone())),
+            [n] => Ok(Some((*n).clone())),
             _ => Err(Unresolved::AmbiguousName(name.into())),
         }
     }
-}
-
-fn unique<'a>(entries: impl Iterator<Item = &'a Entry>) -> Vec<Endpoint> {
-    let mut v: Vec<Endpoint> = Vec::new();
-    for e in entries {
-        if !v.contains(&e.node) {
-            v.push(e.node.clone());
-        }
-    }
-    v
 }
 
 pub fn target(
@@ -142,10 +134,10 @@ fn unique_unit(facts: &Facts, unit: &str) -> Result<Option<Endpoint>, Unresolved
     match hosts.as_slice() {
         [] => Ok(None),
         [h] => Ok(Some(Endpoint::Unit((*h).clone(), unit.into()))),
-        _ => {
-            let list = hosts.iter().map(|h| h.as_str()).collect::<Vec<_>>();
-            Err(Unresolved::AmbiguousUnit(unit.into(), list.join(", ")))
-        }
+        _ => Err(Unresolved::AmbiguousUnit(
+            unit.into(),
+            hosts.iter().join(", "),
+        )),
     }
 }
 

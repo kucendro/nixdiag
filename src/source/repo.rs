@@ -1,6 +1,7 @@
 use crate::conf::repo::{DEFAULT, FLAKE, STORE_SOURCE};
 use crate::text::messages::Fail;
 use anyhow::{Context, Result};
+use itertools::Itertools;
 use std::path::{Path, PathBuf};
 
 pub struct Repo {
@@ -28,13 +29,11 @@ impl Repo {
     }
 
     pub fn files(&self, store_paths: &[String]) -> Vec<String> {
-        let mut out: Vec<String> = Vec::new();
-        for rel in store_paths.iter().filter_map(|p| self.file(p)) {
-            if !out.contains(&rel) {
-                out.push(rel);
-            }
-        }
-        out
+        store_paths
+            .iter()
+            .filter_map(|p| self.file(p))
+            .unique()
+            .collect()
     }
 
     pub fn rel(&self, p: &Path) -> String {

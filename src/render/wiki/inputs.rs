@@ -5,6 +5,7 @@ use crate::human::{Date, DAY};
 use crate::source::flakelock::{short, Dup, Lock, Locked};
 use crate::text::wiki::{inputs as t, NONE};
 use anyhow::Result;
+use itertools::Itertools;
 
 fn date(l: &Locked) -> String {
     l.last_modified.map_or(NONE.into(), |s| Date(s).to_string())
@@ -26,7 +27,6 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
                 t::parent_as(&e.parent, &e.input)
             }
         })
-        .collect::<Vec<_>>()
         .join(", ")
 }
 
@@ -41,24 +41,19 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     let Some(target) = lock.root_input_for(&d.identity) else {
         return;
     };
-    let mut fixes: Vec<String> = Vec::new();
-    for n in d.nodes() {
-        if n == target {
-            continue;
-        }
-        for e in lock.parents_of(n) {
-            if e.parent == lock.root {
-                continue;
-            }
-            fixes.push(t::fix_line(&e.parent, &e.input, &target));
-        }
+    let fixes = d
+        .nodes()
+        .into_iter()
+        .filter(|n| *n != target)
+        .flat_map(|n| lock.parents_of(n))
+        .filter(|e| e.parent != lock.root)
+        .map(|e| t::fix_line(&e.parent, &e.input, &target))
+        .sorted()
+        .dedup()
+        .join("\n");
+    if !fixes.is_empty() {
+        o.push(t::fix(&target, &fixes));
     }
-    if fixes.is_empty() {
-        return;
-    }
-    fixes.sort();
-    fixes.dedup();
-    o.push(t::fix(&target, &fixes.join("\n")));
 }
 
 fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
