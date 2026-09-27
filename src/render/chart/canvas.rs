@@ -1,18 +1,5 @@
 use super::{paint, Key, Style, CH, INSET, LABEL_PX, LEGEND_H, NOTE_PX, PAD, SWATCH, W};
-
-fn xml_escape(s: &str) -> String {
-    let mut o = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => o.push_str("&amp;"),
-            '<' => o.push_str("&lt;"),
-            '>' => o.push_str("&gt;"),
-            '"' => o.push_str("&quot;"),
-            _ => o.push(c),
-        }
-    }
-    o
-}
+use quick_xml::escape::escape;
 
 fn gutter<'a>(strings: impl Iterator<Item = &'a str>) -> u64 {
     CH * strings.map(|s| s.chars().count()).max().unwrap_or(0) as u64 + 12
@@ -63,7 +50,7 @@ impl<'a> Canvas<'a> {
              width=\"{W}\" height=\"{h}\" role=\"img\" \
              font-family=\"ui-sans-serif, system-ui, sans-serif\">\n\
              \x20 <title>{}</title>\n",
-            xml_escape(caption)
+            escape(caption)
         );
         let mut c = Canvas { svg, style };
         if let Some(bg) = &style.background {
@@ -82,7 +69,7 @@ impl<'a> Canvas<'a> {
         let anchor = if end { " text-anchor=\"end\"" } else { "" };
         self.svg.push_str(&format!(
             "  <text x=\"{x}\" y=\"{y}\" font-size=\"{size}\" fill=\"{fill}\"{anchor}>{}</text>\n",
-            xml_escape(s)
+            escape(s)
         ));
     }
 
