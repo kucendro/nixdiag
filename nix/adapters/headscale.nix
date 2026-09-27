@@ -10,6 +10,14 @@
       "services.headscale.serverUrl"
     ];
   };
+  tests = {
+    vm = [ "hub" ];
+    minimum.services.headscale = {
+      address = "0.0.0.0";
+      settings.dns.base_domain = "mesh.test";
+    };
+    probe.url = "http://hub:8080";
+  };
   topology =
     { port, url }:
     let

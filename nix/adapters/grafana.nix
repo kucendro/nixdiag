@@ -10,6 +10,13 @@
     ];
     domain = [ "services.grafana.settings.server.domain" ];
   };
+  tests = {
+    vm = [ "mon" ];
+    minimum.services.grafana.settings = {
+      security.secret_key = "test";
+      server.http_addr = "0.0.0.0";
+    };
+  };
   topology =
     { port, domain }:
     {

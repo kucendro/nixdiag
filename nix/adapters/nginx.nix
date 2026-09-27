@@ -17,6 +17,10 @@ in
     firewall = [ "networking.firewall.enable" ];
     tcp = [ "networking.firewall.allowedTCPPorts" ];
   };
+  tests = {
+    vm = [ "web" ];
+    probe.proxyPass."grafana.test"."/" = "http://mon:3000";
+  };
   topology =
     {
       forceSSL,
