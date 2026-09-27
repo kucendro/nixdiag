@@ -86,6 +86,10 @@ pub mod services {
     pub fn name(name: &str) -> String {
         format!("**{name}**")
     }
+
+    pub fn unit(name: &str, description: &str) -> String {
+        format!("## {name}\n\n{description}")
+    }
 }
 
 pub mod endpoints {
