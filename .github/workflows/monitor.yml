@@ -15,25 +15,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ref: [master, nixos-unstable, nixos-26.05]
+        include:
+          - { ref: master, vm: "eval --raw" }
+          - { ref: nixos-unstable, vm: "build --no-link -L" }
+          - { ref: nixos-26.05, vm: "build --no-link -L" }
     steps:
       - uses: actions/checkout@v4
+
+      - run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+            system-features = nixos-test benchmark big-parallel kvm
 
       - run: |
           nixpkgs="github:NixOS/nixpkgs/${{ matrix.ref }}"
           rev=$(nix flake metadata --json "$nixpkgs" | jq -r .revision)
-          topology() {
-            jq -S '.hosts | map_values(.topology)' "$(nix build .#fixture-facts "$@" --no-write-lock-file --no-link --print-out-paths)"
-          }
-          if diff <(topology) <(topology --override-input nixpkgs "$nixpkgs"); then eval=ok; else eval=changed; fi
+          head=(--override-input nixpkgs "$nixpkgs" --no-write-lock-file)
+          vm=ok
+          vms=$(nix eval --raw .#checks.x86_64-linux "${head[@]}" --apply 'c: toString (builtins.filter (n: builtins.substring 0 3 n == "vm-") (builtins.attrNames c))') || vm=failed
+          for c in $vms; do
+            nix ${{ matrix.vm }} ".#checks.x86_64-linux.$c" "${head[@]}" || vm=failed
+          done
           nix run .#audit -- --json "$nixpkgs" > audit.json || true
-          jq -n --arg ref "${{ matrix.ref }}" --arg rev "$rev" --arg date "$(date -u +%F)" --arg eval "$eval" \
-            --slurpfile audit audit.json '{ ref: $ref, rev: $rev, date: $date, eval: $eval, audit: $audit }' > record.json
+          jq -n --arg ref "${{ matrix.ref }}" --arg rev "$rev" --arg date "$(date -u +%F)" --arg vm "$vm" \
+            --slurpfile audit audit.json '{ ref: $ref, rev: $rev, date: $date, vm: $vm, audit: $audit }' > record.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -53,6 +64,7 @@ jobs:
           path: ${{ runner.temp }}/records
 
       - run: |
+          for d in */; do [ -e "$RUNNER_TEMP/records/${d%/}" ] || git rm -rq "$d"; done
           for f in "$RUNNER_TEMP"/records/*/record.json; do
             ref=$(jq -r .ref "$f")
             mkdir -p "$ref"
@@ -64,7 +76,7 @@ jobs:
           git commit -m "monitor $(date -u +%F)"
           git push
 
-      - run: jq -es 'all(.[]; .eval == "ok" and all(.audit[]; .status != "broken"))' "$RUNNER_TEMP"/records/*/record.json
+      - run: jq -es 'all(.[]; .vm == "ok" and all(.audit[]; .status != "broken"))' "$RUNNER_TEMP"/records/*/record.json
 
   issues:
     needs: head
