@@ -83,7 +83,7 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &Style) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::super::canvas::attr;
+    use super::super::canvas::{attr, texts};
     use super::*;
 
     fn mark(label: &str, at: Option<i64>, direct: bool) -> Mark {
@@ -103,14 +103,6 @@ mod tests {
             .collect()
     }
 
-    fn labels(svg: &str) -> Vec<String> {
-        svg.lines()
-            .filter(|l| l.contains("<text"))
-            .filter_map(|l| l.rsplit_once('>')?.0.rsplit_once('>'))
-            .map(|(_, s)| s.trim_end_matches("</text").to_string())
-            .collect()
-    }
-
     #[test]
     fn rows_run_oldest_first_whatever_order_they_arrive_in() {
         let svg = timeline(
@@ -122,9 +114,9 @@ mod tests {
             ],
             &Style::default(),
         );
-        let names: Vec<String> = labels(&svg)
+        let names: Vec<&str> = texts(&svg)
             .into_iter()
-            .filter(|s| ["old", "mid", "new"].contains(&s.as_str()))
+            .filter(|s| ["old", "mid", "new"].contains(s))
             .collect();
         assert_eq!(names, ["old", "mid", "new"], "{svg}");
     }
@@ -166,12 +158,12 @@ mod tests {
             &[mark("dated", Some(1), true), mark("path", None, true)],
             &Style::default(),
         );
-        assert!(svg.contains(">path<"), "{svg}");
-        assert!(svg.contains(">—<"), "{svg}");
+        let names = texts(&svg);
+        assert!(names.contains(&"—"), "{svg}");
         assert_eq!(ticks(&svg).len(), 1, "{svg}");
-        let names = labels(&svg);
+        let at = |n: &str| names.iter().position(|s| *s == n);
         assert!(
-            names.iter().position(|s| s == "dated") < names.iter().position(|s| s == "path"),
+            at("path").is_some() && at("dated") < at("path"),
             "{names:?}"
         );
     }

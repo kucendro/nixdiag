@@ -1,5 +1,6 @@
 use super::{legend_bands, paint, top, Band, Canvas, Style, CH, INSET, LABEL_PX, NOTE_PX, PAD, W};
 use crate::human::Bytes;
+use streemap::{squarify, Rect};
 
 const TREE_H: u64 = 400;
 
@@ -20,64 +21,6 @@ pub struct Tile {
     pub band: Band,
 }
 
-fn worst(side: f64, sum: f64, lo: f64, hi: f64) -> f64 {
-    if sum <= 0.0 || lo <= 0.0 || side <= 0.0 {
-        return f64::INFINITY;
-    }
-    let (s2, w2) = (sum * sum, side * side);
-    (w2 * hi / s2).max(s2 / (w2 * lo))
-}
-
-fn squarify(areas: &[f64], rect: (f64, f64, f64, f64)) -> Vec<(f64, f64, f64, f64)> {
-    let (mut x, mut y, mut w, mut h) = rect;
-    let mut out = Vec::with_capacity(areas.len());
-    let mut i = 0;
-    while i < areas.len() {
-        if w <= 0.0 || h <= 0.0 {
-            out.extend(std::iter::repeat_n((x, y, 0.0, 0.0), areas.len() - i));
-            break;
-        }
-        let side = w.min(h);
-        let (mut j, mut sum, mut lo, mut hi) = (i, 0.0f64, f64::INFINITY, 0.0f64);
-        let mut best = f64::INFINITY;
-        while j < areas.len() {
-            let (s, l, g) = (sum + areas[j], lo.min(areas[j]), hi.max(areas[j]));
-            let cand = worst(side, s, l, g);
-            if j > i && cand > best {
-                break;
-            }
-            best = cand;
-            sum = s;
-            lo = l;
-            hi = g;
-            j += 1;
-        }
-        if w <= h {
-            let rh = sum / w;
-            let mut cx = x;
-            for a in &areas[i..j] {
-                let tw = if sum > 0.0 { a / sum * w } else { 0.0 };
-                out.push((cx, y, tw, rh));
-                cx += tw;
-            }
-            y += rh;
-            h -= rh;
-        } else {
-            let rw = sum / h;
-            let mut cy = y;
-            for a in &areas[i..j] {
-                let th = if sum > 0.0 { a / sum * h } else { 0.0 };
-                out.push((x, cy, rw, th));
-                cy += th;
-            }
-            x += rw;
-            w -= rw;
-        }
-        i = j;
-    }
-    out
-}
-
 pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
     let tile_ink = style.color(&paint::TILE_INK);
 
@@ -90,21 +33,26 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
     let mut c = Canvas::new(caption, top + TREE_H + PAD, style);
     c.legend(&keys, 0);
 
-    let total: f64 = order.iter().map(|t| t.value as f64).sum();
-    let (pw, ph) = (W as f64, TREE_H as f64);
-    let areas: Vec<f64> = order
-        .iter()
-        .map(|t| t.value as f64 / total * pw * ph)
-        .collect();
+    let zero = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 0.0,
+        h: 0.0,
+    };
+    let mut cells: Vec<(&Tile, Rect<f64>)> = order.iter().map(|t| (*t, zero)).collect();
+    let (y, w, h) = (top as f64, W as f64, TREE_H as f64);
+    squarify(
+        Rect { x: 0.0, y, w, h },
+        &mut cells,
+        |(t, _)| t.value as f64,
+        |(_, r), n| *r = n,
+    );
 
-    for (t, (rx, ry, rw, rh)) in order
-        .iter()
-        .zip(squarify(&areas, (0.0, top as f64, pw, ph)))
-    {
-        let (px, py) = (rx.round() as u64 + 1, ry.round() as u64 + 1);
+    for (t, r) in &cells {
+        let (px, py) = (r.x.round() as u64 + 1, r.y.round() as u64 + 1);
         let (tw, th) = (
-            (rw.round() as u64).saturating_sub(2),
-            (rh.round() as u64).saturating_sub(2),
+            (r.w.round() as u64).saturating_sub(2),
+            (r.h.round() as u64).saturating_sub(2),
         );
         if tw == 0 || th == 0 {
             continue;
@@ -126,7 +74,7 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::super::canvas::attr;
+    use super::super::canvas::{attr, texts};
     use super::*;
 
     fn tile(label: &str, value: u64, band: Band) -> Tile {
@@ -179,8 +127,7 @@ mod tests {
             &[tile("small", 1, Band::Solid), tile("big", 99, Band::Solid)],
             &Style::default(),
         );
-        let first = svg.find(">big<").unwrap();
-        assert!(first < svg.find(">small<").unwrap_or(usize::MAX), "{svg}");
+        assert_eq!(texts(&svg).first(), Some(&"big"), "{svg}");
         let (x, y, _, _) = rects(&svg)[0];
         assert_eq!((x, y), (1, PAD + 1), "inset by the one-pixel gap");
     }
@@ -193,7 +140,7 @@ mod tests {
             &Style::default(),
         );
         assert_eq!(rects(&svg).len(), 1, "{svg}");
-        assert!(!svg.contains(">empty<"), "{svg}");
+        assert!(!texts(&svg).contains(&"empty"), "{svg}");
     }
 
     #[test]

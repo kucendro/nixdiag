@@ -1,28 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 140" width="720" height="140" role="img" font-family="ui-sans-serif, system-ui, sans-serif">
-  <title>Locked inputs by date, oldest first</title>
-  <rect x="0" y="0" width="720" height="140" fill="transparent"/>
-  <rect x="75" y="10" width="10" height="10" fill="#7fa7e8"/>
-  <text x="90" y="19" font-size="12" fill="#8b949e">declared by this flake</text>
-  <rect x="258" y="10" width="10" height="10" fill="#8b949e"/>
-  <text x="273" y="19" font-size="12" fill="#8b949e">pulled in by an input</text>
-  <text x="67" y="46" font-size="13" fill="#c9d1d9" text-anchor="end">utils</text>
-  <rect x="75" y="42" width="555" height="1" fill="#2a2a2e"/>
-  <rect x="75" y="37" width="3" height="11" fill="#7fa7e8"/>
-  <text x="716" y="46" font-size="12" fill="#c9d1d9" text-anchor="end">2026-02-02</text>
-  <text x="67" y="66" font-size="13" fill="#c9d1d9" text-anchor="end">utils_2</text>
-  <rect x="75" y="62" width="555" height="1" fill="#2a2a2e"/>
-  <rect x="75" y="57" width="3" height="11" fill="#8b949e"/>
-  <text x="716" y="66" font-size="12" fill="#c9d1d9" text-anchor="end">2026-02-02</text>
-  <text x="67" y="86" font-size="13" fill="#c9d1d9" text-anchor="end">nixpkgs_2</text>
-  <rect x="75" y="82" width="555" height="1" fill="#2a2a2e"/>
-  <rect x="390" y="77" width="3" height="11" fill="#8b949e"/>
-  <text x="716" y="86" font-size="12" fill="#c9d1d9" text-anchor="end">2026-05-28</text>
-  <text x="67" y="106" font-size="13" fill="#c9d1d9" text-anchor="end">stylix</text>
-  <rect x="75" y="102" width="555" height="1" fill="#2a2a2e"/>
-  <rect x="548" y="97" width="3" height="11" fill="#7fa7e8"/>
-  <text x="716" y="106" font-size="12" fill="#c9d1d9" text-anchor="end">2026-07-25</text>
-  <text x="67" y="126" font-size="13" fill="#c9d1d9" text-anchor="end">nixpkgs</text>
-  <rect x="75" y="122" width="555" height="1" fill="#2a2a2e"/>
-  <rect x="627" y="117" width="3" height="11" fill="#7fa7e8"/>
-  <text x="716" y="126" font-size="12" fill="#c9d1d9" text-anchor="end">2026-08-23</text>
+<svg font-family="ui-sans-serif, system-ui, sans-serif" height="140" role="img" viewBox="0 0 720 140" width="720" xmlns="http://www.w3.org/2000/svg">
+<title>Locked inputs by date, oldest first</title>
+<rect fill="transparent" height="140" width="720" x="0" y="0"/>
+<rect fill="#7fa7e8" height="10" width="10" x="75" y="10"/>
+<text fill="#8b949e" font-size="12" x="90" y="19">
+declared by this flake
+</text>
+<rect fill="#8b949e" height="10" width="10" x="258" y="10"/>
+<text fill="#8b949e" font-size="12" x="273" y="19">
+pulled in by an input
+</text>
+<text fill="#c9d1d9" font-size="13" text-anchor="end" x="67" y="46">
+utils
+</text>
+<rect fill="#2a2a2e" height="1" width="555" x="75" y="42"/>
+<rect fill="#7fa7e8" height="11" width="3" x="75" y="37"/>
+<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="46">
+2026-02-02
+</text>
+<text fill="#c9d1d9" font-size="13" text-anchor="end" x="67" y="66">
+utils_2
+</text>
+<rect fill="#2a2a2e" height="1" width="555" x="75" y="62"/>
+<rect fill="#8b949e" height="11" width="3" x="75" y="57"/>
+<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="66">
+2026-02-02
+</text>
+<text fill="#c9d1d9" font-size="13" text-anchor="end" x="67" y="86">
+nixpkgs_2
+</text>
+<rect fill="#2a2a2e" height="1" width="555" x="75" y="82"/>
+<rect fill="#8b949e" height="11" width="3" x="390" y="77"/>
+<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="86">
+2026-05-28
+</text>
+<text fill="#c9d1d9" font-size="13" text-anchor="end" x="67" y="106">
+stylix
+</text>
+<rect fill="#2a2a2e" height="1" width="555" x="75" y="102"/>
+<rect fill="#7fa7e8" height="11" width="3" x="548" y="97"/>
+<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="106">
+2026-07-25
+</text>
+<text fill="#c9d1d9" font-size="13" text-anchor="end" x="67" y="126">
+nixpkgs
+</text>
+<rect fill="#2a2a2e" height="1" width="555" x="75" y="122"/>
+<rect fill="#7fa7e8" height="11" width="3" x="627" y="117"/>
+<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="126">
+2026-08-23
+</text>
 </svg>

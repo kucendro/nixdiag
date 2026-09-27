@@ -56,7 +56,7 @@ pub fn bars(caption: &str, rows: &[Row], style: &Style) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::super::canvas::attr;
+    use super::super::canvas::{attr, texts};
     use super::*;
 
     fn row(label: &str, bands: Vec<(Band, u64)>, note: &str) -> Row {
@@ -120,8 +120,8 @@ mod tests {
             ],
             &Style::default(),
         );
-        assert!(svg.contains(">absent<"), "{svg}");
-        assert!(svg.contains(">not measured<"), "{svg}");
+        assert!(texts(&svg).contains(&"absent"), "{svg}");
+        assert!(texts(&svg).contains(&"not measured"), "{svg}");
         assert_eq!(widths(&svg).len(), 2, "{svg}");
     }
 

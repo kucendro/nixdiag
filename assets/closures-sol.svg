@@ -1,28 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" width="720" height="440" role="img" font-family="ui-sans-serif, system-ui, sans-serif">
-  <title>sol closure by package</title>
-  <rect x="0" y="0" width="720" height="440" fill="transparent"/>
-  <rect x="0" y="10" width="10" height="10" fill="#7fa7e8"/>
-  <text x="15" y="19" font-size="12" fill="#8b949e">shared by every host</text>
-  <rect x="169" y="10" width="10" height="10" fill="#2ecc71"/>
-  <text x="184" y="19" font-size="12" fill="#8b949e">unique to this host</text>
-  <rect x="1" y="33" width="216" height="398" fill="#7fa7e8"/>
-  <text x="5" y="48" font-size="13" fill="#14181f">linux</text>
-  <text x="5" y="63" font-size="12" fill="#14181f">142.3 MiB</text>
-  <rect x="219" y="33" width="312" height="232" fill="#2ecc71"/>
-  <text x="223" y="48" font-size="13" fill="#14181f">prometheus</text>
-  <text x="223" y="63" font-size="12" fill="#14181f">120.0 MiB</text>
-  <rect x="219" y="267" width="312" height="164" fill="#7fa7e8"/>
-  <text x="223" y="282" font-size="13" fill="#14181f">systemd</text>
-  <text x="223" y="297" font-size="12" fill="#14181f">85.0 MiB</text>
-  <rect x="533" y="33" width="186" height="194" fill="#2ecc71"/>
-  <text x="537" y="48" font-size="13" fill="#14181f">postgresql</text>
-  <text x="537" y="63" font-size="12" fill="#14181f">60.0 MiB</text>
-  <rect x="533" y="229" width="186" height="107" fill="#7fa7e8"/>
-  <text x="537" y="244" font-size="13" fill="#14181f">glibc</text>
-  <text x="537" y="259" font-size="12" fill="#14181f">33.4 MiB</text>
-  <rect x="533" y="338" width="131" height="93" fill="#7fa7e8"/>
-  <text x="537" y="353" font-size="13" fill="#14181f">coreutils</text>
-  <text x="537" y="368" font-size="12" fill="#14181f">20.5 MiB</text>
-  <rect x="666" y="338" width="53" height="93" fill="#7fa7e8"/>
-  <text x="670" y="353" font-size="13" fill="#14181f">bash</text>
+<svg font-family="ui-sans-serif, system-ui, sans-serif" height="440" role="img" viewBox="0 0 720 440" width="720" xmlns="http://www.w3.org/2000/svg">
+<title>sol closure by package</title>
+<rect fill="transparent" height="440" width="720" x="0" y="0"/>
+<rect fill="#7fa7e8" height="10" width="10" x="0" y="10"/>
+<text fill="#8b949e" font-size="12" x="15" y="19">
+shared by every host
+</text>
+<rect fill="#2ecc71" height="10" width="10" x="169" y="10"/>
+<text fill="#8b949e" font-size="12" x="184" y="19">
+unique to this host
+</text>
+<rect fill="#7fa7e8" height="398" width="216" x="1" y="33"/>
+<text fill="#14181f" font-size="13" x="5" y="48">
+linux
+</text>
+<text fill="#14181f" font-size="12" x="5" y="63">
+142.3 MiB
+</text>
+<rect fill="#2ecc71" height="232" width="312" x="219" y="33"/>
+<text fill="#14181f" font-size="13" x="223" y="48">
+prometheus
+</text>
+<text fill="#14181f" font-size="12" x="223" y="63">
+120.0 MiB
+</text>
+<rect fill="#7fa7e8" height="164" width="312" x="219" y="267"/>
+<text fill="#14181f" font-size="13" x="223" y="282">
+systemd
+</text>
+<text fill="#14181f" font-size="12" x="223" y="297">
+85.0 MiB
+</text>
+<rect fill="#2ecc71" height="194" width="186" x="533" y="33"/>
+<text fill="#14181f" font-size="13" x="537" y="48">
+postgresql
+</text>
+<text fill="#14181f" font-size="12" x="537" y="63">
+60.0 MiB
+</text>
+<rect fill="#7fa7e8" height="107" width="186" x="533" y="229"/>
+<text fill="#14181f" font-size="13" x="537" y="244">
+glibc
+</text>
+<text fill="#14181f" font-size="12" x="537" y="259">
+33.4 MiB
+</text>
+<rect fill="#7fa7e8" height="93" width="131" x="533" y="338"/>
+<text fill="#14181f" font-size="13" x="537" y="353">
+coreutils
+</text>
+<text fill="#14181f" font-size="12" x="537" y="368">
+20.5 MiB
+</text>
+<rect fill="#7fa7e8" height="93" width="53" x="666" y="338"/>
+<text fill="#14181f" font-size="13" x="670" y="353">
+bash
+</text>
 </svg>

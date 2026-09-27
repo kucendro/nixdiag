@@ -1,5 +1,6 @@
-use super::{paint, Key, Style, CH, INSET, LABEL_PX, LEGEND_H, NOTE_PX, PAD, SWATCH, W};
-use quick_xml::escape::escape;
+use super::{paint, Key, Style, CH, FONT, INSET, LABEL_PX, LEGEND_H, NOTE_PX, PAD, SWATCH, W};
+use svg::node::element::{Rectangle, Text, Title};
+use svg::{Document, Node};
 
 fn gutter<'a>(strings: impl Iterator<Item = &'a str>) -> u64 {
     CH * strings.map(|s| s.chars().count()).max().unwrap_or(0) as u64 + 12
@@ -38,21 +39,20 @@ impl Frame {
 }
 
 pub struct Canvas<'a> {
-    svg: String,
+    doc: Document,
     style: &'a Style,
 }
 
 impl<'a> Canvas<'a> {
     pub fn new(caption: &str, h: u64, style: &'a Style) -> Self {
-        let svg = format!(
-            "\
-             <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {h}\" \
-             width=\"{W}\" height=\"{h}\" role=\"img\" \
-             font-family=\"ui-sans-serif, system-ui, sans-serif\">\n\
-             \x20 <title>{}</title>\n",
-            escape(caption)
-        );
-        let mut c = Canvas { svg, style };
+        let doc = Document::new()
+            .set("viewBox", (0, 0, W, h))
+            .set("width", W)
+            .set("height", h)
+            .set("role", "img")
+            .set("font-family", FONT)
+            .add(Title::new(caption));
+        let mut c = Canvas { doc, style };
         if let Some(bg) = &style.background {
             c.rect(0, 0, W, h, bg);
         }
@@ -60,17 +60,16 @@ impl<'a> Canvas<'a> {
     }
 
     pub fn rect(&mut self, x: u64, y: u64, w: u64, h: u64, fill: &str) {
-        self.svg.push_str(&format!(
-            "  <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"{fill}\"/>\n"
-        ));
+        let r = Rectangle::new().set("x", x).set("y", y);
+        self.doc
+            .append(r.set("width", w).set("height", h).set("fill", fill));
     }
 
     pub fn text(&mut self, x: u64, y: u64, size: u64, fill: &str, end: bool, s: &str) {
-        let anchor = if end { " text-anchor=\"end\"" } else { "" };
-        self.svg.push_str(&format!(
-            "  <text x=\"{x}\" y=\"{y}\" font-size=\"{size}\" fill=\"{fill}\"{anchor}>{}</text>\n",
-            escape(s)
-        ));
+        let t = Text::new(s).set("x", x).set("y", y).set("font-size", size);
+        let t = t.set("fill", fill);
+        self.doc
+            .append(if end { t.set("text-anchor", "end") } else { t });
     }
 
     pub fn legend(&mut self, keys: &[Key], mut x: u64) {
@@ -99,10 +98,19 @@ impl<'a> Canvas<'a> {
         self.text(W - INSET, cy + INSET, NOTE_PX, ink, true, note);
     }
 
-    pub fn finish(mut self) -> String {
-        self.svg.push_str("</svg>");
-        self.svg
+    pub fn finish(self) -> String {
+        self.doc.to_string()
     }
+}
+
+#[cfg(test)]
+pub fn texts(svg: &str) -> Vec<&str> {
+    let lines: Vec<&str> = svg.lines().collect();
+    lines
+        .windows(2)
+        .filter(|w| w[0].starts_with("<text"))
+        .map(|w| w[1])
+        .collect()
 }
 
 #[cfg(test)]

@@ -12,6 +12,7 @@ use crate::conf::palette::{chart as paint, Color};
 use crate::text::chart as t;
 use canvas::{top, Canvas, Frame};
 
+const FONT: &str = "ui-sans-serif, system-ui, sans-serif";
 const W: u64 = 720;
 const PAD: u64 = 8;
 const CH: u64 = 7;
