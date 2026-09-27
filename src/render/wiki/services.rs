@@ -2,6 +2,7 @@ use super::{codes, repo_services, table, Page, Wiki};
 use crate::conf::files::page;
 use crate::text::wiki::services as t;
 use anyhow::Result;
+use askama::Template;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,11 +18,18 @@ impl Page for Services {
     }
 
     fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
-        Ok(Some(body(w)))
+        Ok(Some(vec![body(w)?]))
     }
 }
 
-fn body(w: &Wiki) -> Vec<String> {
+#[derive(Template)]
+#[template(path = "services.md")]
+struct Body<'a> {
+    table: String,
+    described: BTreeMap<&'a str, &'a str>,
+}
+
+fn body(w: &Wiki) -> Result<String> {
     let mut index: BTreeMap<String, (BTreeSet<String>, BTreeSet<String>)> = BTreeMap::new();
     for (host, f) in &w.facts.hosts {
         let Some(n) = f.as_nixos() else { continue };
@@ -34,7 +42,6 @@ fn body(w: &Wiki) -> Vec<String> {
     let rows = index
         .iter()
         .map(|(name, (hosts, files))| [t::name(name), hosts.iter().join(", "), codes(files, " ")]);
-    let mut o = vec![table(t::HEAD, rows)];
     let mut described: BTreeMap<&str, &str> = BTreeMap::new();
     for f in w.facts.hosts.values() {
         for (name, u) in &f.topology().units {
@@ -43,6 +50,6 @@ fn body(w: &Wiki) -> Vec<String> {
             }
         }
     }
-    o.extend(described.iter().map(|(name, d)| t::unit(name, d)));
-    o
+    let table = table(t::HEAD, rows);
+    Ok(Body { table, described }.render()?)
 }
