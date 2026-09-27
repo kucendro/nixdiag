@@ -9,6 +9,13 @@ let
   inherit (lib) head tail concatStringsSep;
   helpers = import ../adapters/lib.nix { inherit lib; };
   fail = msg: throw "nixdiag vm: ${msg}";
+  module = lib.fileset.toSource {
+    root = ../.;
+    fileset = lib.fileset.unions [
+      ../module
+      ../adapters
+    ];
+  };
 
   exists =
     let
@@ -117,7 +124,7 @@ else
   lib.genAttrs vms (vm: {
     imports = [
       bases.${vm}.module
-      ../module
+      "${module}/module"
       ./kit.nix
       (import ./docs.nix { inherit mkDocs; })
       { system.stateVersion = sv; }
