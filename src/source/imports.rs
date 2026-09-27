@@ -1,29 +1,25 @@
 use super::repo::Repo;
+use crate::conf::repo::{DEFAULT, ENTRY_KEYS, HOSTS};
+use path_clean::PathClean;
 use regex::Regex;
 use std::collections::HashSet;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
-fn import_token_re() -> Regex {
-    Regex::new(r#"\.\.?/[^\s\]"';]+"#).unwrap()
-}
-
-fn normalize(p: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for c in p.components() {
-        match c {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                out.pop();
-            }
-            other => out.push(other),
-        }
-    }
-    out
-}
+static IMPORTS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"imports\s*=").unwrap());
+static TOKEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"\.\.?/[^\s\]"';]+"#).unwrap());
+static IMPORT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"\bimport\s+(\.\.?/[^\s\])"';]+)"#).unwrap());
+static ENTRIES: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    ENTRY_KEYS
+        .iter()
+        .map(|k| Regex::new(&format!(r"{k}\s*=\s*(\.\S+?)\s*;")).unwrap())
+        .collect()
+});
 
 fn with_nix_ext(mut p: PathBuf) -> PathBuf {
     if p.is_dir() {
-        p.push("default.nix");
+        p.push(DEFAULT);
     } else if p.extension().map(|e| e != "nix").unwrap_or(true) {
         p.set_extension("nix");
     }
@@ -38,20 +34,16 @@ pub fn host_entry_modules(host: &str, flake_text: &str, repo: &Repo) -> Vec<Path
     .unwrap();
     let block = block_re
         .captures(flake_text)
-        .map(|c| c[1].to_string())
-        .unwrap_or_default();
-    let mut files = Vec::new();
-    for key in ["targetModule", "hardwareModule"] {
-        let key_re = Regex::new(&format!(r"{key}\s*=\s*(\.\S+?)\s*;")).unwrap();
-        if let Some(m) = key_re.captures(&block) {
-            let p = with_nix_ext(normalize(&repo.root.join(&m[1])));
-            if p.exists() {
-                files.push(p);
-            }
-        }
-    }
+        .and_then(|c| c.get(1))
+        .map_or("", |m| m.as_str());
+    let mut files: Vec<PathBuf> = ENTRIES
+        .iter()
+        .filter_map(|re| re.captures(block))
+        .map(|m| with_nix_ext(repo.root.join(&m[1]).clean()))
+        .filter(|p| p.exists())
+        .collect();
     if files.is_empty() {
-        let cand = repo.root.join("hosts").join(host).join("default.nix");
+        let cand = repo.root.join(HOSTS).join(host).join(DEFAULT);
         if cand.exists() {
             files.push(cand);
         }
@@ -63,28 +55,14 @@ fn parse_imports(nix_file: &Path) -> Vec<String> {
     let Ok(text) = std::fs::read_to_string(nix_file) else {
         return Vec::new();
     };
-    let imports_re = Regex::new(r"imports\s*=").unwrap();
-    let token_re = import_token_re();
     let mut out = Vec::new();
-    for m in imports_re.find_iter(&text) {
+    for m in IMPORTS.find_iter(&text) {
         let seg = &text[m.end()..];
         let seg = seg.split(';').next().unwrap_or(seg);
-        for t in token_re.find_iter(seg) {
-            out.push(t.as_str().to_string());
-        }
+        out.extend(TOKEN.find_iter(seg).map(|t| t.as_str().to_string()));
     }
-    let expr_re = Regex::new(r#"\bimport\s+(\.\.?/[^\s\])"';]+)"#).unwrap();
-    for c in expr_re.captures_iter(&text) {
-        out.push(c[1].to_string());
-    }
+    out.extend(IMPORT.captures_iter(&text).map(|c| c[1].to_string()));
     out
-}
-
-pub fn rel_str(p: &Path, repo: &Repo) -> String {
-    match p.strip_prefix(&repo.root) {
-        Ok(r) => r.to_string_lossy().replace('\\', "/"),
-        Err(_) => p.to_string_lossy().into_owned(),
-    }
 }
 
 pub fn build_import_graph(
@@ -96,18 +74,18 @@ pub fn build_import_graph(
     let mut seen = HashSet::new();
     let mut stack: Vec<PathBuf> = entries.to_vec();
     while let Some(f) = stack.pop() {
-        let rf = rel_str(&f, repo);
+        let rf = repo.rel(&f);
         if !seen.insert(rf.clone()) {
             continue;
         }
         nodes.insert(rf.clone());
         for tok in parse_imports(&f) {
             let base = f.parent().unwrap_or(Path::new("."));
-            let child = with_nix_ext(normalize(&base.join(&tok)));
+            let child = with_nix_ext(base.join(&tok).clean());
             if !child.exists() {
                 continue;
             }
-            let rc = rel_str(&child, repo);
+            let rc = repo.rel(&child);
             nodes.insert(rc.clone());
             edges.insert((rf.clone(), rc));
             stack.push(child);

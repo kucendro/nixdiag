@@ -21,15 +21,15 @@ Both are the two-host fixture, the [live demo](./demo.md).
 
 | File | Contents |
 |---|---|
-| `topology.d2`, `topology.svg` | who talks to what, by scope: public, mesh, lan |
-| `modules.d2`, `modules.svg` | host to module file tree |
-| `inputs.d2`, `inputs.svg` | flake input graph; `follows` edges dashed |
+| `topology.dot`, `topology.svg` | who talks to what, by scope: public, mesh, lan |
+| `modules.dot`, `modules.svg` | host to module file tree |
+| `inputs.dot`, `inputs.svg` | flake input graph; `follows` edges dashed |
 | `wiki/src/index.md` | a stub for your own overview, replaced by `indexPage` |
 | `wiki/src/architecture.md` | both diagrams |
 | `wiki/src/hosts.md` | per host: platform, users, ports, services and their files |
 | `wiki/src/services.md` | every service, the hosts running it, the file defining it |
 | `wiki/src/endpoints.md` | fqdn, port, scope, host, service |
-| `wiki/src/inputs.md`, `inputs-timeline.svg` | every input with its rev and lock date, a timeline of those dates, plus duplicate detection |
+| `wiki/src/inputs.md`, `inputs-timeline.svg` | every input with its rev and lock date, how many days each trails the newest, plus duplicate detection |
 | `wiki/src/closures.md`, `closures.svg` | opt-in: per-host closure size, largest paths, fleet sharing, stacked bar chart |
 
 ## Next

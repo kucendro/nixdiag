@@ -5,3 +5,9 @@ pub const UNIQUE: &str = "unique to this host";
 pub const REST: &str = "everything smaller";
 pub const DIRECT: &str = "declared by this flake";
 pub const TRANSITIVE: &str = "pulled in by an input";
+pub const MIB: &str = "{c} MiB";
+pub const DAYS: &str = "{c} d";
+
+pub fn row(label: &str, note: &str) -> String {
+    format!("{label} · {note}")
+}

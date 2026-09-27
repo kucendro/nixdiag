@@ -2,15 +2,15 @@
 
 ## 🖥️ luna
 
-| | |
-|---|---|
-| Platform | `x86_64-linux` |
-| State version | `24.05` |
-| Users | admin |
-| System packages | 124 |
-| Open TCP ports | 22, 443 |
-| Open UDP ports | — |
-| Repo-configured services | 2 |
+|                          |                |
+|--------------------------|----------------|
+| Platform                 | `x86_64-linux` |
+| State version            | `24.05`        |
+| Users                    | admin          |
+| System packages          | 124            |
+| Open TCP ports           | 22, 443        |
+| Open UDP ports           | —              |
+| Repo-configured services | 2              |
 
 **Services:**
 
@@ -19,15 +19,15 @@
 
 ## 🖥️ sol
 
-| | |
-|---|---|
-| Platform | `x86_64-linux` |
-| State version | `24.05` |
-| Users | admin |
-| System packages | 124 |
-| Open TCP ports | 22, 443 |
-| Open UDP ports | — |
-| Repo-configured services | 2 |
+|                          |                |
+|--------------------------|----------------|
+| Platform                 | `x86_64-linux` |
+| State version            | `24.05`        |
+| Users                    | admin          |
+| System packages          | 124            |
+| Open TCP ports           | 22, 443        |
+| Open UDP ports           | —              |
+| Repo-configured services | 2              |
 
 **Services:**
 

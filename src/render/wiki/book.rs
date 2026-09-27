@@ -1,32 +1,26 @@
-use super::super::out::Out;
-use super::page;
-use crate::text::wiki::{summary as t, BOOK, INDEX};
-use crate::text::{fill, messages as m};
+use super::Wiki;
+use crate::conf::files::{page, BOOK};
+use crate::text::messages::Fail;
+use crate::text::wiki::{summary as t, INDEX};
 use anyhow::{bail, Result};
-use std::path::{Path, PathBuf};
+use itertools::Itertools;
+use serde_json::json;
+use std::iter::once;
+use std::path::PathBuf;
 
-pub(super) fn book_toml(out: &Out, wiki: &Path, title: &str, dark: bool) -> Result<()> {
-    let (default, preferred_dark) = if dark {
-        ("navy", "navy")
-    } else {
-        ("light", "coal")
-    };
-    out.write(
-        &wiki.join("book.toml"),
-        &fill(
-            BOOK,
-            &[
-                ("title", title),
-                ("default", default),
-                ("dark", preferred_dark),
-            ],
-        ),
-    )
+pub(super) fn book_toml(w: &Wiki, title: &str) -> Result<()> {
+    let b = w.style.theme.book();
+    let html = json!({
+        "default-theme": b.default,
+        "preferred-dark-theme": b.dark,
+        "no-section-label": true,
+    });
+    let book = json!({ "book": { "title": title, "src": "src" }, "output": { "html": html } });
+    w.out.write(BOOK, &toml::to_string(&book)?)
 }
 
 pub(super) fn copy_extra_pages(
-    out: &Out,
-    src: &Path,
+    w: &Wiki,
     pages: &[(String, PathBuf)],
 ) -> Result<Vec<(String, String)>> {
     let mut links = Vec::new();
@@ -36,53 +30,27 @@ pub(super) fn copy_extra_pages(
             .map(|f| f.to_string_lossy().into_owned())
             .unwrap_or_default();
         if fname.is_empty() {
-            bail!(fill(m::EXTRA_PAGE_NO_NAME, &[("title", title)]));
+            bail!(Fail::ExtraPageNoName(title.clone()));
         }
-        let dest_rel = src.join(&fname);
-        let dest = out.root.join(&dest_rel);
         if !source.exists() {
-            bail!(fill(
-                m::EXTRA_PAGE_MISSING,
-                &[("title", title), ("path", &source.display().to_string())]
-            ));
+            let (title, path) = (title.clone(), source.clone());
+            bail!(Fail::ExtraPageMissing { title, path });
         }
-        if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::copy(source, &dest)?;
-        println!(
-            "{}",
-            fill(m::WROTE, &[("path", &dest.display().to_string())])
-        );
+        w.src.copy(source, &fname)?;
         links.push((title.clone(), fname));
     }
     Ok(links)
 }
 
-pub(super) fn page_summary(
-    out: &Out,
-    src: &Path,
-    extra: &[(String, String)],
-    has_inputs: bool,
-    has_closures: bool,
-) -> Result<()> {
-    let mut entries = vec![t::FIXED.to_string()];
-    if has_inputs {
-        entries.push(t::INPUTS.into());
-    }
-    if has_closures {
-        entries.push(t::CLOSURES.into());
-    }
-    for (title, file) in extra {
-        entries.push(fill(t::EXTRA, &[("title", title), ("file", file)]));
-    }
-    page(
-        out,
-        &src.join("SUMMARY.md"),
-        &[t::TITLE.to_string(), entries.join("\n")],
+pub(super) fn summary(w: &Wiki, pages: &[(String, String)]) -> Result<()> {
+    let entries = pages.iter().map(|(title, file)| t::entry(title, file));
+    let mut entries = once(t::entry(t::OVERVIEW, page::INDEX)).chain(entries);
+    w.src.write(
+        page::SUMMARY,
+        &format!("{}\n\n{}", t::TITLE, entries.join("\n")),
     )
 }
 
-pub(super) fn page_index(out: &Out, src: &Path) -> Result<()> {
-    out.write(&src.join("index.md"), INDEX)
+pub(super) fn index(w: &Wiki) -> Result<()> {
+    w.src.write(page::INDEX, INDEX)
 }

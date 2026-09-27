@@ -1,38 +1,39 @@
 use crate::closures::{Closures, HostClosure};
+use crate::conf::limits::TREEMAP_TILES;
+use crate::human::{Bytes, Count};
 use crate::render::chart::{Band, Row, Tile};
-use crate::text::fill;
-use crate::text::wiki::closures as t;
-use crate::util::{human_count, human_size};
-
-pub(super) const TREEMAP_TILES: usize = 24;
+use crate::text::wiki::{closures as t, NOT_MEASURED};
 
 pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<Row> {
     let comparable = closures.hosts.len() > 1;
     hosts
         .iter()
-        .map(|(host, closure)| match closure {
-            Some(h) if comparable => {
+        .map(|(host, closure)| {
+            let label = (*host).to_string();
+            let Some(h) = closure else {
+                let note = NOT_MEASURED.into();
+                return Row {
+                    label,
+                    bands: Vec::new(),
+                    note,
+                };
+            };
+            let size = h.total().size;
+            let bands = if comparable {
                 let s = closures.split(host);
-                Row {
-                    label: (*host).to_string(),
-                    bands: vec![
-                        (Band::Shared, s.shared),
-                        (Band::Partial, s.partial),
-                        (Band::Unique, s.unique),
-                    ],
-                    note: human_size(h.total()),
-                }
+                vec![
+                    (Band::Shared, s.shared),
+                    (Band::Partial, s.partial),
+                    (Band::Unique, s.unique),
+                ]
+            } else {
+                vec![(Band::Solid, size)]
+            };
+            Row {
+                label,
+                bands,
+                note: Bytes(size).to_string(),
             }
-            Some(h) => Row {
-                label: (*host).to_string(),
-                bands: vec![(Band::Solid, h.total())],
-                note: human_size(h.total()),
-            },
-            None => Row {
-                label: (*host).to_string(),
-                bands: Vec::new(),
-                note: t::NOT_MEASURED.into(),
-            },
         })
         .collect()
 }
@@ -51,16 +52,16 @@ pub(super) fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
     let mut tiles: Vec<Tile> = v
         .iter()
         .take(TREEMAP_TILES)
-        .map(|(name, size, count)| Tile {
-            label: name.clone(),
-            value: *size,
-            band: band(*count),
+        .map(|s| Tile {
+            label: s.name.clone(),
+            value: s.size,
+            band: band(s.holders),
         })
         .collect();
-    let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|(_, s, _)| s).sum();
+    let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|s| s.size).sum();
     if rest > 0 {
         tiles.push(Tile {
-            label: fill(t::MORE, &[("count", &human_count(v.len() - TREEMAP_TILES))]),
+            label: t::more(Count(v.len() - TREEMAP_TILES)),
             value: rest,
             band: Band::Rest,
         });

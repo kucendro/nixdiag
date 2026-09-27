@@ -1,17 +1,23 @@
-use super::super::out::Out;
-use super::page;
-use crate::text::wiki::ARCHITECTURE;
+use super::{Page, Wiki};
+use crate::conf::files::{diagram, page};
+use crate::text::wiki::architecture as t;
 use anyhow::Result;
-use std::path::Path;
 
-pub(super) fn page_architecture(out: &Out, src: &Path) -> Result<()> {
-    for svg in ["topology.svg", "modules.svg"] {
-        let from = out.root.join(svg);
-        if from.exists() {
-            let rel = src.join(svg);
-            std::fs::create_dir_all(out.root.join(src))?;
-            std::fs::copy(&from, out.root.join(&rel))?;
-        }
+pub(super) struct Architecture;
+
+impl Page for Architecture {
+    fn file(&self) -> &'static str {
+        page::ARCHITECTURE
     }
-    page(out, &src.join("architecture.md"), &[ARCHITECTURE.into()])
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        for stem in [diagram::TOPOLOGY, diagram::MODULES] {
+            w.src.mirror(w.out, &format!("{stem}.svg"))?;
+        }
+        Ok(Some(vec![t::BODY.into()]))
+    }
 }

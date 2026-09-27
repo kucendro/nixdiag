@@ -3,121 +3,104 @@ mod charts;
 mod tests;
 
 use super::super::chart;
-use super::super::d2::D2Style;
-use super::super::out::Out;
-use super::page;
+use super::{code, size_paths, table, Page, Wiki};
 use crate::closures::{Closures, HostClosure};
-use crate::facts::Facts;
-use crate::text::fill;
-use crate::text::wiki::closures as t;
-use crate::util::{human_count, human_size, sanitize, store_name};
+use crate::conf::files::{chart as svg, page};
+use crate::conf::limits::TOP_PATHS;
+use crate::human::{Bytes, Count};
+use crate::text::wiki::{closures as t, KV, NONE};
+use crate::util::{sanitize, store_name};
 use anyhow::Result;
 use charts::{bar_rows, treemap_tiles};
-use std::path::Path;
 
-const TOP_PATHS: usize = 10;
+pub(super) struct ClosuresPage;
 
-pub(super) fn page_closures(
-    out: &Out,
-    src: &Path,
-    facts: &Facts,
-    closures: &Closures,
-    style: &D2Style,
-) -> Result<()> {
-    let hosts: Vec<(&str, Option<&HostClosure>)> = facts
+impl Page for ClosuresPage {
+    fn file(&self) -> &'static str {
+        page::CLOSURES
+    }
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        w.closures.map(|c| body(w, c)).transpose()
+    }
+}
+
+fn body(w: &Wiki, closures: &Closures) -> Result<Vec<String>> {
+    let hosts: Vec<(&str, Option<&HostClosure>)> = w
+        .facts
         .hosts
         .iter()
         .filter(|(_, h)| h.as_nixos().is_some())
         .map(|(n, _)| (n.as_str(), closures.hosts.get(n.as_str())))
         .collect();
 
-    let mut o = vec![t::TITLE.to_string()];
+    let mut o = Vec::new();
     if !hosts.is_empty() {
-        let svg = chart::bars(t::CHART_CAPTION, &bar_rows(closures, &hosts), style);
-        out.write(&src.join("closures.svg"), &svg)?;
-        o.push(fill(t::CHART, &[("caption", t::CHART_CAPTION)]));
+        let bars = chart::bars(&bar_rows(closures, &hosts), w.style)?;
+        w.src.write(svg::CLOSURES, &bars)?;
+        o.push(t::image(t::CHART_CAPTION, svg::CLOSURES));
     }
-    o.push(fill(
-        t::TABLE,
-        &[("rows", &summary_rows(closures, &hosts).join("\n"))],
-    ));
+    o.push(table(t::HEAD, summary_rows(closures, &hosts)));
 
     let measured = hosts.iter().filter(|(_, c)| c.is_some()).count();
     if measured > 1 {
-        let shared = closures.shared();
-        let shared_size: u64 = shared.iter().map(|(_, s)| s).sum();
-        let (dedup_n, dedup_size) = closures.deduped();
+        let (shared, deduped) = (closures.shared(), closures.deduped());
         let naive = closures.naive_sum();
-        o.push(fill(
-            t::FLEET,
-            &[
-                ("shared", &human_size(shared_size)),
-                ("shared_paths", &human_count(shared.len())),
-                ("deduped", &human_size(dedup_size)),
-                ("deduped_paths", &human_count(dedup_n)),
-                ("sum", &human_size(naive)),
-                ("saved", &human_size(naive.saturating_sub(dedup_size))),
+        let saved = naive.saturating_sub(deduped.size);
+        o.push(t::FLEET.into());
+        o.push(table(
+            KV,
+            [
+                [t::SHARED.into(), size_paths(&shared)],
+                [t::DEDUPED.into(), size_paths(&deduped)],
+                [t::SUM.into(), Bytes(naive).to_string()],
+                [t::SAVED.into(), Bytes(saved).to_string()],
             ],
         ));
     }
 
     for (host, closure) in &hosts {
         let Some(h) = closure else { continue };
-        o.push(fill(t::HOST, &[("host", host)]));
+        o.push(t::host(host));
         if closures.served.iter().any(|s| s == *host) {
             o.push(t::SERVED.into());
         }
 
         let tiles = treemap_tiles(closures, host);
         if !tiles.is_empty() {
-            let file = format!("closures-{}.svg", sanitize(host));
-            let caption = fill(t::TREEMAP_CAPTION, &[("host", host)]);
-            out.write(&src.join(&file), &chart::treemap(&caption, &tiles, style))?;
-            o.push(fill(t::TREEMAP, &[("caption", &caption), ("file", &file)]));
+            let file = svg::host_closure(&sanitize(host));
+            let caption = t::treemap_caption(host);
+            w.src.write(&file, &chart::treemap(&tiles, w.style)?)?;
+            o.push(t::image(&caption, &file));
         }
 
-        let mut rows: Vec<String> = h
+        let rows = h
             .largest(TOP_PATHS)
-            .iter()
-            .map(|p| {
-                fill(
-                    t::LARGEST_ROW,
-                    &[
-                        ("package", store_name(&p.path)),
-                        ("size", &human_size(p.nar_size)),
-                    ],
-                )
-            })
-            .collect();
-        if rows.is_empty() {
-            rows.push(t::LARGEST_EMPTY.into());
-        }
-        o.push(fill(t::LARGEST, &[("rows", &rows.join("\n"))]));
+            .into_iter()
+            .map(|p| [code(store_name(&p.path)), Bytes(p.nar_size).to_string()]);
+        o.push(t::LARGEST.into());
+        o.push(table(t::LARGEST_HEAD, rows));
     }
-
-    page(out, &src.join("closures.md"), &o)
+    Ok(o)
 }
 
-fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<String> {
-    if hosts.is_empty() {
-        return vec![t::EMPTY.into()];
-    }
-    hosts
-        .iter()
-        .map(|(host, closure)| match closure {
-            Some(h) => {
-                let unique: u64 = closures.unique(host).iter().map(|(_, s)| s).sum();
-                fill(
-                    t::ROW,
-                    &[
-                        ("host", host),
-                        ("closure", &human_size(h.total())),
-                        ("paths", &human_count(h.len())),
-                        ("unique", &human_size(unique)),
-                    ],
-                )
-            }
-            None => fill(t::ROW_UNMEASURED, &[("host", host)]),
-        })
-        .collect()
+fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<[String; 4]> {
+    let row = |host: &str, closure: Option<&HostClosure>| {
+        let Some(h) = closure else {
+            return [code(host), NONE.into(), NONE.into(), NONE.into()];
+        };
+        let (total, unique) = (h.total(), closures.unique(host).size);
+        let (size, paths) = (Bytes(total.size), Count(total.paths));
+        [
+            code(host),
+            size.to_string(),
+            paths.to_string(),
+            Bytes(unique).to_string(),
+        ]
+    };
+    hosts.iter().map(|(host, c)| row(host, *c)).collect()
 }

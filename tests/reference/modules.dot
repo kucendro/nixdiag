@@ -1,0 +1,40 @@
+digraph {
+  graph [rankdir=LR, fontname="sans-serif", fontcolor="#cdd6f4", bgcolor="transparent"];
+  node [fontname="sans-serif", fontcolor="#cdd6f4", shape=box, style="rounded,filled", fillcolor="#2a2a2e", color="#666"];
+  edge [fontname="sans-serif", fontsize=11, fontcolor="#cdd6f4", color="#a6adc8"];
+  "luna" [label=<<B>luna</B>>, shape=ellipse, fillcolor="#3d3517", color="#a6adc8"];
+  "sol" [label=<<B>sol</B>>, shape=ellipse, fillcolor="#3d3517", color="#a6adc8"];
+  subgraph cluster_0 {
+    label="hosts";
+    color="#666";
+    style="rounded,dashed";
+    subgraph cluster_1 {
+      label="luna";
+      color="#666";
+      style="rounded,dashed";
+      "hosts/luna/default.nix" [shape=plain, label=<<TABLE STYLE="rounded" BORDER="1" COLOR="#666" BGCOLOR="#2a2a2e" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>default.nix</TD></TR><TR><TD BGCOLOR="#1c2e4a">tailscale</TD></TR></TABLE>>];
+    }
+    subgraph cluster_2 {
+      label="sol";
+      color="#666";
+      style="rounded,dashed";
+      "hosts/sol/default.nix" [shape=plain, label=<<TABLE STYLE="rounded" BORDER="1" COLOR="#666" BGCOLOR="#2a2a2e" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>default.nix</TD></TR></TABLE>>];
+    }
+  }
+  subgraph cluster_3 {
+    label="modules";
+    color="#666";
+    style="rounded,dashed";
+    "modules/common.nix" [shape=plain, label=<<TABLE STYLE="rounded" BORDER="1" COLOR="#666" BGCOLOR="#2a2a2e" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>common.nix</TD></TR></TABLE>>];
+    "modules/mesh.nix" [shape=plain, label=<<TABLE STYLE="rounded" BORDER="1" COLOR="#666" BGCOLOR="#2a2a2e" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>mesh.nix</TD></TR><TR><TD BGCOLOR="#1c2e4a">headscale</TD></TR></TABLE>>];
+    "modules/monitoring.nix" [shape=plain, label=<<TABLE STYLE="rounded" BORDER="1" COLOR="#666" BGCOLOR="#2a2a2e" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>monitoring.nix</TD></TR><TR><TD BGCOLOR="#1c2e4a">grafana</TD></TR></TABLE>>];
+    "modules/web.nix" [shape=plain, label=<<TABLE STYLE="rounded" BORDER="1" COLOR="#666" BGCOLOR="#2a2a2e" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>web.nix</TD></TR><TR><TD BGCOLOR="#1c2e4a">nginx</TD></TR></TABLE>>];
+  }
+  "luna" -> "hosts/luna/default.nix";
+  "sol" -> "hosts/sol/default.nix";
+  "hosts/luna/default.nix" -> "modules/common.nix";
+  "hosts/luna/default.nix" -> "modules/monitoring.nix";
+  "hosts/sol/default.nix" -> "modules/common.nix";
+  "hosts/sol/default.nix" -> "modules/mesh.nix";
+  "hosts/sol/default.nix" -> "modules/web.nix";
+}

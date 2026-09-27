@@ -1,35 +1,39 @@
 mod model;
 mod resolve;
+pub mod target;
 
-pub use model::{Connection, Endpoint, Model, NamedEndpoint};
+pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
 
-use crate::facts::{Facts, Scope};
-use crate::text::{fill, messages as m};
-use anyhow::{anyhow, Result};
+use crate::facts::Facts;
+use crate::text::messages::Fail;
+use anyhow::Result;
+use std::iter::once;
 
 pub fn build(facts: &Facts) -> Result<Model> {
-    let book = resolve::Book::new(facts);
-    let mut model = Model::default();
+    let mut model = Model {
+        exposed: exposed(facts),
+        ..Model::default()
+    };
+    let book = resolve::Book::new(facts, &model.exposed);
     for (host, h) in &facts.hosts {
-        for (unit, u) in &h.topology().units {
+        let topo = h.topology();
+        for (unit, u) in &topo.units {
             let node = Endpoint::Unit(host.clone(), unit.clone());
             for c in &u.connections {
                 let to = resolve::target(facts, &book, host, &c.to).map_err(|reason| {
-                    anyhow!(fill(
-                        m::CONNECTION_ERROR,
-                        &[
-                            ("host", host),
-                            ("unit", unit),
-                            ("target", &c.to),
-                            ("reason", &reason),
-                        ],
-                    ))
+                    let (host, unit, target) = (host.clone(), unit.clone(), c.to.clone());
+                    Fail::Connection {
+                        host,
+                        unit,
+                        target,
+                        reason,
+                    }
                 })?;
                 if let Some(name) = &c.name {
                     model.named.push(NamedEndpoint {
                         name: name.clone(),
                         port: c.port,
-                        scope: c.scope,
+                        scope: c.scope.or_else(|| topo.scope_of(Some(unit))),
                         node: node.clone(),
                         target: to.clone(),
                     });
@@ -45,11 +49,24 @@ pub fn build(facts: &Facts) -> Result<Model> {
     Ok(model)
 }
 
-pub fn scope_at(facts: &Facts, e: &Endpoint) -> Option<Scope> {
-    let (host, unit) = match e {
-        Endpoint::Host(h) => (h, None),
-        Endpoint::Unit(h, u) => (h, Some(u.as_str())),
-        _ => return None,
-    };
-    facts.hosts.get(host)?.topology().scope_of(unit)
+fn exposed(facts: &Facts) -> Vec<Exposure> {
+    let mut out = Vec::new();
+    for (host, h) in &facts.hosts {
+        let topo = h.topology();
+        let units = topo
+            .units
+            .iter()
+            .map(|(u, i)| (Some(u.as_str()), &i.expose));
+        for (unit, exposes) in once((None, &topo.expose)).chain(units) {
+            out.extend(exposes.iter().map(|e| Exposure {
+                host: host.clone(),
+                unit: unit.map(Into::into),
+                name: e.name.clone(),
+                port: e.port,
+                udp: e.udp,
+                scope: e.scope.or_else(|| topo.scope_of(unit)),
+            }));
+        }
+    }
+    out
 }

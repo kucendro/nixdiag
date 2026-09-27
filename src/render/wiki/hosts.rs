@@ -1,37 +1,42 @@
-use super::super::out::Out;
-use super::{page, repo_services};
+use super::{code, codes, repo_services, size_paths, table, Page, Wiki};
 use crate::closures::Closures;
-use crate::facts::{DarwinHost, Facts, Host, NixosHost};
+use crate::conf::files::page;
+use crate::facts::{DarwinHost, Host, NixosHost};
 use crate::source::repo::Repo;
-use crate::text::fill;
-use crate::text::wiki::{hosts as t, NONE};
-use crate::util::{human_count, human_size};
+use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
 use anyhow::Result;
-use std::path::Path;
+use itertools::Itertools;
+use std::fmt::Display;
 
-fn join_or_dash(items: &[String]) -> String {
+fn join_or_dash(items: &[impl Display]) -> String {
     if items.is_empty() {
         NONE.into()
     } else {
-        items.join(", ")
+        items.iter().join(", ")
     }
 }
 
-pub(super) fn page_hosts(
-    out: &Out,
-    src: &Path,
-    facts: &Facts,
-    repo: &Repo,
-    closures: Option<&Closures>,
-) -> Result<()> {
-    let mut o = vec![t::TITLE.to_string()];
-    for (host, f) in &facts.hosts {
-        match f {
-            Host::Nixos(n) => host_nixos(&mut o, host, n, repo, closures),
-            Host::Darwin(d) => host_darwin(&mut o, host, d),
-        }
+pub(super) struct Hosts;
+
+impl Page for Hosts {
+    fn file(&self) -> &'static str {
+        page::HOSTS
     }
-    page(out, &src.join("hosts.md"), &o)
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        let mut o = Vec::new();
+        for (host, f) in &w.facts.hosts {
+            match f {
+                Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
+                Host::Darwin(d) => host_darwin(&mut o, host, d),
+            }
+        }
+        Ok(Some(o))
+    }
 }
 
 fn host_nixos(
@@ -41,62 +46,43 @@ fn host_nixos(
     repo: &Repo,
     closures: Option<&Closures>,
 ) {
-    let svcs = repo_services(f, repo);
-    let ports = |ps: &[u32]| join_or_dash(&ps.iter().map(u32::to_string).collect::<Vec<_>>());
-    o.push(fill(t::NIXOS, &[("host", host)]));
-    o.extend(f.description.clone());
+    let svcs = repo_services(&f.base, repo);
+    o.push(t::nixos(host));
+    o.extend(f.base.description.clone());
 
     let platform = if f.platform.is_empty() {
         t::UNKNOWN_PLATFORM
     } else {
         &f.platform
     };
-    let mut rows = vec![fill(t::PLATFORM, &[("platform", platform)])];
+    let mut rows = vec![[t::PLATFORM.into(), code(platform)]];
     if !f.state_version.is_empty() {
-        rows.push(fill(t::STATE, &[("state", &f.state_version)]));
+        rows.push([t::STATE.into(), code(&f.state_version)]);
     }
-    rows.push(fill(t::USERS, &[("users", &join_or_dash(&f.users))]));
-    rows.push(fill(t::PACKAGES, &[("count", &f.pkg_count.to_string())]));
+    rows.push([t::USERS.into(), join_or_dash(&f.users)]);
+    rows.push([t::PACKAGES.into(), f.pkg_count.to_string()]);
     if let Some(cs) = closures {
-        let closure = match cs.hosts.get(host) {
-            Some(c) => fill(
-                t::CLOSURE_SIZE,
-                &[
-                    ("size", &human_size(c.total())),
-                    ("paths", &human_count(c.len())),
-                ],
-            ),
-            None => t::NOT_MEASURED.into(),
-        };
-        rows.push(fill(t::CLOSURE, &[("closure", &closure)]));
+        let closure = cs.hosts.get(host).map(|c| size_paths(&c.total()));
+        rows.push([t::CLOSURE.into(), closure.unwrap_or(NOT_MEASURED.into())]);
     }
-    rows.push(fill(t::TCP, &[("ports", &ports(&f.tcp))]));
-    rows.push(fill(t::UDP, &[("ports", &ports(&f.udp))]));
-    rows.push(fill(
-        t::SERVICES_COUNT,
-        &[("count", &svcs.len().to_string())],
-    ));
-    o.push(fill(t::TABLE, &[("rows", &rows.join("\n"))]));
+    rows.push([t::TCP.into(), join_or_dash(&f.tcp)]);
+    rows.push([t::UDP.into(), join_or_dash(&f.udp)]);
+    rows.push([t::SERVICES_COUNT.into(), svcs.len().to_string()]);
+    o.push(table(KV, rows));
 
     if !svcs.is_empty() {
-        let rows: Vec<String> = svcs
+        let mut rows = svcs
             .iter()
-            .map(|(name, files)| {
-                let files: Vec<String> = files
-                    .iter()
-                    .map(|f| fill(t::FILE, &[("file", f)]))
-                    .collect();
-                fill(t::SERVICE, &[("name", name), ("files", &files.join(" "))])
-            })
-            .collect();
-        o.push(fill(t::SERVICES, &[("rows", &rows.join("\n"))]));
+            .map(|(name, files)| t::service(name, &codes(files, " ")));
+        o.push(t::services(&rows.join("\n")));
     }
 }
 
 fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
-    o.push(fill(t::DARWIN, &[("host", host)]));
+    o.push(t::darwin(host));
     o.push(
-        f.description
+        f.base
+            .description
             .clone()
             .unwrap_or_else(|| t::DARWIN_INTRO.into()),
     );
@@ -106,12 +92,7 @@ fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
         (t::CASKS, &f.casks),
     ] {
         if !items.is_empty() {
-            let mut sorted = items.clone();
-            sorted.sort();
-            o.push(fill(
-                t::LIST,
-                &[("title", title), ("items", &sorted.join(", "))],
-            ));
+            o.push(t::list(title, &items.iter().sorted().join(", ")));
         }
     }
 }

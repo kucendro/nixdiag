@@ -4,7 +4,9 @@ mod tests;
 
 pub use dups::Dup;
 
-use crate::text::{fill, messages as m};
+use crate::conf::{limits::SHORT_REV, repo, schema};
+use crate::text::messages as m;
+use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -29,6 +31,14 @@ pub struct Node {
 pub enum InputRef {
     Node(String),
     Follows(Vec<String>),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Edge {
+    pub parent: String,
+    pub input: String,
+    pub child: String,
+    pub follows: bool,
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
@@ -77,26 +87,26 @@ impl Locked {
     }
 
     pub fn short_rev(&self) -> String {
-        let v = self.version_id();
-        v.chars().take(7).collect()
+        short(&self.version_id())
     }
+}
+
+pub fn short(rev: &str) -> String {
+    rev.chars().take(SHORT_REV).collect()
 }
 
 impl Lock {
     pub fn read(repo_root: &Path) -> Option<Lock> {
-        let text = std::fs::read_to_string(repo_root.join("flake.lock")).ok()?;
+        let text = std::fs::read_to_string(repo_root.join(repo::LOCK)).ok()?;
         match serde_json::from_str::<Lock>(&text) {
             Ok(lock) => {
-                if lock.version != 0 && lock.version != 7 {
-                    eprintln!(
-                        "{}",
-                        fill(m::LOCK_VERSION, &[("version", &lock.version.to_string())])
-                    );
+                if lock.version != 0 && lock.version != schema::LOCK {
+                    eprintln!("{}", m::lock_version(lock.version, schema::LOCK));
                 }
                 Some(lock)
             }
             Err(e) => {
-                eprintln!("{}", fill(m::LOCK_UNREADABLE, &[("error", &e.to_string())]));
+                eprintln!("{}", m::lock_unreadable(e));
                 None
             }
         }
@@ -115,43 +125,39 @@ impl Lock {
         Some(at)
     }
 
-    pub fn edges(&self) -> Vec<(String, String, String, bool)> {
+    fn target(&self, r: &InputRef) -> Option<String> {
+        match r {
+            InputRef::Node(n) => Some(n.clone()),
+            InputRef::Follows(p) => self.resolve(p),
+        }
+    }
+
+    pub fn edges(&self) -> Vec<Edge> {
         let mut out = Vec::new();
         for (parent, node) in &self.nodes {
-            for (name, r) in &node.inputs {
-                let (child, follows) = match r {
-                    InputRef::Node(n) => (Some(n.clone()), false),
-                    InputRef::Follows(p) => (self.resolve(p), true),
-                };
-                if let Some(child) = child {
-                    out.push((parent.clone(), name.clone(), child, follows));
-                }
+            for (input, r) in &node.inputs {
+                out.extend(self.target(r).map(|child| Edge {
+                    parent: parent.clone(),
+                    input: input.clone(),
+                    child,
+                    follows: matches!(r, InputRef::Follows(_)),
+                }));
             }
         }
-        out.sort();
         out
     }
 
-    pub fn parents_of(&self, child: &str) -> Vec<(String, String)> {
-        let mut out: Vec<(String, String)> = self
-            .edges()
-            .into_iter()
-            .filter(|(_, _, c, follows)| c == child && !follows)
-            .map(|(p, name, _, _)| (p, name))
-            .collect();
-        out.sort();
-        out
+    pub fn parents_of(&self, child: &str) -> Vec<Edge> {
+        let edges = self.edges().into_iter();
+        edges.filter(|e| e.child == child && !e.follows).collect()
     }
 
     pub fn inputs(&self) -> Vec<(&String, &Locked)> {
-        let mut out: Vec<(&String, &Locked)> = self
-            .nodes
+        self.nodes
             .iter()
             .filter(|(name, _)| *name != &self.root)
             .filter_map(|(name, n)| n.locked.as_ref().map(|l| (name, l)))
-            .collect();
-        out.sort_by(|a, b| a.0.cmp(b.0));
-        out
+            .collect()
     }
 
     pub fn root_inputs(&self) -> BTreeSet<String> {
@@ -160,19 +166,15 @@ impl Lock {
         };
         root.inputs
             .values()
-            .filter_map(|r| match r {
-                InputRef::Node(n) => Some(n.clone()),
-                InputRef::Follows(p) => self.resolve(p),
-            })
+            .filter_map(|r| self.target(r))
             .collect()
     }
 
     pub fn date_span(&self) -> Option<(i64, i64)> {
-        let dates: Vec<i64> = self
+        let dates = self
             .inputs()
             .into_iter()
-            .filter_map(|(_, l)| l.last_modified)
-            .collect();
-        Some((*dates.iter().min()?, *dates.iter().max()?))
+            .filter_map(|(_, l)| l.last_modified);
+        dates.minmax().into_option()
     }
 }

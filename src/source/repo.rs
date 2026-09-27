@@ -1,12 +1,11 @@
-use std::path::PathBuf;
+use crate::conf::repo::{DEFAULT, FLAKE, STORE_SOURCE};
+use crate::text::messages::Fail;
+use anyhow::{Context, Result};
+use itertools::Itertools;
+use std::path::{Path, PathBuf};
 
 pub struct Repo {
     pub root: PathBuf,
-}
-
-pub fn rel_from_store(path: &str) -> Option<&str> {
-    let marker = "-source/";
-    path.find(marker).map(|i| &path[i + marker.len()..])
 }
 
 impl Repo {
@@ -14,20 +13,33 @@ impl Repo {
         Repo { root }
     }
 
-    pub fn repo_files(&self, store_files: &[String]) -> Vec<String> {
-        let mut out: Vec<String> = Vec::new();
-        for f in store_files {
-            let Some(rel) = rel_from_store(f) else {
-                continue;
-            };
-            let mut rel = rel.to_string();
-            if self.root.join(&rel).is_dir() {
-                rel = format!("{rel}/default.nix");
-            }
-            if self.root.join(&rel).exists() && !out.contains(&rel) {
-                out.push(rel);
-            }
+    pub fn flake(&self) -> Result<String> {
+        let path = self.root.join(FLAKE);
+        std::fs::read_to_string(&path).with_context(|| Fail::Reading(path.clone()))
+    }
+
+    pub fn file(&self, store_path: &str) -> Option<String> {
+        let rel = &store_path[store_path.find(STORE_SOURCE)? + STORE_SOURCE.len()..];
+        let rel = if self.root.join(rel).is_dir() {
+            format!("{rel}/{DEFAULT}")
+        } else {
+            rel.to_string()
+        };
+        self.root.join(&rel).exists().then_some(rel)
+    }
+
+    pub fn files(&self, store_paths: &[String]) -> Vec<String> {
+        store_paths
+            .iter()
+            .filter_map(|p| self.file(p))
+            .unique()
+            .collect()
+    }
+
+    pub fn rel(&self, p: &Path) -> String {
+        match p.strip_prefix(&self.root) {
+            Ok(r) => r.to_string_lossy().replace('\\', "/"),
+            Err(_) => p.to_string_lossy().into_owned(),
         }
-        out
     }
 }

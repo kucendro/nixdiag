@@ -1,38 +1,25 @@
-mod bar;
+mod bars;
 mod timeline;
 mod treemap;
 
-pub use bar::{bars, Row};
+pub use bars::{bars, Row};
 pub use timeline::{timeline, Mark};
 pub use treemap::{treemap, Tile};
 
-use super::d2::{color, D2Style};
+use super::style::Style;
+use super::svg::one_line;
+use crate::conf::palette::{chart as paint, Color};
 use crate::text::chart as t;
+use charts_rs::ChartBase;
+use serde_json::{json, Value};
 
-pub const COLORS: &[&str] = &[
-    "chartShared",
-    "chartPartial",
-    "chartUnique",
-    "chartMark",
-    "chartInk",
-    "chartMuted",
-    "chartTrack",
-    "chartTileInk",
-];
+const FONT: &str = "Roboto, Arial, sans-serif";
+const W: f32 = 720.0;
+const ROW_H: f32 = 30.0;
+const CHROME_H: f32 = 64.0;
+const MIB: f32 = 1_048_576.0;
 
-const W: u64 = 720;
-const PAD: u64 = 8;
-const CH: u64 = 7;
-const LEGEND_H: u64 = 24;
-const SWATCH: u64 = 10;
-
-#[derive(PartialEq, Eq)]
-struct Key {
-    color: (&'static str, &'static str, &'static str),
-    label: &'static str,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Band {
     Solid,
     Shared,
@@ -52,101 +39,65 @@ impl Band {
         }
     }
 
-    fn key(self) -> Key {
-        Key {
-            color: self.color(),
-            label: self.legend(),
-        }
-    }
-
-    fn color(self) -> (&'static str, &'static str, &'static str) {
+    fn color(self) -> Color {
         match self {
-            Band::Solid | Band::Shared => ("chartShared", "#4a76c4", "#7fa7e8"),
-            Band::Partial => ("chartPartial", "#c47a29", "#d9995a"),
-            Band::Unique => ("chartUnique", "#27893f", "#2ecc71"),
-            Band::Rest => ("chartMuted", "#777777", "#8b949e"),
+            Band::Solid | Band::Shared => paint::SHARED,
+            Band::Partial => paint::PARTIAL,
+            Band::Unique => paint::UNIQUE,
+            Band::Rest => paint::MUTED,
         }
     }
 }
 
-fn xml_escape(s: &str) -> String {
-    let mut o = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => o.push_str("&amp;"),
-            '<' => o.push_str("&lt;"),
-            '>' => o.push_str("&gt;"),
-            '"' => o.push_str("&quot;"),
-            _ => o.push(c),
-        }
-    }
-    o
+fn mib(bytes: u64) -> f32 {
+    bytes as f32 / MIB
 }
 
-fn gutter<'a>(strings: impl Iterator<Item = &'a str>) -> u64 {
-    let longest = strings
-        .map(str::chars)
-        .map(Iterator::count)
-        .max()
-        .unwrap_or(0);
-    CH * longest as u64 + 12
+fn height(rows: usize) -> f32 {
+    CHROME_H + ROW_H * rows as f32
 }
 
-fn rect(o: &mut String, x: u64, y: u64, w: u64, h: u64, fill: &str) {
-    o.push_str(&format!(
-        "  <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"{fill}\"/>\n"
-    ));
-}
-
-fn svg_open(caption: &str, h: u64, style: &D2Style) -> String {
-    let mut o = format!(
-        "\
-         <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {h}\" \
-         width=\"{W}\" height=\"{h}\" role=\"img\" \
-         font-family=\"ui-sans-serif, system-ui, sans-serif\">\n\
-         \x20 <title>{}</title>\n",
-        xml_escape(caption)
+fn options(style: &Style, height: f32, extra: Value) -> String {
+    let (ink, muted, grid) = (
+        style.color(&paint::INK),
+        style.color(&paint::MUTED),
+        style.color(&paint::TRACK),
     );
-    if let Some(bg) = &style.background {
-        rect(&mut o, 0, 0, W, h, bg);
+    let mut o = json!({
+        "theme": style.theme.chart(),
+        "font_family": FONT,
+        "width": W,
+        "height": height,
+        "margin": {"left": 8.0, "top": 8.0, "right": 72.0, "bottom": 8.0},
+        "legend_font_color": muted,
+        "legend_category": "rect",
+        "legend_align": "left",
+        "x_axis_font_color": ink,
+        "x_axis_stroke_color": grid,
+        "grid_stroke_color": grid,
+        "series_label_font_color": ink,
+    });
+    if let (Some(o), Some(extra)) = (o.as_object_mut(), extra.as_object()) {
+        o.extend(extra.clone());
     }
-    o
+    o.to_string()
 }
 
-fn text(o: &mut String, x: u64, y: u64, size: u64, fill: &str, end: bool, s: &str) {
-    let anchor = if end { " text-anchor=\"end\"" } else { "" };
-    o.push_str(&format!(
-        "  <text x=\"{x}\" y=\"{y}\" font-size=\"{size}\" fill=\"{fill}\"{anchor}>{}</text>\n",
-        xml_escape(s)
-    ));
+fn bar_axis(style: &Style, labels: Vec<String>) -> Value {
+    json!({
+        "series_label_position": "right",
+        "x_axis_data": labels,
+        "x_axis_name_gap": 12.0,
+        "y_axis_configs": [{
+            "axis_font_color": style.color(&paint::MUTED),
+            "axis_stroke_color": style.color(&paint::TRACK),
+        }],
+    })
 }
 
-fn legend_bands(bands: impl Iterator<Item = Band>) -> Vec<Key> {
-    let mut o: Vec<Band> = Vec::new();
-    for b in bands {
-        if !o.contains(&b) {
-            o.push(b);
-        }
-    }
-    if o == [Band::Solid] {
-        o.clear();
-    }
-    o.into_iter().map(Band::key).collect()
-}
-
-fn legend(o: &mut String, keys: &[Key], mut x: u64, style: &D2Style) {
-    let muted = color(style, "chartMuted", ("#777777", "#8b949e"));
-    for key in keys {
-        let (name, light, dark) = key.color;
-        rect(
-            o,
-            x,
-            PAD + 2,
-            SWATCH,
-            SWATCH,
-            color(style, name, (light, dark)),
-        );
-        text(o, x + SWATCH + 5, PAD + 11, 12, muted, false, key.label);
-        x += SWATCH + 5 + CH * key.label.len() as u64 + 14;
-    }
+fn paint(chart: &mut ChartBase, style: &Style) {
+    chart.background_color = style
+        .background
+        .as_deref()
+        .map_or(charts_rs::Color::transparent(), Into::into);
 }

@@ -1,11 +1,9 @@
-use super::super::out::Out;
-use super::page;
-use crate::facts::{Expose, Facts};
-use crate::text::fill;
+use super::{code, table, Page, Wiki};
+use crate::conf::files::page;
+use crate::facts::Scope;
 use crate::text::wiki::{endpoints as t, NONE};
-use crate::topology::{scope_at, Endpoint, Model};
+use crate::topology::{Endpoint, INTERNET, LAN};
 use anyhow::Result;
-use std::path::Path;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Row {
@@ -21,113 +19,75 @@ struct Row {
 impl Row {
     fn cell(&self) -> String {
         if !self.named || self.udp {
-            return fill(t::NAME, &[("name", &self.endpoint)]);
+            return code(&self.endpoint);
         }
         let (scheme, port) = match self.port {
             Some(80) => (t::HTTP, String::new()),
             Some(443) | None => (t::HTTPS, String::new()),
             Some(p) => (t::HTTP, format!(":{p}")),
         };
-        fill(
-            t::LINK,
-            &[
-                ("name", &self.endpoint),
-                ("scheme", scheme),
-                ("port", &port),
-            ],
-        )
+        t::link(&self.endpoint, scheme, &port)
     }
 
-    fn line(&self) -> String {
-        let port = format!(
-            "{}{}",
-            self.port
-                .map(|p| p.to_string())
-                .unwrap_or_else(|| NONE.into()),
-            if self.udp { t::UDP } else { "" }
-        );
-        fill(
-            t::ROW,
-            &[
-                ("endpoint", &self.cell()),
-                ("port", &port),
-                ("scope", &self.scope),
-                ("host", &self.host),
-                ("service", &self.service),
-            ],
-        )
+    fn cells(self) -> [String; 5] {
+        let port = self.port.map_or(NONE.into(), |p| p.to_string());
+        let port = port + if self.udp { t::UDP } else { "" };
+        [self.cell(), port, self.scope, self.host, self.service]
     }
 }
 
-pub(super) fn page_endpoints(out: &Out, src: &Path, facts: &Facts, model: &Model) -> Result<()> {
-    let mut rows = Vec::new();
-    for (host, h) in &facts.hosts {
-        let topo = h.topology();
-        let mut push = |unit: Option<&str>, e: &Expose| {
-            let endpoint = e.name.clone().unwrap_or_else(|| {
-                fill(t::UNNAMED, &[("host", host), ("port", &e.port.to_string())])
-            });
-            let scope = e
-                .scope
-                .or_else(|| topo.scope_of(unit))
-                .map(|s| s.label().to_string())
-                .unwrap_or_else(|| NONE.into());
-            rows.push(Row {
-                endpoint,
-                port: Some(e.port),
-                udp: e.udp,
-                scope,
-                host: host.clone(),
-                service: unit.unwrap_or(NONE).into(),
-                named: e.name.is_some(),
-            });
-        };
-        for e in &topo.expose {
-            push(None, e);
-        }
-        for (unit, u) in &topo.units {
-            for e in &u.expose {
-                push(Some(unit), e);
-            }
-        }
+fn scope(s: Option<Scope>) -> String {
+    s.map_or(NONE, Scope::label).into()
+}
+
+pub(super) struct Endpoints;
+
+impl Page for Endpoints {
+    fn file(&self) -> &'static str {
+        page::ENDPOINTS
     }
-    for ne in &model.named {
-        let host = match &ne.node {
-            Endpoint::Host(h) | Endpoint::Unit(h, _) => h.clone(),
-            _ => continue,
-        };
-        let scope = ne
-            .scope
-            .or_else(|| scope_at(facts, &ne.node))
-            .map(|s| s.label().to_string())
-            .unwrap_or_else(|| NONE.into());
-        let service = match &ne.target {
-            Endpoint::Unit(_, u) => u.clone(),
-            Endpoint::Host(h) => h.clone(),
-            Endpoint::Internet => t::INTERNET.into(),
-            Endpoint::Lan => t::LAN.into(),
-        };
-        rows.push(Row {
+
+    fn title(&self) -> &'static str {
+        t::TITLE
+    }
+
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
+        Ok(Some(vec![table(
+            t::HEAD,
+            rows(w).into_iter().map(Row::cells),
+        )]))
+    }
+}
+
+fn rows(w: &Wiki) -> Vec<Row> {
+    let exposed = w.model.exposed.iter().map(|x| Row {
+        endpoint: x
+            .name
+            .clone()
+            .unwrap_or_else(|| t::unnamed(&x.host, x.port)),
+        port: Some(x.port),
+        udp: x.udp,
+        scope: scope(x.scope),
+        host: x.host.clone(),
+        service: x.unit.as_deref().unwrap_or(NONE).into(),
+        named: x.name.is_some(),
+    });
+    let named = w.model.named.iter().filter_map(|ne| {
+        Some(Row {
             endpoint: ne.name.clone(),
             port: ne.port,
             udp: false,
-            scope,
-            host,
-            service,
+            scope: scope(ne.scope),
+            host: ne.node.host()?.into(),
+            service: match &ne.target {
+                Endpoint::Unit(_, s) | Endpoint::Host(s) => s.clone(),
+                Endpoint::Internet => INTERNET.into(),
+                Endpoint::Lan => LAN.into(),
+            },
             named: true,
-        });
-    }
+        })
+    });
+    let mut rows: Vec<Row> = exposed.chain(named).collect();
     rows.sort();
-    let mut lines: Vec<String> = rows.iter().map(Row::line).collect();
-    if lines.is_empty() {
-        lines.push(t::EMPTY.into());
-    }
-    page(
-        out,
-        &src.join("endpoints.md"),
-        &[
-            t::TITLE.to_string(),
-            fill(t::TABLE, &[("rows", &lines.join("\n"))]),
-        ],
-    )
+    rows
 }

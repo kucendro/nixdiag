@@ -1,6 +1,7 @@
-use crate::render::chart::COLORS;
-use crate::render::d2::PALETTE;
-use crate::text::{cli as t, fill, messages as m};
+use crate::conf::palette::{chart, diagram};
+use crate::render::style::Theme;
+use crate::text::cli as t;
+use crate::text::messages::BadArg;
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -23,8 +24,8 @@ pub struct Cli {
     pub extra_links: Vec<(String, String)>,
     #[arg(long, help = t::NO_SVG)]
     pub no_svg: bool,
-    #[arg(long, default_value = "dark", value_parser = ["dark", "light"], help = t::THEME)]
-    pub theme: String,
+    #[arg(long, value_enum, default_value_t, help = t::THEME)]
+    pub theme: Theme,
     #[arg(long, default_value = "transparent", help = t::BACKGROUND)]
     pub background: String,
     #[arg(long = "color", value_name = "NAME=#HEX", value_parser = color, help = t::COLOR)]
@@ -35,27 +36,24 @@ fn absolute(s: &str) -> std::io::Result<PathBuf> {
     std::path::absolute(s)
 }
 
-fn pair<V: From<String>>(s: &str) -> Result<(String, V), String> {
+fn pair<V: From<String>>(s: &str) -> Result<(String, V), BadArg> {
     match s.split_once('=') {
         Some((k, v)) if !k.is_empty() && !v.is_empty() => Ok((k.into(), V::from(v.into()))),
-        _ => Err(m::BAD_PAIR.into()),
+        _ => Err(BadArg::Pair),
     }
 }
 
-fn color(s: &str) -> Result<(String, String), String> {
+fn color(s: &str) -> Result<(String, String), BadArg> {
     let (name, hex) = pair::<String>(s)?;
-    let known: Vec<&str> = PALETTE
+    let known: Vec<&str> = diagram::ALL
         .iter()
-        .map(|(p, ..)| *p)
-        .chain(COLORS.iter().copied())
+        .chain(chart::ALL)
+        .map(|c| c.name)
         .collect();
     if known.contains(&name.as_str()) {
         return Ok((name, hex));
     }
-    Err(fill(
-        m::UNKNOWN_COLOR,
-        &[("name", &name), ("palette", &known.join(", "))],
-    ))
+    Err(BadArg::Color(name, known.join(", ")))
 }
 
 #[cfg(test)]

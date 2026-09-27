@@ -6,26 +6,35 @@ mod hosts;
 mod inputs;
 mod services;
 
-use architecture::page_architecture;
-use book::{book_toml, copy_extra_pages, page_index, page_summary};
-use closures::page_closures;
-use endpoints::page_endpoints;
-use hosts::page_hosts;
-use inputs::page_inputs;
-use services::page_services;
+use architecture::Architecture;
+use book::{book_toml, copy_extra_pages, index, summary};
+use closures::ClosuresPage;
+use endpoints::Endpoints;
+use hosts::Hosts;
+use inputs::Inputs;
+use services::Services;
 
-use super::d2::D2Style;
 use super::out::Out;
-use crate::closures::Closures;
-use crate::facts::{Facts, NixosHost};
+use super::style::Style;
+use crate::closures::{Closures, Total};
+use crate::facts::{Facts, HostBase};
+use crate::human::{Bytes, Count};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
+use crate::text::wiki::{self as text, code, NONE};
 use crate::topology::Model;
 use anyhow::Result;
+use itertools::Itertools;
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::iter::once;
+use std::path::PathBuf;
+use tabled::builder::Builder;
+use tabled::settings::Style as Grid;
 
-pub struct WikiData<'a> {
+pub struct Wiki<'a> {
+    pub out: &'a Out,
+    pub src: Out,
+    pub style: &'a Style,
     pub facts: &'a Facts,
     pub repo: &'a Repo,
     pub model: &'a Model,
@@ -39,39 +48,56 @@ pub struct WikiOpts {
     pub extra_links: Vec<(String, String)>,
 }
 
-pub(super) fn page(out: &Out, rel: &Path, sections: &[String]) -> Result<()> {
-    out.write(rel, &sections.join("\n\n"))
+pub trait Page {
+    fn file(&self) -> &'static str;
+    fn title(&self) -> &'static str;
+    fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>>;
 }
 
-pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<String>> {
-    let mut svcs = BTreeMap::new();
-    for item in &n.services {
-        let files = repo.repo_files(&item.files);
-        if !files.is_empty() {
-            svcs.insert(item.name.clone(), files);
-        }
+fn table<const N: usize>(head: [&str; N], rows: impl IntoIterator<Item = [String; N]>) -> String {
+    let mut b = Builder::from_iter(rows);
+    if b.count_records() == 0 {
+        b.push_record([NONE; N]);
     }
-    svcs
+    b.insert_record(0, head);
+    b.build().with(Grid::markdown()).to_string()
 }
 
-pub fn generate(out: &Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -> Result<()> {
-    let wiki = PathBuf::from("wiki");
-    let src = wiki.join("src");
+fn size_paths(t: &Total) -> String {
+    text::size_paths(Bytes(t.size), Count(t.paths))
+}
 
-    book_toml(out, &wiki, &opts.title, style.dark)?;
-    let mut extra = copy_extra_pages(out, &src, &opts.extra_pages)?;
-    extra.extend(opts.extra_links.iter().cloned());
-    page_summary(out, &src, &extra, d.lock.is_some(), d.closures.is_some())?;
-    page_index(out, &src)?;
-    page_architecture(out, &src)?;
-    page_hosts(out, &src, d.facts, d.repo, d.closures)?;
-    page_services(out, &src, d.facts, d.repo)?;
-    page_endpoints(out, &src, d.facts, d.model)?;
-    if let Some(lock) = d.lock {
-        page_inputs(out, &src, lock, style)?;
+fn codes<S: AsRef<str>>(items: impl IntoIterator<Item = S>, sep: &str) -> String {
+    items.into_iter().map(|s| code(s.as_ref())).join(sep)
+}
+
+pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<String>> {
+    let files = b
+        .services
+        .iter()
+        .map(|i| (i.name.clone(), repo.files(&i.files)));
+    files.filter(|(_, f)| !f.is_empty()).collect()
+}
+
+pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
+    book_toml(w, &opts.title)?;
+    index(w)?;
+    let pages: [&dyn Page; 6] = [
+        &Architecture,
+        &Hosts,
+        &Services,
+        &Endpoints,
+        &Inputs,
+        &ClosuresPage,
+    ];
+    let mut listed = Vec::new();
+    for p in pages {
+        let Some(body) = p.body(w)? else { continue };
+        let page = once(text::heading(p.title())).chain(body).join("\n\n");
+        w.src.write(p.file(), &page)?;
+        listed.push((p.title().to_string(), p.file().to_string()));
     }
-    if let Some(closures) = d.closures {
-        page_closures(out, &src, d.facts, closures, style)?;
-    }
-    Ok(())
+    listed.extend(copy_extra_pages(w, &opts.extra_pages)?);
+    listed.extend(opts.extra_links.iter().cloned());
+    summary(w, &listed)
 }
