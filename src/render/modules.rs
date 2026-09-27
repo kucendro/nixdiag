@@ -3,32 +3,41 @@ use super::out::Out;
 use super::style::Style;
 use crate::conf::files::diagram;
 use crate::facts::Facts;
-use crate::source::imports::{build_import_graph, host_entry_modules, rel_str};
-use crate::source::repo::{rel_from_store, Repo};
+use crate::source::imports::{build_import_graph, host_entry_modules};
+use crate::source::repo::Repo;
 use crate::text::d2::modules as t;
-use crate::text::{fill, messages as m};
+use crate::text::fill;
 use crate::util::sanitize;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn d2_path(rel: &str) -> String {
     rel.split('/').map(sanitize).collect::<Vec<_>>().join(".")
 }
 
-#[derive(Default)]
-struct FileMeta {
-    svcs: Vec<String>,
-    progs: Vec<String>,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Shape {
+    Service,
+    Program,
+}
+
+impl Shape {
+    fn template(self) -> &'static str {
+        match self {
+            Shape::Service => t::SERVICE,
+            Shape::Program => t::PROGRAM,
+        }
+    }
 }
 
 #[derive(Default)]
 struct Tree {
     dirs: BTreeMap<String, Tree>,
-    files: BTreeMap<String, FileMeta>,
+    files: BTreeMap<String, BTreeSet<(Shape, String)>>,
 }
 
 impl Tree {
-    fn add_file(&mut self, rel: &str) -> &mut FileMeta {
+    fn add_file(&mut self, rel: &str) -> &mut BTreeSet<(Shape, String)> {
         let parts: Vec<&str> = rel.split('/').collect();
         let mut node = self;
         for d in &parts[..parts.len() - 1] {
@@ -52,21 +61,14 @@ impl Tree {
             sub.emit(out, indent + 1);
             out.push(line(t::CLOSE, ""));
         }
-        for (fname, meta) in &self.files {
-            if meta.svcs.is_empty() && meta.progs.is_empty() {
+        for (fname, units) in &self.files {
+            if units.is_empty() {
                 out.push(line(t::FILE, fname));
                 continue;
             }
             out.push(line(t::FILE_OPEN, fname));
-            let mut svcs = meta.svcs.clone();
-            svcs.sort();
-            for s in svcs {
-                out.push(line(t::SERVICE, &s));
-            }
-            let mut progs = meta.progs.clone();
-            progs.sort();
-            for p in progs {
-                out.push(line(t::PROGRAM, &p));
+            for (shape, name) in units {
+                out.push(line(shape.template(), name));
             }
             out.push(line(t::CLOSE, ""));
         }
@@ -83,9 +85,7 @@ pub fn generate(
     let mut tree = Tree::default();
     let mut host_edges: Vec<(String, String)> = Vec::new();
     let mut import_edges: BTreeSet<(String, String)> = BTreeSet::new();
-    let flake_path = repo.root.join("flake.nix");
-    let flake_text = std::fs::read_to_string(&flake_path)
-        .with_context(|| fill(m::READING, &[("path", &flake_path.display().to_string())]))?;
+    let flake_text = repo.flake()?;
 
     for (host, f) in &facts.hosts {
         let entries = host_entry_modules(host, &flake_text, repo);
@@ -97,35 +97,14 @@ pub fn generate(
             import_edges.insert((d2_path(a), d2_path(b)));
         }
         for e in &entries {
-            host_edges.push((sanitize(host), d2_path(&rel_str(e, repo))));
+            host_edges.push((sanitize(host), d2_path(&repo.rel(e))));
         }
 
         let b = f.base();
-        for (units, field) in [(&b.services, 0), (&b.programs, 1)] {
+        for (shape, units) in [(Shape::Service, &b.services), (Shape::Program, &b.programs)] {
             for item in units {
-                for sf in &item.files {
-                    let Some(rel) = rel_from_store(sf) else {
-                        continue;
-                    };
-                    if !repo.root.join(rel).exists() {
-                        continue;
-                    }
-                    let mut rel = rel.to_string();
-                    if repo.root.join(&rel).is_dir() {
-                        rel = format!("{rel}/default.nix");
-                        if !repo.root.join(&rel).exists() {
-                            continue;
-                        }
-                    }
-                    let meta = tree.add_file(&rel);
-                    let list = if field == 0 {
-                        &mut meta.svcs
-                    } else {
-                        &mut meta.progs
-                    };
-                    if !list.contains(&item.name) {
-                        list.push(item.name.clone());
-                    }
+                for rel in item.files.iter().filter_map(|f| repo.file(f)) {
+                    tree.add_file(&rel).insert((shape, item.name.clone()));
                 }
             }
         }

@@ -51,7 +51,7 @@ impl Wiki<'_> {
 pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<String>> {
     let mut svcs = BTreeMap::new();
     for item in &b.services {
-        let files = repo.repo_files(&item.files);
+        let files = repo.files(&item.files);
         if !files.is_empty() {
             svcs.insert(item.name.clone(), files);
         }
