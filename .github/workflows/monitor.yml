@@ -65,3 +65,30 @@ jobs:
           git push
 
       - run: jq -es 'all(.[]; .eval == "ok" and all(.audit[]; .status != "broken"))' "$RUNNER_TEMP"/records/*/record.json
+
+  issues:
+    needs: head
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/records
+
+      - run: |
+          nix eval --json .#lib.adapters --apply 'builtins.mapAttrs (_: a: a.maintainers)' > maintainers.json
+          gh label create monitor --force --description "Opened by the monitor workflow"
+          gh issue list --label monitor --limit 100 --json number,title,body > open.json
+          jq -sc --slurpfile maintainers maintainers.json --slurpfile open open.json -f nix/issues.jq "$RUNNER_TEMP"/records/*/record.json > gh.jsonl
+          while read -r argv; do jq -j '.[] + "\u0000"' <<<"$argv" | xargs -0 gh; done < gh.jsonl

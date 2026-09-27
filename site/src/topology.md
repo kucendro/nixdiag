@@ -110,4 +110,6 @@ Checks every read against `options.json`, downloaded for a channel or built
 for any nixpkgs ref: `ok`, `renamed`, `unaudited`, `broken`; `--json` for
 rows. Every day at 20:00 Prague time the monitor workflow runs it and the
 fixture render against `master`, `nixos-unstable` and `nixos-25.05`, and
-records both on the `data` branch.
+records both on the `data` branch. An adapter that is not `ok` gets an
+issue mentioning its `maintainers`, which are GitHub handles; it closes once
+every head is `ok` again.
