@@ -29,6 +29,13 @@ let
     else
       lib.optional (lib.hasInfix "://" c.to) "answers(${n}, ${q c.to})";
 
+  serves =
+    n:
+    let
+      s = nodes.${n}.services.nixdiag.serve;
+    in
+    lib.optional s.enable "serves(${n}, ${q s.virtualHost}, ${q names})";
+
   scope =
     n: e:
     lib.optional (other n != null)
@@ -41,6 +48,7 @@ builtins.readFile ./checks.py
     ++ each (n: [ "${n}.wait_for_unit(\"multi-user.target\")" ])
     ++ each (n: map (p: "listens(${n}, ${toString p})") (claimed n))
     ++ each (n: lib.concatMap (connection n) (connections n))
+    ++ each serves
     ++ each (n: lib.concatMap (scope n) (entries n))
     ++ each (n: [ "listens_only(${n}, ${lan n}, ${q (claimed n)})" ])
   )

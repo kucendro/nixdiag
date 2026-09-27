@@ -3,6 +3,7 @@
   adapters,
   bases,
   options,
+  mkDocs,
 }:
 let
   inherit (lib) head tail concatStringsSep;
@@ -118,6 +119,7 @@ else
       bases.${vm}.module
       ../module
       ./kit.nix
+      (import ./docs.nix { inherit mkDocs; })
       { system.stateVersion = sv; }
     ]
     ++ lib.mapAttrsToList moduleOf (on vm);

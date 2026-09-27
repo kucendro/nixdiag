@@ -2,6 +2,7 @@
   pkgs,
   nixpkgs,
   adapters,
+  mkDocs,
 }:
 let
   inherit (pkgs) lib;
@@ -19,6 +20,7 @@ let
       adapters
       bases
       options
+      mkDocs
       ;
   };
   script = import ./script.nix { inherit lib; };

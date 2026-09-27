@@ -54,6 +54,8 @@ From each VM's own `nixdiag.facts`. Nix writes test lines. No JSON.
 - connection: through its entry, reaches `to`. Nginx: `Host: <name>`, https on 443.
   No entry: `to` answers from the VM.
 - scope: other VM reaches exposed port or not, as scope says.
+- served docs: `web` serves `mkDocs` of all VMs; closures page names every VM.
+  Measures itself without its docs: guards the self-serve loop.
 
 No setup scripts. Adapter stays plain config: `vm`, `minimum`, `probe`.
 Maintainer never needs VM internals. Service working together is nixpkgs' test, not ours.
@@ -83,11 +85,11 @@ So probes: `proxyPass`, SSL, `--login-server`.
 
 - Fixture: render snapshots, demo, README assets. Not adapter truth.
 - Audit: cheap, early rename signal.
-- Closures: VM system measured for demo and README.
-  Snapshots keep hand `closures.json`; real sizes move every lock bump.
+- Closures: measured from VM systems, served by `web`.
+  Snapshots and README keep hand `closures.json`; real sizes move every lock bump.
 
 ## Slices
 
 1. `tests` in adapters, premade VMs, harness, pinned head, `nix flake check`.
 2. Monitor runs VMs per channel head, drops fixture diff.
-3. Closure render from VM system.
+3. `web` serves its own docs, closures from VM systems. Hand `serving` check gone.
