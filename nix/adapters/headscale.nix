@@ -14,7 +14,18 @@
     vm = [ "hub" ];
     minimum.services.headscale = {
       address = "0.0.0.0";
-      settings.dns.base_domain = "mesh.test";
+      settings.dns = {
+        base_domain = "mesh.test";
+        override_local_dns = false;
+      };
+      settings.derp = {
+        urls = [ ];
+        server = {
+          enabled = true;
+          region_id = 999;
+          stun_listen_addr = "0.0.0.0:3478";
+        };
+      };
     };
     probe.url = "http://hub:8080";
   };
