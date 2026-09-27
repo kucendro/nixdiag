@@ -27,7 +27,7 @@ the same for the current directory without touching the flake.
 | `extraAssets` | `{ }` | `{ "img/rack.png" = ./rack.png; }`, copied into `wiki/src` before mdbook |
 | `buildWiki` | `true` | set `false` for diagrams and markdown only, no mdbook |
 | `theme` | `"dark"` | `"light"` or `"dark"` |
-| `background` | `"transparent"` | diagram canvas fill, any d2 fill |
+| `background` | `"transparent"` | diagram canvas fill, any graphviz color |
 | `colors` | `{ }` | palette overrides, see below |
 | `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **builds those systems** |
 | `closuresExclude` | `[ ]` | hosts to leave out of `closures = true` |
@@ -86,8 +86,8 @@ colors = { public = "#ff5555"; mesh = "#7fa7e8"; };
 
 Names: `appFill`, `appStroke`, `infraFill`, `infraStroke`, `baseFill`,
 `baseStroke`, `hostFill`, `hostStroke`, `progFill`, `hostCloud`, `public`,
-`lan`, `mesh`. An unknown name is an error listing the palette. Colours live
-in a `vars` block at the top of each `.d2`, editable by hand.
+`lan`, `mesh`, `ink` for text, `line` for plain edges. An unknown name is an
+error listing the palette.
 
 `theme` also picks the mdBook theme the seeded `book.toml` starts with:
 `navy` for dark, `light` with `coal` for dark-preferring viewers otherwise.
