@@ -39,7 +39,7 @@ in
             facts = fixture-facts;
           }
           ''
-            nixdiag render --facts "$facts" --repo ${src} \
+            nixdiag --facts "$facts" --repo ${src} \
               --closures ${src}/closures.json --out $out --no-svg
           '';
     };

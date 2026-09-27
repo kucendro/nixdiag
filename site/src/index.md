@@ -37,4 +37,4 @@ Both are the two-host fixture, the [live demo](./demo.md).
 - [Quickstart](./quickstart.md)
 - [Topology](./topology.md): adapters, `nixdiag.*` options, overrides
 - [Build and serve](./build.md): `mkDocs`, the nginx module
-- [CLI](./cli.md): `render`
+- [CLI](./cli.md): flags

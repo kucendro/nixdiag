@@ -1,5 +1,4 @@
 pub const ABOUT: &str = "Static infrastructure docs | Nixdiag";
-pub const RENDER: &str = "Render docs";
 pub const FACTS: &str = "facts.json path, or - for stdin";
 pub const REPO: &str = "Repo source";
 pub const CLOSURES: &str =

@@ -1,23 +1,11 @@
 use crate::render::d2::PALETTE;
 use crate::text::{cli as t, fill, messages as m};
-use clap::{Args, Parser, Subcommand};
+use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "nixdiag", version, about = t::ABOUT)]
 pub struct Cli {
-    #[command(subcommand)]
-    pub cmd: Cmd,
-}
-
-#[derive(Subcommand)]
-pub enum Cmd {
-    #[command(about = t::RENDER)]
-    Render(RenderArgs),
-}
-
-#[derive(Args)]
-pub struct RenderArgs {
     #[arg(long, help = t::FACTS)]
     pub facts: PathBuf,
     #[arg(long, default_value = ".", value_parser = absolute, help = t::REPO)]

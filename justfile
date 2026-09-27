@@ -11,7 +11,7 @@ wiki: build
     set -euo pipefail
     facts="$(nix build .#fixture-facts --no-link --print-out-paths)"
     rm -rf .dev/docs
-    ./target/debug/nixdiag render \
+    ./target/debug/nixdiag \
       --facts "$facts" --repo tests/fixture \
       --closures tests/fixture/closures.json \
       --title 'Example fleet' --out .dev/docs
@@ -51,7 +51,7 @@ assets: build
     for theme in dark light; do
       out=".dev/assets-$theme"
       rm -rf "$out"
-      ./target/debug/nixdiag render \
+      ./target/debug/nixdiag \
         --facts "$facts" --repo tests/fixture \
         --closures tests/fixture/closures.json \
         --title 'Example fleet' --theme "$theme" --out "$out"

@@ -1,7 +1,7 @@
 # CLI
 
 ```sh
-nixdiag render --facts facts.json --repo . --out docs
+nixdiag --facts facts.json --repo . --out docs
 ```
 
 Renders from a `facts.json` that `lib.mkFacts` produced and never calls

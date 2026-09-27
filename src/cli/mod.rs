@@ -5,13 +5,13 @@ use crate::facts::Facts;
 use crate::render::{d2::D2Style, render_all, RenderOpts, WikiOpts};
 use crate::text::{fill, messages as m};
 use anyhow::{Context, Result};
-use args::{Cli, Cmd};
+use args::Cli;
 use clap::Parser;
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
 pub fn run() -> Result<()> {
-    let Cmd::Render(r) = Cli::parse().cmd;
+    let r = Cli::parse();
     let facts: Facts = read_json(&r.facts).context(m::PARSING_FACTS)?;
     let closures: Option<Closures> = r
         .closures

@@ -33,7 +33,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 - [Quickstart](https://kucendro.github.io/nixdiag/quickstart.html): first render in one command
 - [Topology](https://kucendro.github.io/nixdiag/topology.html): adapters, `nixdiag.*` options, overrides
 - [Build and serve](https://kucendro.github.io/nixdiag/build.html): `lib.mkDocs` as a pure derivation, the nginx module
-- [CLI](https://kucendro.github.io/nixdiag/cli.html): `render`
+- [CLI](https://kucendro.github.io/nixdiag/cli.html): flags
 - [Live demo](https://kucendro.github.io/nixdiag/demo/): the wiki this repo's test fixture renders
 
 ---

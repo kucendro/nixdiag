@@ -118,7 +118,7 @@ rec {
         ++ lib.optional buildWiki pkgs.mdbook;
       }
       ''
-        nixdiag render --facts ${factsJson} --repo ${flake} --out $out \
+        nixdiag --facts ${factsJson} --repo ${flake} --out $out \
           --title ${lib.escapeShellArg title} \
           ${lib.concatStringsSep " " (pageFlags ++ linkFlags ++ styleFlags)}
         ${lib.optionalString (indexPage != null) ''
