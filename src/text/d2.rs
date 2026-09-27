@@ -29,18 +29,3 @@ classes: {
     pub const EXPOSE_NAMED: &str = "{name} :{port}{proto}";
     pub const UDP_SUFFIX: &str = "/udp";
 }
-
-pub mod modules {
-    pub const HOST: &str =
-        "{id}: \"{host}\" { shape: cloud; style.fill: ${hostCloud}; style.bold: true }";
-    pub const DIR_OPEN: &str = "{pad}{id}: \"{name}\" {";
-    pub const CLOSE: &str = "{pad}}";
-    pub const FILE: &str = "{pad}{id}: \"{name}\" { shape: page }";
-    pub const FILE_OPEN: &str = "{pad}{id}: \"{name}\" { shape: page";
-    pub const SERVICE: &str = "{pad}  svc_{id}: \"{name}\" { shape: oval; style.fill: ${appFill} }";
-    pub const PROGRAM: &str =
-        "{pad}  prog_{id}: \"{name}\" { shape: hexagon; style.fill: ${progFill} }";
-    pub const HOST_EDGES: &str = "# host -> entry module";
-    pub const IMPORT_EDGES: &str = "# module imports";
-    pub const EDGE: &str = "{from} -> {to}";
-}

@@ -1,5 +1,5 @@
 docs      topology.d2
-docs      modules.d2
+docs      modules.dot
 docs      inputs.dot
 
 docs      wiki/src/hosts.md

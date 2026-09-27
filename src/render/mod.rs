@@ -51,7 +51,7 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         svg: opts.svg,
     };
     topology::generate(facts, &model, &d2)?;
-    modules::generate(facts, &repo, &d2)?;
+    modules::generate(facts, &repo, &dot)?;
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
         inputs::generate(lock, &dot)?;

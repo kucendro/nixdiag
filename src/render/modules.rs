@@ -1,17 +1,12 @@
-use super::d2::D2;
+use super::dot::{card, id, Dot, Paint};
 use crate::conf::files::diagram;
+use crate::conf::palette::{diagram as p, Color};
 use crate::facts::Facts;
 use crate::source::imports::{build_import_graph, host_entry_modules};
 use crate::source::repo::Repo;
-use crate::text::d2::modules as t;
-use crate::text::fill;
-use crate::util::sanitize;
 use anyhow::Result;
+use dot_writer::{Attributes, Scope};
 use std::collections::{BTreeMap, BTreeSet};
-
-fn d2_path(rel: &str) -> String {
-    rel.split('/').map(sanitize).collect::<Vec<_>>().join(".")
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Shape {
@@ -20,10 +15,10 @@ enum Shape {
 }
 
 impl Shape {
-    fn template(self) -> &'static str {
+    fn fill(self) -> Color {
         match self {
-            Shape::Service => t::SERVICE,
-            Shape::Program => t::PROGRAM,
+            Shape::Service => p::APP_FILL,
+            Shape::Program => p::PROG_FILL,
         }
     }
 }
@@ -46,34 +41,28 @@ impl Tree {
             .or_default()
     }
 
-    fn emit(&self, out: &mut Vec<String>, indent: usize) {
-        let pad = "  ".repeat(indent);
-        let line = |template: &str, name: &str| {
-            fill(
-                template,
-                &[("pad", &pad), ("id", &sanitize(name)), ("name", name)],
-            )
-        };
+    fn emit(&self, g: &mut Scope, dot: &Dot, prefix: &str) {
         for (name, sub) in &self.dirs {
-            out.push(line(t::DIR_OPEN, name));
-            sub.emit(out, indent + 1);
-            out.push(line(t::CLOSE, ""));
+            let mut c = g.cluster();
+            c.text(&[name])
+                .stroke(dot.color(&p::BASE_STROKE))
+                .set("style", "rounded,dashed", true);
+            sub.emit(&mut c, dot, &format!("{prefix}{name}/"));
         }
-        for (fname, units) in &self.files {
-            if units.is_empty() {
-                out.push(line(t::FILE, fname));
-                continue;
-            }
-            out.push(line(t::FILE_OPEN, fname));
-            for (shape, name) in units {
-                out.push(line(shape.template(), name));
-            }
-            out.push(line(t::CLOSE, ""));
+        let (fill, stroke) = (dot.color(&p::BASE_FILL), dot.color(&p::BASE_STROKE));
+        for (name, units) in &self.files {
+            let rows: Vec<(&str, &str)> = units
+                .iter()
+                .map(|(shape, unit)| (dot.color(&shape.fill()), unit.as_str()))
+                .collect();
+            g.node_named(id(&format!("{prefix}{name}")))
+                .shape("plain")
+                .set_html(&card(name, fill, stroke, &rows));
         }
     }
 }
 
-pub fn generate(facts: &Facts, repo: &Repo, d2: &D2) -> Result<()> {
+pub fn generate(facts: &Facts, repo: &Repo, dot: &Dot) -> Result<()> {
     let mut tree = Tree::default();
     let mut host_edges: Vec<(String, String)> = Vec::new();
     let mut import_edges: BTreeSet<(String, String)> = BTreeSet::new();
@@ -85,12 +74,8 @@ pub fn generate(facts: &Facts, repo: &Repo, d2: &D2) -> Result<()> {
         for n in &nodes {
             tree.add_file(n);
         }
-        for (a, b) in &edges {
-            import_edges.insert((d2_path(a), d2_path(b)));
-        }
-        for e in &entries {
-            host_edges.push((sanitize(host), d2_path(&repo.rel(e))));
-        }
+        import_edges.extend(edges);
+        host_edges.extend(entries.iter().map(|e| (host.clone(), repo.rel(e))));
 
         let b = f.base();
         for (shape, units) in [(Shape::Service, &b.services), (Shape::Program, &b.programs)] {
@@ -102,20 +87,17 @@ pub fn generate(facts: &Facts, repo: &Repo, d2: &D2) -> Result<()> {
         }
     }
 
-    let edge = |(from, to): &(String, String)| fill(t::EDGE, &[("from", from), ("to", to)]);
-    let mut o = d2.preamble();
-    o.push(String::new());
-    for host in facts.hosts.keys() {
-        o.push(fill(t::HOST, &[("id", &sanitize(host)), ("host", host)]));
-    }
-    o.push(String::new());
-    tree.emit(&mut o, 0);
-    o.push(String::new());
-    o.push(t::HOST_EDGES.into());
-    o.extend(host_edges.iter().map(edge));
-    o.push(String::new());
-    o.push(t::IMPORT_EDGES.into());
-    o.extend(import_edges.iter().map(edge));
-
-    d2.write(diagram::MODULES, &o)
+    dot.render(diagram::MODULES, |g| {
+        for host in facts.hosts.keys() {
+            g.node_named(id(host))
+                .bold(host)
+                .shape("ellipse")
+                .fill(dot.color(&p::HOST_CLOUD))
+                .stroke(dot.color(&p::HOST_STROKE));
+        }
+        tree.emit(g, dot, "");
+        for (from, to) in host_edges.iter().chain(&import_edges) {
+            g.edge(id(from), id(to));
+        }
+    })
 }

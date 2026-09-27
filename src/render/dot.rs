@@ -9,6 +9,25 @@ use quick_xml::escape::escape;
 use std::io::ErrorKind;
 use std::process::Command;
 
+fn quote(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+pub fn id(s: &str) -> String {
+    format!("\"{}\"", quote(s))
+}
+
+pub fn card(title: &str, fill: &str, stroke: &str, rows: &[(&str, &str)]) -> String {
+    let rows: String = rows
+        .iter()
+        .map(|(bg, s)| format!(r#"<TR><TD BGCOLOR="{bg}">{}</TD></TR>"#, escape(*s)))
+        .collect();
+    format!(
+        r#"<<TABLE STYLE="rounded" BORDER="1" COLOR="{stroke}" BGCOLOR="{fill}" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>{}</TD></TR>{rows}</TABLE>>"#,
+        escape(title)
+    )
+}
+
 pub trait Paint: Attributes {
     fn fill(&mut self, c: &str) -> &mut Self {
         self.set("fillcolor", c, true)
@@ -18,11 +37,12 @@ pub trait Paint: Attributes {
         self.set("color", c, true)
     }
 
+    fn shape(&mut self, s: &str) -> &mut Self {
+        self.set("shape", s, false)
+    }
+
     fn text(&mut self, lines: &[&str]) -> &mut Self {
-        let lines: Vec<String> = lines
-            .iter()
-            .map(|l| l.replace('\\', "\\\\").replace('"', "\\\""))
-            .collect();
+        let lines: Vec<String> = lines.iter().map(|l| quote(l)).collect();
         self.set("label", &lines.join("\\n"), true)
     }
 
@@ -60,7 +80,7 @@ impl Dot<'_> {
             g.node_attributes()
                 .set_font(DOT_FONT)
                 .set("fontcolor", ink, true)
-                .set("shape", "box", false)
+                .shape("box")
                 .set("style", "rounded,filled", true)
                 .fill(self.color(&p::BASE_FILL))
                 .stroke(self.color(&p::BASE_STROKE));
