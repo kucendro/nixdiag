@@ -42,5 +42,24 @@ in
             nixdiag --facts "$facts" --repo ${src} \
               --closures ${src}/closures.json --out $out --no-svg
           '';
+
+      fixture-assets =
+        pkgs.runCommand "nixdiag-fixture-assets"
+          {
+            nativeBuildInputs = [ nixdiag ];
+            facts = fixture-facts;
+          }
+          ''
+            mkdir $out
+            for theme in dark light; do
+              nixdiag --facts "$facts" --repo ${src} \
+                --closures ${src}/closures.json --theme $theme --out $theme >/dev/null
+              suffix=""
+              [ $theme = dark ] || suffix=-light
+              for f in topology modules inputs wiki/src/inputs-timeline wiki/src/closures wiki/src/closures-sol; do
+                cp $theme/$f.svg $out/$(basename $f)$suffix.svg
+              done
+            done
+          '';
     };
 }

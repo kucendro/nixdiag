@@ -44,25 +44,7 @@ snapshots:
     done < <(grep -v '^\s*#' tests/reference/MANIFEST)
     git diff --stat -- tests/reference/
 
-assets: build
-    #!/usr/bin/env bash
-    set -euo pipefail
-    facts="$(nix build .#fixture-facts --no-link --print-out-paths)"
-    for theme in dark light; do
-      out=".dev/assets-$theme"
-      rm -rf "$out"
-      ./target/debug/nixdiag \
-        --facts "$facts" --repo tests/fixture \
-        --closures tests/fixture/closures.json \
-        --title 'Example fleet' --theme "$theme" --out "$out"
-      suffix=""
-      if [ "$theme" = light ]; then suffix="-light"; fi
-      for d in topology modules inputs; do
-        cp "$out/$d.svg" "assets/$d$suffix.svg"
-      done
-      for c in inputs-timeline closures closures-sol; do
-        cp "$out/wiki/src/$c.svg" "assets/$c$suffix.svg"
-      done
-    done
+assets:
+    cp -f "$(nix build .#fixture-assets --no-link --print-out-paths)"/*.svg assets/
     chmod 644 assets/*.svg
     git diff --stat -- assets/

@@ -64,6 +64,11 @@ in
     reference = snapshots;
   };
 
+  assets = check "assets" {
+    fresh = packages.fixture-assets;
+    assets = ../assets;
+  };
+
   closures-plumbing = check "closures-plumbing" {
     closures = mkClosures { toplevels.demo = pkgs.hello; };
   };
