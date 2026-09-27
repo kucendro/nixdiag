@@ -24,7 +24,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
 
     let mut o = vec![t::TITLE.to_string()];
     if !hosts.is_empty() {
-        let bars = chart::bars(t::CHART_CAPTION, &bar_rows(closures, &hosts), w.style);
+        let bars = chart::bars(&bar_rows(closures, &hosts), w.style)?;
         w.src.write(svg::CLOSURES, &bars)?;
         o.push(t::image(t::CHART_CAPTION, svg::CLOSURES));
     }
@@ -58,8 +58,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
         if !tiles.is_empty() {
             let file = svg::host_closure(&sanitize(host));
             let caption = t::treemap_caption(host);
-            w.src
-                .write(&file, &chart::treemap(&caption, &tiles, w.style))?;
+            w.src.write(&file, &chart::treemap(&tiles, w.style)?)?;
             o.push(t::image(&caption, &file));
         }
 

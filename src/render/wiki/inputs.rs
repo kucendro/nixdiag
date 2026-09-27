@@ -77,10 +77,8 @@ fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
         return Ok(());
     };
 
-    w.src.write(
-        svg::TIMELINE,
-        &chart::timeline(t::DATES_CAPTION, &marks, w.style),
-    )?;
+    w.src
+        .write(svg::TIMELINE, &chart::timeline(&marks, w.style)?)?;
 
     o.push(t::DATES.into());
     let days = (hi - lo) / DAY;

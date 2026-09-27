@@ -1,30 +1,68 @@
-<svg font-family="ui-sans-serif, system-ui, sans-serif" height="92" role="img" viewBox="0 0 720 92" width="720" xmlns="http://www.w3.org/2000/svg">
-<title>System closure size by host</title>
-<rect fill="transparent" height="92" width="720" x="0" y="0"/>
-<rect fill="#7fa7e8" height="10" width="10" x="40" y="10"/>
-<text fill="#8b949e" font-size="12" x="55" y="19">
+<svg width="720" height="124" viewBox="0 0 720 124" xmlns="http://www.w3.org/2000/svg">
+<g>
+<rect x="8" y="13" width="25" height="10" stroke="#7FA7E8" fill="#7FA7E8"/>
+<text font-size="14" x="36" y="22" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
 shared by every host
 </text>
-<rect fill="#2ecc71" height="10" width="10" x="209" y="10"/>
-<text fill="#8b949e" font-size="12" x="224" y="19">
+</g>
+<g>
+<rect x="177" y="13" width="25" height="10" stroke="#2ECC71" fill="#2ECC71"/>
+<text font-size="14" x="205" y="22" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
 unique to this host
 </text>
-<text fill="#c9d1d9" font-size="13" text-anchor="end" x="32" y="49">
-luna
+</g>
+<g>
+<g stroke="#2A2A2E" stroke-width="1">
+<line x1="118" y1="30" x2="118" y2="86"/>
+<line x1="118" y1="30" x2="113" y2="30"/>
+<line x1="118" y1="58" x2="113" y2="58"/>
+<line x1="118" y1="86" x2="113" y2="86"/>
+</g>
+<text font-size="14" x="1" y="49" font-family="Roboto, Arial, sans-serif" fill="#C9D1D9">
+luna · 293.8 MiB
 </text>
-<rect fill="#2a2a2e" height="14" width="597" x="40" y="38"/>
-<rect fill="#7fa7e8" height="14" width="368" x="40" y="38"/>
-<rect fill="#2ecc71" height="14" width="5" x="408" y="38"/>
-<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="49">
-293.8 MiB
+<text font-size="14" x="9" y="77" font-family="Roboto, Arial, sans-serif" fill="#C9D1D9">
+sol · 469.8 MiB
 </text>
-<text fill="#c9d1d9" font-size="13" text-anchor="end" x="32" y="75">
-sol
+</g>
+<g>
+<g stroke="#2A2A2E" stroke-width="1">
+<line x1="118" y1="86" x2="648" y2="86"/>
+<line x1="118" y1="86" x2="118" y2="91"/>
+<line x1="206.3" y1="86" x2="206.3" y2="91"/>
+<line x1="294.7" y1="86" x2="294.7" y2="91"/>
+<line x1="383" y1="86" x2="383" y2="91"/>
+<line x1="471.3" y1="86" x2="471.3" y2="91"/>
+<line x1="559.7" y1="86" x2="559.7" y2="91"/>
+<line x1="648" y1="86" x2="648" y2="91"/>
+</g>
+<text font-size="14" x="99.5" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+0 MiB
 </text>
-<rect fill="#2a2a2e" height="14" width="597" x="40" y="64"/>
-<rect fill="#7fa7e8" height="14" width="368" x="40" y="64"/>
-<rect fill="#2ecc71" height="14" width="229" x="408" y="64"/>
-<text fill="#c9d1d9" font-size="12" text-anchor="end" x="716" y="75">
-469.8 MiB
+<text font-size="14" x="183.8" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+80 MiB
 </text>
+<text font-size="14" x="268.2" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+160 MiB
+</text>
+<text font-size="14" x="356.5" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+240 MiB
+</text>
+<text font-size="14" x="444.8" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+320 MiB
+</text>
+<text font-size="14" x="533.2" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+400 MiB
+</text>
+<text font-size="14" x="621.5" y="108" font-family="Roboto, Arial, sans-serif" fill="#8B949E">
+480 MiB
+</text>
+</g>
+<g stroke="#2A2A2E" stroke-width="1">
+<line x1="206.3" y1="30" x2="206.3" y2="86"/><line x1="294.7" y1="30" x2="294.7" y2="86"/><line x1="383" y1="30" x2="383" y2="86"/><line x1="471.3" y1="30" x2="471.3" y2="86"/><line x1="559.7" y1="30" x2="559.7" y2="86"/><line x1="648" y1="30" x2="648" y2="86"/>
+</g>
+<rect x="118" y="63" width="319.9" height="18" fill="#7FA7E8" data-series="shared by every host" data-category="sol · 469.8 MiB" data-value="289.8"/>
+<rect x="118" y="35" width="319.9" height="18" fill="#7FA7E8" data-series="shared by every host" data-category="luna · 293.8 MiB" data-value="289.8"/>
+<rect x="437.9" y="63" width="198.8" height="18" fill="#2ECC71" data-series="unique to this host" data-category="sol · 469.8 MiB" data-value="180"/>
+<rect x="437.9" y="35" width="4.4" height="18" fill="#2ECC71" data-series="unique to this host" data-category="luna · 293.8 MiB" data-value="4"/>
 </svg>

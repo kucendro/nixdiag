@@ -117,7 +117,6 @@ Dashed edges are `follows`, which *removes* a duplicate.
 
 ![Input graph](./inputs.svg)";
     pub const HEAD: [&str; 4] = ["Input", "Source", "Rev", "Locked"];
-    pub const DATES_CAPTION: &str = "Locked inputs by date, oldest first";
     pub const DATES: &str = "\
 ## Lock dates
 
