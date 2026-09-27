@@ -1,42 +1,42 @@
-use super::Endpoint;
+use super::url::{is_loopback, split};
+use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
 use crate::text::{fill, messages as m};
 use std::collections::BTreeMap;
 
-pub struct Book(BTreeMap<String, Vec<(Endpoint, Option<u32>)>>);
+struct Entry {
+    node: Endpoint,
+    port: Option<u32>,
+}
+
+pub struct Book(BTreeMap<String, Vec<Entry>>);
 
 impl Book {
-    pub fn new(facts: &Facts) -> Self {
-        let mut book: BTreeMap<String, Vec<(Endpoint, Option<u32>)>> = BTreeMap::new();
-        let mut add = |name: &str, node: &Endpoint, port: Option<u32>| {
+    pub fn new(facts: &Facts, exposed: &[Exposure]) -> Self {
+        let mut book: BTreeMap<String, Vec<Entry>> = BTreeMap::new();
+        let mut add = |name: &str, node: Endpoint, port: Option<u32>| {
             book.entry(name.to_string())
                 .or_default()
-                .push((node.clone(), port));
+                .push(Entry { node, port });
         };
+        for x in exposed {
+            if let Some(n) = &x.name {
+                add(n, x.node(), Some(x.port));
+            }
+        }
         for (host, h) in &facts.hosts {
             let topo = h.topology();
-            let node = Endpoint::Host(host.clone());
             for n in &topo.names {
-                add(n, &node, None);
-            }
-            for e in &topo.expose {
-                if let Some(n) = &e.name {
-                    add(n, &node, Some(e.port));
-                }
+                add(n, Endpoint::Host(host.clone()), None);
             }
             for (unit, u) in &topo.units {
                 let node = Endpoint::Unit(host.clone(), unit.clone());
                 for n in &u.names {
-                    add(n, &node, None);
-                }
-                for e in &u.expose {
-                    if let Some(n) = &e.name {
-                        add(n, &node, Some(e.port));
-                    }
+                    add(n, node.clone(), None);
                 }
                 for c in &u.connections {
                     if let Some(n) = &c.name {
-                        add(n, &node, c.port);
+                        add(n, node.clone(), c.port);
                     }
                 }
             }
@@ -48,7 +48,7 @@ impl Book {
         let Some(entries) = self.0.get(name) else {
             return Ok(None);
         };
-        let mut nodes = unique(entries.iter().filter(|(_, p)| port.is_some() && *p == port));
+        let mut nodes = unique(entries.iter().filter(|e| port.is_some() && e.port == port));
         if nodes.is_empty() {
             nodes = unique(entries.iter());
         }
@@ -59,21 +59,21 @@ impl Book {
     }
 }
 
-fn unique<'a>(entries: impl Iterator<Item = &'a (Endpoint, Option<u32>)>) -> Vec<Endpoint> {
+fn unique<'a>(entries: impl Iterator<Item = &'a Entry>) -> Vec<Endpoint> {
     let mut v: Vec<Endpoint> = Vec::new();
-    for (n, _) in entries {
-        if !v.contains(n) {
-            v.push(n.clone());
+    for e in entries {
+        if !v.contains(&e.node) {
+            v.push(e.node.clone());
         }
     }
     v
 }
 
 pub fn target(facts: &Facts, book: &Book, from: &str, target: &str) -> Result<Endpoint, String> {
-    if target == "internet" {
+    if target == INTERNET {
         return Ok(Endpoint::Internet);
     }
-    if target == "lan" {
+    if target == LAN {
         return Ok(Endpoint::Lan);
     }
     if !target.contains("://") {
@@ -87,7 +87,7 @@ pub fn target(facts: &Facts, book: &Book, from: &str, target: &str) -> Result<En
     if let Some(e) = unique_unit(facts, target)? {
         return Ok(e);
     }
-    let (name, port) = split_url(target);
+    let (name, port) = split(target);
     if is_loopback(name) {
         let port_text = port.map(|p| p.to_string()).unwrap_or_default();
         return unit_on_port(facts, from, port)
@@ -151,49 +151,4 @@ fn unit_on_port(facts: &Facts, host: &str, port: Option<u32>) -> Option<Endpoint
         .iter()
         .find(|(_, u)| u.ports.contains(&port) || u.expose.iter().any(|e| e.port == port))
         .map(|(unit, _)| Endpoint::Unit(host.into(), unit.clone()))
-}
-
-fn split_url(target: &str) -> (&str, Option<u32>) {
-    let (scheme, rest) = match target.split_once("://") {
-        Some((s, r)) => (Some(s), r),
-        None => (None, target),
-    };
-    let authority = rest.split('/').next().unwrap_or(rest);
-    let (host, port) = match authority.strip_prefix('[').and_then(|a| a.split_once(']')) {
-        Some((h, p)) => (h, p.strip_prefix(':')),
-        None => match authority.rsplit_once(':') {
-            Some((h, p)) => (h, Some(p)),
-            None => (authority, None),
-        },
-    };
-    let default = match scheme {
-        Some("https") => Some(443),
-        Some("http") => Some(80),
-        _ => None,
-    };
-    (host, port.and_then(|p| p.parse().ok()).or(default))
-}
-
-fn is_loopback(host: &str) -> bool {
-    host.starts_with("127.") || host == "localhost" || host == "::1"
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn urls_split_into_host_and_port_with_scheme_defaults() {
-        assert_eq!(
-            split_url("https://hs.ts.example"),
-            ("hs.ts.example", Some(443))
-        );
-        assert_eq!(
-            split_url("http://luna.ts.example:3000/api"),
-            ("luna.ts.example", Some(3000))
-        );
-        assert_eq!(split_url("127.0.0.1:8080"), ("127.0.0.1", Some(8080)));
-        assert_eq!(split_url("http://[::1]:9090"), ("::1", Some(9090)));
-        assert_eq!(split_url("db.example"), ("db.example", None));
-    }
 }

@@ -1,29 +1,35 @@
 use crate::conf::files::diagram;
-use crate::facts::{Expose, Facts, Host, Kind, Scope};
+use crate::facts::{Facts, Host, Kind, Scope};
 use crate::render::d2::{preamble, write_and_render};
 use crate::render::out::Out;
 use crate::render::style::Style;
 use crate::text::d2::topology as t;
 use crate::text::fill;
-use crate::topology::{scope_at, Endpoint, Model};
+use crate::topology::{Connection, Endpoint, Model, INTERNET, LAN};
 use crate::util::sanitize;
 use anyhow::Result;
 use indexmap::IndexMap;
 
-fn class(kind: Option<Kind>) -> &'static str {
-    match kind {
-        Some(Kind::Infra) => "infra",
-        _ => "app",
-    }
+struct Node {
+    class: &'static str,
+    label: String,
 }
 
-fn node_label(unit: &str, role: Option<&str>) -> String {
-    match role {
-        Some(r) => fill(
-            t::UNIT_WITH_ROLE,
-            &[("unit", unit), ("role", &r.replace('-', " "))],
-        ),
-        None => unit.to_string(),
+impl Node {
+    fn declared(unit: &str, kind: Option<Kind>, role: Option<&str>) -> Node {
+        Node {
+            class: match kind {
+                Some(Kind::Infra) => "infra",
+                _ => "app",
+            },
+            label: match role {
+                Some(r) => fill(
+                    t::UNIT_WITH_ROLE,
+                    &[("unit", unit), ("role", &r.replace('-', " "))],
+                ),
+                None => unit.to_string(),
+            },
+        }
     }
 }
 
@@ -31,8 +37,8 @@ fn endpoint_id(e: &Endpoint) -> String {
     match e {
         Endpoint::Host(h) => sanitize(h),
         Endpoint::Unit(h, u) => format!("{}.{}", sanitize(h), sanitize(u)),
-        Endpoint::Internet => "internet".into(),
-        Endpoint::Lan => "lan".into(),
+        Endpoint::Internet => INTERNET.into(),
+        Endpoint::Lan => LAN.into(),
     }
 }
 
@@ -46,14 +52,14 @@ fn color(a: &Endpoint, b: &Endpoint) -> &'static str {
     }
 }
 
-fn connection(from: &Endpoint, to: &Endpoint, label: &str) -> String {
+fn connection(c: &Connection) -> String {
     fill(
         t::CONNECTION,
         &[
-            ("from", &endpoint_id(from)),
-            ("to", &endpoint_id(to)),
-            ("label", &label.replace('"', "'")),
-            ("color", color(from, to)),
+            ("from", &endpoint_id(&c.from)),
+            ("to", &endpoint_id(&c.to)),
+            ("label", &c.label.replace('"', "'")),
+            ("color", color(&c.from, &c.to)),
         ],
     )
 }
@@ -97,74 +103,45 @@ pub fn generate(
     render_svg: bool,
     style: &Style,
 ) -> Result<()> {
-    let mut per_host: IndexMap<&str, IndexMap<&str, (&'static str, String)>> = facts
+    let mut per_host: IndexMap<&str, IndexMap<&str, Node>> = facts
         .hosts
         .iter()
         .map(|(host, f)| {
-            let units = f
-                .topology()
-                .units
-                .iter()
-                .map(|(u, info)| {
-                    (
-                        u.as_str(),
-                        (class(info.kind), node_label(u, info.role.as_deref())),
-                    )
-                })
-                .collect();
-            (host.as_str(), units)
+            let units = f.topology().units.iter().map(|(u, info)| {
+                let node = Node::declared(u, info.kind, info.role.as_deref());
+                (u.as_str(), node)
+            });
+            (host.as_str(), units.collect())
         })
         .collect();
     for c in &model.connections {
         for ep in [&c.from, &c.to] {
             if let Endpoint::Unit(h, u) = ep {
                 if let Some(m) = per_host.get_mut(h.as_str()) {
-                    m.entry(u.as_str()).or_insert(("app", u.clone()));
+                    m.entry(u.as_str())
+                        .or_insert_with(|| Node::declared(u, None, None));
                 }
             }
         }
     }
 
-    let mut clouds: Vec<(Endpoint, Endpoint, String)> = Vec::new();
-    for (host, f) in &facts.hosts {
-        let topo = f.topology();
-        let mut collect = |node: Endpoint, unit: Option<&str>, exposes: &[Expose]| {
-            for e in exposes {
-                if let Some(c) = cloud(e.scope.or_else(|| topo.scope_of(unit))) {
-                    clouds.push((
-                        c,
-                        node.clone(),
-                        expose_label(e.name.as_deref(), Some(e.port), e.udp),
-                    ));
-                }
-            }
-        };
-        collect(Endpoint::Host(host.clone()), None, &topo.expose);
-        for (unit, u) in &topo.units {
-            collect(
-                Endpoint::Unit(host.clone(), unit.clone()),
-                Some(unit),
-                &u.expose,
-            );
-        }
-    }
-    for ne in &model.named {
-        if let Some(c) = cloud(ne.scope.or_else(|| scope_at(facts, &ne.node))) {
-            clouds.push((
-                c,
-                ne.node.clone(),
-                expose_label(Some(&ne.name), ne.port, false),
-            ));
-        }
-    }
-
-    let used = |cloud: Endpoint| {
-        clouds.iter().any(|(c, ..)| *c == cloud)
-            || model
-                .connections
-                .iter()
-                .any(|c| c.from == cloud || c.to == cloud)
-    };
+    let exposed = model.exposed.iter().filter_map(|x| {
+        Some(Connection {
+            from: cloud(x.scope)?,
+            to: x.node(),
+            label: expose_label(x.name.as_deref(), Some(x.port), x.udp),
+        })
+    });
+    let named = model.named.iter().filter_map(|ne| {
+        Some(Connection {
+            from: cloud(ne.scope)?,
+            to: ne.node.clone(),
+            label: expose_label(Some(&ne.name), ne.port, false),
+        })
+    });
+    let edges: Vec<Connection> = exposed.chain(named).collect();
+    let edges: Vec<&Connection> = edges.iter().chain(&model.connections).collect();
+    let used = |cloud: Endpoint| edges.iter().any(|c| c.from == cloud || c.to == cloud);
 
     let mut o = preamble(style);
     o.push(t::CLASSES.into());
@@ -188,13 +165,13 @@ pub fn generate(
             t::HOST_OPEN,
             &[("id", &sanitize(host)), ("icon", icon), ("host", host)],
         ));
-        for (unit, (class, label)) in per_host.get(host.as_str()).into_iter().flatten() {
+        for (unit, node) in per_host.get(host.as_str()).into_iter().flatten() {
             o.push(fill(
                 t::UNIT,
                 &[
                     ("id", &sanitize(unit)),
-                    ("label", &label.replace('"', "'")),
-                    ("class", class),
+                    ("label", &node.label.replace('"', "'")),
+                    ("class", node.class),
                 ],
             ));
         }
@@ -211,12 +188,7 @@ pub fn generate(
     }
     o.push(String::new());
     o.push(t::CONNECTIONS.into());
-    for (c, node, label) in &clouds {
-        o.push(connection(c, node, label));
-    }
-    for c in &model.connections {
-        o.push(connection(&c.from, &c.to, &c.label));
-    }
+    o.extend(edges.into_iter().map(connection));
 
     write_and_render(out, diagram::TOPOLOGY, &o, render_svg, style)
 }

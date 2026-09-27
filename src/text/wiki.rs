@@ -86,8 +86,6 @@ pub mod endpoints {
     pub const EMPTY: &str = "| — | — | — | — | — |";
     pub const UNNAMED: &str = "{host}:{port}";
     pub const UDP: &str = "/udp";
-    pub const INTERNET: &str = "internet";
-    pub const LAN: &str = "lan";
 }
 
 pub mod inputs {

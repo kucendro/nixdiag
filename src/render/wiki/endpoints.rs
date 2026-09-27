@@ -1,9 +1,9 @@
 use super::Wiki;
 use crate::conf::files::page;
-use crate::facts::Expose;
+use crate::facts::Scope;
 use crate::text::fill;
 use crate::text::wiki::{endpoints as t, NONE};
-use crate::topology::{scope_at, Endpoint};
+use crate::topology::{Endpoint, INTERNET, LAN};
 use anyhow::Result;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -58,64 +58,41 @@ impl Row {
     }
 }
 
+fn scope(s: Option<Scope>) -> String {
+    s.map_or(NONE, Scope::label).into()
+}
+
 pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
-    let mut rows = Vec::new();
-    for (host, h) in &w.facts.hosts {
-        let topo = h.topology();
-        let mut push = |unit: Option<&str>, e: &Expose| {
-            let endpoint = e.name.clone().unwrap_or_else(|| {
-                fill(t::UNNAMED, &[("host", host), ("port", &e.port.to_string())])
-            });
-            let scope = e
-                .scope
-                .or_else(|| topo.scope_of(unit))
-                .map(|s| s.label().to_string())
-                .unwrap_or_else(|| NONE.into());
-            rows.push(Row {
-                endpoint,
-                port: Some(e.port),
-                udp: e.udp,
-                scope,
-                host: host.clone(),
-                service: unit.unwrap_or(NONE).into(),
-                named: e.name.is_some(),
-            });
-        };
-        for e in &topo.expose {
-            push(None, e);
-        }
-        for (unit, u) in &topo.units {
-            for e in &u.expose {
-                push(Some(unit), e);
-            }
-        }
-    }
-    for ne in &w.model.named {
-        let host = match &ne.node {
-            Endpoint::Host(h) | Endpoint::Unit(h, _) => h.clone(),
-            _ => continue,
-        };
-        let scope = ne
-            .scope
-            .or_else(|| scope_at(w.facts, &ne.node))
-            .map(|s| s.label().to_string())
-            .unwrap_or_else(|| NONE.into());
-        let service = match &ne.target {
-            Endpoint::Unit(_, u) => u.clone(),
-            Endpoint::Host(h) => h.clone(),
-            Endpoint::Internet => t::INTERNET.into(),
-            Endpoint::Lan => t::LAN.into(),
-        };
-        rows.push(Row {
+    let exposed = w.model.exposed.iter().map(|x| Row {
+        endpoint: x.name.clone().unwrap_or_else(|| {
+            fill(
+                t::UNNAMED,
+                &[("host", &x.host), ("port", &x.port.to_string())],
+            )
+        }),
+        port: Some(x.port),
+        udp: x.udp,
+        scope: scope(x.scope),
+        host: x.host.clone(),
+        service: x.unit.as_deref().unwrap_or(NONE).into(),
+        named: x.name.is_some(),
+    });
+    let named = w.model.named.iter().filter_map(|ne| {
+        Some(Row {
             endpoint: ne.name.clone(),
             port: ne.port,
             udp: false,
-            scope,
-            host,
-            service,
+            scope: scope(ne.scope),
+            host: ne.node.host()?.into(),
+            service: match &ne.target {
+                Endpoint::Unit(_, s) | Endpoint::Host(s) => s.clone(),
+                Endpoint::Internet => INTERNET.into(),
+                Endpoint::Lan => LAN.into(),
+            },
             named: true,
-        });
-    }
+        })
+    });
+    let mut rows: Vec<Row> = exposed.chain(named).collect();
     rows.sort();
     let mut lines: Vec<String> = rows.iter().map(Row::line).collect();
     if lines.is_empty() {
