@@ -1,6 +1,4 @@
-use super::d2::{preamble, write_and_render};
-use super::out::Out;
-use super::style::Style;
+use super::d2::D2;
 use crate::conf::files::diagram;
 use crate::facts::Facts;
 use crate::source::imports::{build_import_graph, host_entry_modules};
@@ -75,13 +73,7 @@ impl Tree {
     }
 }
 
-pub fn generate(
-    facts: &Facts,
-    repo: &Repo,
-    out: &Out,
-    render_svg: bool,
-    style: &Style,
-) -> Result<()> {
+pub fn generate(facts: &Facts, repo: &Repo, d2: &D2) -> Result<()> {
     let mut tree = Tree::default();
     let mut host_edges: Vec<(String, String)> = Vec::new();
     let mut import_edges: BTreeSet<(String, String)> = BTreeSet::new();
@@ -111,7 +103,7 @@ pub fn generate(
     }
 
     let edge = |(from, to): &(String, String)| fill(t::EDGE, &[("from", from), ("to", to)]);
-    let mut o = preamble(style);
+    let mut o = d2.preamble();
     o.push(String::new());
     for host in facts.hosts.keys() {
         o.push(fill(t::HOST, &[("id", &sanitize(host)), ("host", host)]));
@@ -125,5 +117,5 @@ pub fn generate(
     o.push(t::IMPORT_EDGES.into());
     o.extend(import_edges.iter().map(edge));
 
-    write_and_render(out, diagram::MODULES, &o, render_svg, style)
+    d2.write(diagram::MODULES, &o)
 }

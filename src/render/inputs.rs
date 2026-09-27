@@ -1,6 +1,4 @@
-use super::d2::{preamble, write_and_render};
-use super::out::Out;
-use super::style::Style;
+use super::d2::D2;
 use crate::conf::files::diagram;
 use crate::source::flakelock::Lock;
 use crate::text::d2::inputs as t;
@@ -9,7 +7,7 @@ use crate::util::sanitize;
 use anyhow::Result;
 use std::collections::BTreeSet;
 
-pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &Style) -> Result<()> {
+pub fn generate(lock: &Lock, d2: &D2) -> Result<()> {
     let dups = lock.duplicates();
     let flagged: BTreeSet<&str> = dups
         .iter()
@@ -17,7 +15,7 @@ pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &Style) -> Resu
         .flat_map(|d| d.nodes())
         .collect();
 
-    let mut o = preamble(style);
+    let mut o = d2.preamble();
     o.push(String::new());
     o.push(fill(t::ROOT, &[("id", &sanitize(&lock.root))]));
     for (name, locked) in lock.inputs() {
@@ -68,5 +66,5 @@ pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &Style) -> Resu
         o.extend(follows);
     }
 
-    write_and_render(out, diagram::INPUTS, &o, render_svg, style)
+    d2.write(diagram::INPUTS, &o)
 }

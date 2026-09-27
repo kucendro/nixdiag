@@ -1,8 +1,6 @@
 use crate::conf::files::diagram;
 use crate::facts::{Facts, Host, Kind, Scope};
-use crate::render::d2::{preamble, write_and_render};
-use crate::render::out::Out;
-use crate::render::style::Style;
+use crate::render::d2::D2;
 use crate::text::d2::topology as t;
 use crate::text::fill;
 use crate::topology::{Connection, Endpoint, Model, INTERNET, LAN};
@@ -96,13 +94,7 @@ fn fmt_ports(tcp: &[u32], udp: &[u32]) -> String {
     }
 }
 
-pub fn generate(
-    facts: &Facts,
-    model: &Model,
-    out: &Out,
-    render_svg: bool,
-    style: &Style,
-) -> Result<()> {
+pub fn generate(facts: &Facts, model: &Model, d2: &D2) -> Result<()> {
     let mut per_host: IndexMap<&str, IndexMap<&str, Node>> = facts
         .hosts
         .iter()
@@ -143,7 +135,7 @@ pub fn generate(
     let edges: Vec<&Connection> = edges.iter().chain(&model.connections).collect();
     let used = |cloud: Endpoint| edges.iter().any(|c| c.from == cloud || c.to == cloud);
 
-    let mut o = preamble(style);
+    let mut o = d2.preamble();
     o.push(t::CLASSES.into());
     o.push(String::new());
     if used(Endpoint::Internet) {
@@ -190,5 +182,5 @@ pub fn generate(
     o.push(t::CONNECTIONS.into());
     o.extend(edges.into_iter().map(connection));
 
-    write_and_render(out, diagram::TOPOLOGY, &o, render_svg, style)
+    d2.write(diagram::TOPOLOGY, &o)
 }

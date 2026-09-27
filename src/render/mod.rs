@@ -39,11 +39,16 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         eprintln!("{}", m::NO_TOPOLOGY);
     }
 
-    topology::generate(facts, &model, &out, opts.svg, &opts.style)?;
-    modules::generate(facts, &repo, &out, opts.svg, &opts.style)?;
+    let d2 = d2::D2 {
+        out: &out,
+        style: &opts.style,
+        svg: opts.svg,
+    };
+    topology::generate(facts, &model, &d2)?;
+    modules::generate(facts, &repo, &d2)?;
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
-        inputs::generate(lock, &out, opts.svg, &opts.style)?;
+        inputs::generate(lock, &d2)?;
     }
     wiki::generate(
         &wiki::Wiki {
