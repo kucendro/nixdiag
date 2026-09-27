@@ -1,10 +1,9 @@
-use super::dot::{id, Dot, Paint};
+use super::dot::{id, Diagram, Dot, Graph, Paint};
 use crate::conf::files::diagram;
 use crate::conf::palette::{diagram as p, Color};
 use crate::facts::{Facts, Host, Kind, Scope};
 use crate::text::dot::topology as t;
 use crate::topology::{Connection, Endpoint, Model, INTERNET, LAN};
-use anyhow::Result;
 use dot_writer::Attributes;
 use indexmap::IndexMap;
 use std::iter::once;
@@ -74,7 +73,43 @@ fn ports(tcp: &[u32], udp: &[u32]) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(t::PORTS_SEP))
 }
 
-pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
+pub struct Topology<'a> {
+    facts: &'a Facts,
+    model: &'a Model,
+    per_host: IndexMap<&'a str, IndexMap<&'a str, Unit>>,
+    clouds: Vec<Connection>,
+}
+
+impl<'a> Topology<'a> {
+    pub fn new(facts: &'a Facts, model: &'a Model) -> Self {
+        let exposed = model.exposed.iter().filter_map(|x| {
+            Some(Connection {
+                from: cloud(x.scope)?,
+                to: x.node(),
+                label: t::expose(x.name.as_deref(), Some(x.port), x.udp),
+            })
+        });
+        let named = model.named.iter().filter_map(|ne| {
+            Some(Connection {
+                from: cloud(ne.scope)?,
+                to: ne.node.clone(),
+                label: t::expose(Some(&ne.name), ne.port, false),
+            })
+        });
+        Topology {
+            facts,
+            model,
+            per_host: per_host(facts, model),
+            clouds: exposed.chain(named).collect(),
+        }
+    }
+
+    fn edges(&self) -> impl Iterator<Item = &Connection> {
+        self.clouds.iter().chain(&self.model.connections)
+    }
+}
+
+fn per_host<'a>(facts: &'a Facts, model: &'a Model) -> IndexMap<&'a str, IndexMap<&'a str, Unit>> {
     let mut per_host: IndexMap<&str, IndexMap<&str, Unit>> = facts
         .hosts
         .iter()
@@ -97,26 +132,16 @@ pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
             }
         }
     }
+    per_host
+}
 
-    let exposed = model.exposed.iter().filter_map(|x| {
-        Some(Connection {
-            from: cloud(x.scope)?,
-            to: x.node(),
-            label: t::expose(x.name.as_deref(), Some(x.port), x.udp),
-        })
-    });
-    let named = model.named.iter().filter_map(|ne| {
-        Some(Connection {
-            from: cloud(ne.scope)?,
-            to: ne.node.clone(),
-            label: t::expose(Some(&ne.name), ne.port, false),
-        })
-    });
-    let edges: Vec<Connection> = exposed.chain(named).collect();
-    let edges: Vec<&Connection> = edges.iter().chain(&model.connections).collect();
-    let used = |cloud: &Endpoint| edges.iter().any(|c| &c.from == cloud || &c.to == cloud);
+impl Diagram for Topology<'_> {
+    fn stem(&self) -> &'static str {
+        diagram::TOPOLOGY
+    }
 
-    dot.render(diagram::TOPOLOGY, |g| {
+    fn draw(&self, g: &mut Graph, dot: &Dot) {
+        let used = |cloud: &Endpoint| self.edges().any(|c| &c.from == cloud || &c.to == cloud);
         let clouds = [
             (Endpoint::Internet, t::INTERNET, p::PUBLIC),
             (Endpoint::Lan, t::LAN, p::LAN),
@@ -128,7 +153,7 @@ pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
                 .fill(dot.color(&p::HOST_FILL))
                 .stroke(dot.color(stroke));
         }
-        for (host, f) in &facts.hosts {
+        for (host, f) in &self.facts.hosts {
             let icon = match f {
                 Host::Darwin(_) => t::DARWIN_ICON,
                 Host::Nixos(_) => t::NIXOS_ICON,
@@ -138,7 +163,7 @@ pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
                 .fill(dot.color(&p::HOST_FILL))
                 .stroke(dot.color(&p::HOST_STROKE))
                 .set("style", "rounded,filled", true);
-            for (unit, u) in per_host.get(host.as_str()).into_iter().flatten() {
+            for (unit, u) in self.per_host.get(host.as_str()).into_iter().flatten() {
                 let (fill, stroke) = u.colors();
                 let lines: Vec<&str> = once(*unit).chain(u.role.as_deref()).collect();
                 c.node_named(id(&format!("{host}/{unit}")))
@@ -147,7 +172,7 @@ pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
                     .stroke(dot.color(&stroke));
             }
             let open = f.as_nixos().and_then(|n| ports(&n.tcp, &n.udp));
-            if let Some(open) = open.filter(|_| facts.bare()) {
+            if let Some(open) = open.filter(|_| self.facts.bare()) {
                 c.node_named(id(&format!("{host}/+ports")))
                     .text(&[&open])
                     .set_font_size(11.0);
@@ -156,11 +181,11 @@ pub fn generate(facts: &Facts, model: &Model, dot: &Dot) -> Result<()> {
                 .text(&[&t::base(f.svc_count())])
                 .set_font_size(11.0);
         }
-        for e in &edges {
+        for e in self.edges() {
             g.edge(node(&e.from), node(&e.to))
                 .attributes()
                 .text(&[&e.label])
                 .stroke(dot.color(&scope_color(e)));
         }
-    })
+    }
 }

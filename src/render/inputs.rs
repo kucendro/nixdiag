@@ -1,21 +1,26 @@
-use super::dot::{id, Dot, Paint};
+use super::dot::{id, Diagram, Dot, Graph, Paint};
 use crate::conf::files::diagram;
 use crate::conf::palette::diagram as p;
 use crate::source::flakelock::Lock;
 use crate::text::dot::inputs as t;
-use anyhow::Result;
 use dot_writer::{Attributes, Style};
 use std::collections::BTreeSet;
 
-pub fn generate(lock: &Lock, dot: &Dot) -> Result<()> {
-    let dups = lock.duplicates();
-    let flagged: BTreeSet<&str> = dups
-        .iter()
-        .filter(|d| d.is_diamond())
-        .flat_map(|d| d.nodes())
-        .collect();
+pub struct Inputs<'a>(pub &'a Lock);
 
-    dot.render(diagram::INPUTS, |g| {
+impl Diagram for Inputs<'_> {
+    fn stem(&self) -> &'static str {
+        diagram::INPUTS
+    }
+
+    fn draw(&self, g: &mut Graph, dot: &Dot) {
+        let lock = self.0;
+        let dups = lock.duplicates();
+        let flagged: BTreeSet<&str> = dups
+            .iter()
+            .filter(|d| d.is_diamond())
+            .flat_map(|d| d.nodes())
+            .collect();
         g.node_named(id(&lock.root))
             .bold(t::ROOT)
             .fill(dot.color(&p::HOST_CLOUD))
@@ -39,5 +44,5 @@ pub fn generate(lock: &Lock, dot: &Dot) -> Result<()> {
                 edge.stroke(dot.color(&p::MESH)).set_style(Style::Dashed);
             }
         }
-    })
+    }
 }

@@ -4,7 +4,8 @@ use crate::conf::tools::{DOT, DOT_FONT};
 use crate::render::out::Out;
 use crate::text::messages::{self as m, Fail};
 use anyhow::{bail, Result};
-use dot_writer::{Attributes, DotWriter, RankDirection, Scope};
+pub use dot_writer::Scope as Graph;
+use dot_writer::{Attributes, DotWriter, RankDirection};
 use quick_xml::escape::escape;
 use std::io::ErrorKind;
 use std::process::Command;
@@ -53,6 +54,11 @@ pub trait Paint: Attributes {
 
 impl<T: Attributes> Paint for T {}
 
+pub trait Diagram {
+    fn stem(&self) -> &'static str;
+    fn draw(&self, g: &mut Graph, dot: &Dot);
+}
+
 pub struct Dot<'a> {
     pub out: &'a Out,
     pub style: &'a Style,
@@ -64,7 +70,8 @@ impl Dot<'_> {
         self.style.color(c)
     }
 
-    pub fn render(&self, stem: &str, draw: impl FnOnce(&mut Scope)) -> Result<()> {
+    pub fn render(&self, d: &dyn Diagram) -> Result<()> {
+        let stem = d.stem();
         let mut bytes = Vec::new();
         {
             let mut w = DotWriter::from(&mut bytes);
@@ -89,7 +96,7 @@ impl Dot<'_> {
                 .set_font_size(11.0)
                 .set("fontcolor", ink, true)
                 .stroke(self.color(&p::LINE));
-            draw(&mut g);
+            d.draw(&mut g, self);
         }
         let dot = format!("{stem}.dot");
         self.out.write(&dot, &String::from_utf8(bytes)?)?;

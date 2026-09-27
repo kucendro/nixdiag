@@ -1,11 +1,11 @@
-use super::dot::{card, id, Dot, Paint};
+use super::dot::{card, id, Diagram, Dot, Graph, Paint};
 use crate::conf::files::diagram;
 use crate::conf::palette::{diagram as p, Color};
 use crate::facts::Facts;
 use crate::source::imports::{build_import_graph, host_entry_modules};
 use crate::source::repo::Repo;
 use anyhow::Result;
-use dot_writer::{Attributes, Scope};
+use dot_writer::Attributes;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -41,7 +41,7 @@ impl Tree {
             .or_default()
     }
 
-    fn emit(&self, g: &mut Scope, dot: &Dot, prefix: &str) {
+    fn emit(&self, g: &mut Graph, dot: &Dot, prefix: &str) {
         for (name, sub) in &self.dirs {
             let mut c = g.cluster();
             c.text(&[name])
@@ -62,42 +62,59 @@ impl Tree {
     }
 }
 
-pub fn generate(facts: &Facts, repo: &Repo, dot: &Dot) -> Result<()> {
-    let mut tree = Tree::default();
-    let mut host_edges: Vec<(String, String)> = Vec::new();
-    let mut import_edges: BTreeSet<(String, String)> = BTreeSet::new();
-    let flake_text = repo.flake()?;
+pub struct Modules {
+    hosts: Vec<String>,
+    tree: Tree,
+    edges: Vec<(String, String)>,
+}
 
-    for (host, f) in &facts.hosts {
-        let entries = host_entry_modules(host, &flake_text, repo);
-        let (nodes, edges) = build_import_graph(&entries, repo);
-        for n in &nodes {
-            tree.add_file(n);
-        }
-        import_edges.extend(edges);
-        host_edges.extend(entries.iter().map(|e| (host.clone(), repo.rel(e))));
+impl Modules {
+    pub fn new(facts: &Facts, repo: &Repo) -> Result<Self> {
+        let mut tree = Tree::default();
+        let mut edges: Vec<(String, String)> = Vec::new();
+        let mut imports: BTreeSet<(String, String)> = BTreeSet::new();
+        let flake_text = repo.flake()?;
 
-        let b = f.base();
-        for (shape, units) in [(Shape::Service, &b.services), (Shape::Program, &b.programs)] {
-            for item in units {
-                for rel in item.files.iter().filter_map(|f| repo.file(f)) {
-                    tree.add_file(&rel).insert((shape, item.name.clone()));
+        for (host, f) in &facts.hosts {
+            let entries = host_entry_modules(host, &flake_text, repo);
+            let (nodes, found) = build_import_graph(&entries, repo);
+            for n in &nodes {
+                tree.add_file(n);
+            }
+            imports.extend(found);
+            edges.extend(entries.iter().map(|e| (host.clone(), repo.rel(e))));
+
+            let b = f.base();
+            for (shape, units) in [(Shape::Service, &b.services), (Shape::Program, &b.programs)] {
+                for item in units {
+                    for rel in item.files.iter().filter_map(|f| repo.file(f)) {
+                        tree.add_file(&rel).insert((shape, item.name.clone()));
+                    }
                 }
             }
         }
+        edges.extend(imports);
+        let hosts = facts.hosts.keys().cloned().collect();
+        Ok(Modules { hosts, tree, edges })
+    }
+}
+
+impl Diagram for Modules {
+    fn stem(&self) -> &'static str {
+        diagram::MODULES
     }
 
-    dot.render(diagram::MODULES, |g| {
-        for host in facts.hosts.keys() {
+    fn draw(&self, g: &mut Graph, dot: &Dot) {
+        for host in &self.hosts {
             g.node_named(id(host))
                 .bold(host)
                 .shape("ellipse")
                 .fill(dot.color(&p::HOST_CLOUD))
                 .stroke(dot.color(&p::HOST_STROKE));
         }
-        tree.emit(g, dot, "");
-        for (from, to) in host_edges.iter().chain(&import_edges) {
+        self.tree.emit(g, dot, "");
+        for (from, to) in &self.edges {
             g.edge(id(from), id(to));
         }
-    })
+    }
 }
