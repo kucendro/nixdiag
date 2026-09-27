@@ -4,29 +4,46 @@ Fixture made up. Snapshot made up. Adapter test made up. Stop.
 
 ## Idea
 
-Adapter claims. VM runs. Compare.
-Claim: adapter facts at that head. Truth: running VM.
+Adapter claims. VMs run. Compare both ways.
+Claim: adapter facts at that head. Truth: running VMs.
 No expected output. Nobody writes it.
 
-## Per adapter
+## Adapter
 
-One file: `tests/adapters/<name>.nix`. Missing file fails eval.
+Adapter carries `minimum`: what service needs to boot.
+Never an option adapter reads, so no path nixpkgs can rename.
+Minimum path hits a read path: eval fails.
 
-- `minimum`: what service needs to boot. Never an option adapter reads.
-  So no option path nixpkgs can rename.
-- `probe`: optional. Values by read name, not path.
-  Harness writes each at first candidate that exists at the head.
+`minimum.services.grafana.settings.security.secret_key = "test";`
 
-`{ minimum.services.grafana.settings.security.secret_key = "test"; }`
-`{ probe.up = [ "--login-server=http://127.0.0.1:8080" ]; }`
+## VMs
 
-## Harness
+One file per VM: `tests/vms/<name>.nix`. Names adapters it runs, plus probes.
+VMs reach each other. Topology is real, across machines.
+Adapter in no VM: eval fails.
 
-- One VM. Every adapter on. Adapters reach each other.
-- Harness sets `enable` through adapter's enable read.
-- Checks from the VM's own `nixdiag.facts`. Nix writes test lines. No JSON.
-  - claimed port: listens.
-  - connection `to` a URL: answers from its host.
+- Harness sets `enable` through adapter's enable read, merges each `minimum`.
+- `probe`: values by adapter and read name, not path.
+  Harness writes each at first candidate that exists at the head. None exists: eval fails.
+  `<name>` reads nest by name.
+- Each VM runs per stateVersion in its list.
+
+`{ adapters = [ "grafana" ]; stateVersions = [ "24.11" "25.05" ]; }`
+`{ adapters = [ "nginx" ]; probe.nginx.proxyPass."grafana.test"."/" = "http://mon:3000"; }`
+
+## Checks
+
+From each VM's own `nixdiag.facts`. Nix writes test lines. No JSON.
+
+- claimed port: listens.
+- unit listens on port: port claimed.
+- connection: through its entry, reaches `to`. Nginx: `Host: <name>` on its port.
+- scope: other VM reaches exposed port or not, as scope says.
+- tailscale: logged in to claimed server.
+  `extraUpFlags` only runs with `authKeyFile`, so script makes headscale key first.
+
+Why both ways: claims-only lines miss a dropped claim.
+Rename, read null, no claim, no line, green. Listening port with no claim: red.
 
 ## Defaults alone, pinned head
 
@@ -41,18 +58,20 @@ So probes: `proxyPass`, SSL, `--login-server`.
 
 ## Heads
 
-- `nix flake check`: pinned head.
-- monitor: `master`, `nixos-unstable`, `nixos-25.05`. VM per head.
-- VM replaces fixture topology diff.
+- `nix flake check`: pinned head. CI runner needs kvm, `system-features = nixos-test kvm`.
+- monitor: VMs per channel head, `nixos-unstable` and current stable. Cached, cheap.
+- `master`: eval and audit only. Not cached, VM builds from source.
+- VMs replace fixture topology diff.
 
 ## Keeps
 
 - Fixture: render snapshots, demo, README assets. Not adapter truth.
 - Audit: cheap, early rename signal.
-- Closures: VM is real system. Measure, render real size. No hand numbers.
+- Closures: VM system measured for demo and README.
+  Snapshots keep hand `closures.json`; real sizes move every lock bump.
 
 ## Slices
 
-1. Harness, four adapter files, pinned head, `nix flake check`.
-2. Monitor runs VM per head, drops fixture diff.
+1. `minimum` in adapters, VM files, harness, pinned head, `nix flake check`.
+2. Monitor runs VMs per channel head, drops fixture diff.
 3. Closure render from VM system.
