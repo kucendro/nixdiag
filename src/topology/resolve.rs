@@ -1,4 +1,4 @@
-use super::url::{is_loopback, split};
+use super::url::Target;
 use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
 use crate::text::{fill, messages as m};
@@ -87,18 +87,18 @@ pub fn target(facts: &Facts, book: &Book, from: &str, target: &str) -> Result<En
     if let Some(e) = unique_unit(facts, target)? {
         return Ok(e);
     }
-    let (name, port) = split(target);
-    if is_loopback(name) {
-        let port_text = port.map(|p| p.to_string()).unwrap_or_default();
-        return unit_on_port(facts, from, port)
+    let t = Target::parse(target);
+    if t.is_loopback() {
+        let port_text = t.port.map(|p| p.to_string()).unwrap_or_default();
+        return unit_on_port(facts, from, t.port)
             .ok_or_else(|| fill(m::NO_PORT, &[("host", from), ("port", &port_text)]));
     }
-    if let Some(e) = book.lookup(name, port)? {
+    if let Some(e) = book.lookup(t.host, t.port)? {
         return Ok(e);
     }
-    let first = name.split('.').next().unwrap_or(name);
+    let first = t.host.split('.').next().unwrap_or(t.host);
     if facts.hosts.contains_key(first) {
-        return Ok(unit_on_port(facts, first, port).unwrap_or(Endpoint::Host(first.into())));
+        return Ok(unit_on_port(facts, first, t.port).unwrap_or(Endpoint::Host(first.into())));
     }
     Err(m::UNKNOWN_TARGET.into())
 }
