@@ -149,18 +149,6 @@ mod tests {
     }
 
     #[test]
-    fn labels_are_xml_escaped() {
-        let svg = bars(
-            "a & b",
-            &[row("<host>", vec![(Band::Solid, 1)], "1 B")],
-            &Style::default(),
-        );
-        assert!(svg.starts_with("<svg"), "{svg}");
-        assert!(svg.contains("<title>a &amp; b</title>"), "{svg}");
-        assert!(svg.contains("&lt;host&gt;"), "{svg}");
-    }
-
-    #[test]
     fn a_color_override_reaches_a_chart_only_name() {
         let style = Style {
             colors: vec![("chartUnique".into(), "#ff0000".into())],

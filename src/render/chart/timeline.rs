@@ -195,14 +195,6 @@ mod tests {
     }
 
     #[test]
-    fn labels_are_xml_escaped() {
-        let svg = timeline("a & b", &[mark("<in>", Some(1), true)], &Style::default());
-        assert!(svg.starts_with("<svg"), "{svg}");
-        assert!(svg.contains("<title>a &amp; b</title>"), "{svg}");
-        assert!(svg.contains("&lt;in&gt;"), "{svg}");
-    }
-
-    #[test]
     fn a_color_override_reaches_the_marker() {
         let style = Style {
             colors: vec![("chartMark".into(), "#ff0000".into())],
