@@ -7,10 +7,7 @@
     up = [ "services.tailscale.extraUpFlags" ];
     set = [ "services.tailscale.extraSetFlags" ];
   };
-  tests = {
-    vm = [ "web" ];
-    probe.up = [ "--login-server=http://hub:8080" ];
-  };
+
   topology =
     { up, set }:
     let
@@ -30,4 +27,12 @@
         label = "advertise ${r}";
       }) routes;
     };
+
+  # Required VM tests -------------------------------------------------
+  tests = {
+    vm = [ "web" ];
+
+    # Values for reads the defaults leave idle
+    probe.up = [ "--login-server=http://hub:8080" ];
+  };
 }

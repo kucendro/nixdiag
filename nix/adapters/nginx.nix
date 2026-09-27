@@ -17,10 +17,7 @@ in
     firewall = [ "networking.firewall.enable" ];
     tcp = [ "networking.firewall.allowedTCPPorts" ];
   };
-  tests = {
-    vm = [ "web" ];
-    probe.proxyPass."grafana.test"."/" = "http://mon:3000";
-  };
+
   topology =
     {
       forceSSL,
@@ -87,4 +84,12 @@ in
       connections = lib.concatMap connectionsOf names;
       expose = lib.concatMap exposeOf names;
     };
+
+  # Required VM tests -------------------------------------------------
+  tests = {
+    vm = [ "web" ];
+
+    # Values for reads the defaults leave idle
+    probe.proxyPass."grafana.test"."/" = "http://mon:3000";
+  };
 }
