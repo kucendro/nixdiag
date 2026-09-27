@@ -1,8 +1,6 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-pub const SCHEMA: u32 = 3;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Facts {
     pub schema: u32,

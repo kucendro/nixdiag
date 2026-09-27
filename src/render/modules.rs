@@ -1,5 +1,6 @@
-use super::d2::{preamble, write_and_render, D2Style};
+use super::d2::{preamble, write_and_render};
 use super::out::Out;
+use super::style::Style;
 use crate::facts::{Facts, Host};
 use crate::source::imports::{build_import_graph, host_entry_modules, rel_str};
 use crate::source::repo::{rel_from_store, Repo};
@@ -76,7 +77,7 @@ pub fn generate(
     repo: &Repo,
     out: &Out,
     render_svg: bool,
-    style: &D2Style,
+    style: &Style,
 ) -> Result<()> {
     let mut tree = Tree::default();
     let mut host_edges: Vec<(String, String)> = Vec::new();

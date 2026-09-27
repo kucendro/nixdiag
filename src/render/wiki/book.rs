@@ -1,25 +1,18 @@
 use super::super::out::Out;
+use super::super::style::Theme;
 use super::page;
 use crate::text::wiki::{summary as t, BOOK, INDEX};
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
-pub(super) fn book_toml(out: &Out, wiki: &Path, title: &str, dark: bool) -> Result<()> {
-    let (default, preferred_dark) = if dark {
-        ("navy", "navy")
-    } else {
-        ("light", "coal")
-    };
+pub(super) fn book_toml(out: &Out, wiki: &Path, title: &str, theme: Theme) -> Result<()> {
+    let b = theme.book();
     out.write(
         &wiki.join("book.toml"),
         &fill(
             BOOK,
-            &[
-                ("title", title),
-                ("default", default),
-                ("dark", preferred_dark),
-            ],
+            &[("title", title), ("default", b.default), ("dark", b.dark)],
         ),
     )
 }

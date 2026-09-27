@@ -3,10 +3,11 @@ mod charts;
 mod tests;
 
 use super::super::chart;
-use super::super::d2::D2Style;
 use super::super::out::Out;
+use super::super::style::Style;
 use super::page;
 use crate::closures::{Closures, HostClosure};
+use crate::conf::limits::TOP_PATHS;
 use crate::facts::Facts;
 use crate::text::fill;
 use crate::text::wiki::closures as t;
@@ -15,14 +16,12 @@ use anyhow::Result;
 use charts::{bar_rows, treemap_tiles};
 use std::path::Path;
 
-const TOP_PATHS: usize = 10;
-
 pub(super) fn page_closures(
     out: &Out,
     src: &Path,
     facts: &Facts,
     closures: &Closures,
-    style: &D2Style,
+    style: &Style,
 ) -> Result<()> {
     let hosts: Vec<(&str, Option<&HostClosure>)> = facts
         .hosts

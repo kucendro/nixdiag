@@ -1,11 +1,11 @@
 use super::super::chart::{self, Mark};
-use super::super::d2::D2Style;
 use super::super::out::Out;
+use super::super::style::Style;
 use super::page;
-use crate::source::flakelock::{Dup, Lock};
+use crate::source::flakelock::{short, Dup, Lock};
 use crate::text::fill;
 use crate::text::wiki::{inputs as t, NONE};
-use crate::util::human_date;
+use crate::util::{human_date, DAY};
 use anyhow::Result;
 use std::path::Path;
 
@@ -32,12 +32,11 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
 fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     let mut rows = Vec::new();
     for (rev, nodes) in &d.revs {
-        let short: String = rev.chars().take(7).collect();
         for n in nodes {
             rows.push(fill(
                 t::DIAMOND_ROW,
                 &[
-                    ("rev", &short),
+                    ("rev", &short(rev)),
                     ("node", n),
                     ("parents", &pulled_in_by(lock, n)),
                 ],
@@ -87,7 +86,7 @@ fn lock_dates(
     out: &Out,
     src: &Path,
     lock: &Lock,
-    style: &D2Style,
+    style: &Style,
 ) -> Result<()> {
     let roots = lock.root_inputs();
     let marks: Vec<Mark> = lock
@@ -111,14 +110,14 @@ fn lock_dates(
     out.write(&src.join("inputs-timeline.svg"), &svg)?;
 
     o.push(t::DATES.into());
-    let days = (hi - lo) / 86_400;
+    let days = (hi - lo) / DAY;
     if days > 0 {
         o.push(fill(t::SPAN, &[("days", &days.to_string())]));
     }
     Ok(())
 }
 
-pub(super) fn page_inputs(out: &Out, src: &Path, lock: &Lock, style: &D2Style) -> Result<()> {
+pub(super) fn page_inputs(out: &Out, src: &Path, lock: &Lock, style: &Style) -> Result<()> {
     let from = out.root.join("inputs.svg");
     if from.exists() {
         let rel = src.join("inputs.svg");

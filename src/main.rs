@@ -1,5 +1,6 @@
 mod cli;
 mod closures;
+mod conf;
 mod facts;
 mod render;
 mod source;

@@ -4,6 +4,7 @@ mod tests;
 
 pub use dups::Dup;
 
+use crate::conf::{limits::SHORT_REV, schema};
 use crate::text::{fill, messages as m};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -77,9 +78,12 @@ impl Locked {
     }
 
     pub fn short_rev(&self) -> String {
-        let v = self.version_id();
-        v.chars().take(7).collect()
+        short(&self.version_id())
     }
+}
+
+pub fn short(rev: &str) -> String {
+    rev.chars().take(SHORT_REV).collect()
 }
 
 impl Lock {
@@ -87,11 +91,11 @@ impl Lock {
         let text = std::fs::read_to_string(repo_root.join("flake.lock")).ok()?;
         match serde_json::from_str::<Lock>(&text) {
             Ok(lock) => {
-                if lock.version != 0 && lock.version != 7 {
-                    eprintln!(
-                        "{}",
-                        fill(m::LOCK_VERSION, &[("version", &lock.version.to_string())])
-                    );
+                if lock.version != 0 && lock.version != schema::LOCK {
+                    let version = lock.version.to_string();
+                    let expected = schema::LOCK.to_string();
+                    let vars = [("version", version.as_str()), ("expected", &expected)];
+                    eprintln!("{}", fill(m::LOCK_VERSION, &vars));
                 }
                 Some(lock)
             }

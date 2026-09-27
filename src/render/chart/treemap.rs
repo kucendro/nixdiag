@@ -1,6 +1,4 @@
-use super::{
-    color, legend, legend_bands, rect, svg_open, text, Band, D2Style, CH, LEGEND_H, PAD, W,
-};
+use super::{legend, legend_bands, paint, rect, svg_open, text, Band, Style, CH, LEGEND_H, PAD, W};
 use crate::util::human_size;
 
 const TREE_H: u64 = 400;
@@ -80,8 +78,8 @@ fn squarify(areas: &[f64], rect: (f64, f64, f64, f64)) -> Vec<(f64, f64, f64, f6
     out
 }
 
-pub fn treemap(caption: &str, tiles: &[Tile], style: &D2Style) -> String {
-    let tile_ink = color(style, "chartTileInk", ("#ffffff", "#14181f"));
+pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
+    let tile_ink = style.color(&paint::TILE_INK);
 
     let mut order: Vec<&Tile> = tiles.iter().filter(|t| t.value > 0).collect();
     order.sort_by(|a, b| b.value.cmp(&a.value).then(a.label.cmp(&b.label)));
@@ -112,8 +110,7 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &D2Style) -> String {
         if tw == 0 || th == 0 {
             continue;
         }
-        let (name, light, dark) = t.band.color();
-        rect(&mut o, px, py, tw, th, color(style, name, (light, dark)));
+        rect(&mut o, px, py, tw, th, style.color(&t.band.color()));
         let cap = (tw.saturating_sub(8) / CH) as usize;
         if th >= 18 {
             if let Some(label) = fit_label(&t.label, cap) {
@@ -172,7 +169,7 @@ mod tests {
                 tile("b", 300, Band::Solid),
                 tile("c", 100, Band::Solid),
             ],
-            &D2Style::default(),
+            &Style::default(),
         );
         let r = rects(&svg);
         assert_eq!(r.len(), 3, "one rect per tile, no legend for Solid alone");
@@ -195,7 +192,7 @@ mod tests {
         let svg = treemap(
             "t",
             &[tile("small", 1, Band::Solid), tile("big", 99, Band::Solid)],
-            &D2Style::default(),
+            &Style::default(),
         );
         let first = svg.find(">big<").unwrap();
         assert!(first < svg.find(">small<").unwrap_or(usize::MAX), "{svg}");
@@ -208,7 +205,7 @@ mod tests {
         let svg = treemap(
             "t",
             &[tile("real", 10, Band::Solid), tile("empty", 0, Band::Solid)],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert_eq!(rects(&svg).len(), 1, "{svg}");
         assert!(!svg.contains(">empty<"), "{svg}");
@@ -223,7 +220,7 @@ mod tests {
                 tile("ours", 10, Band::Shared),
                 tile("3 more", 5, Band::Rest),
             ],
-            &D2Style::default(),
+            &Style::default(),
         );
         for key in [Band::Unique, Band::Shared, Band::Rest] {
             assert!(svg.contains(key.legend()), "missing {key:?} in {svg}");

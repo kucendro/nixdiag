@@ -1,10 +1,9 @@
 use crate::closures::{Closures, HostClosure};
+use crate::conf::limits::TREEMAP_TILES;
 use crate::render::chart::{Band, Row, Tile};
 use crate::text::fill;
 use crate::text::wiki::closures as t;
 use crate::util::{human_count, human_size};
-
-pub(super) const TREEMAP_TILES: usize = 24;
 
 pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<Row> {
     let comparable = closures.hosts.len() > 1;

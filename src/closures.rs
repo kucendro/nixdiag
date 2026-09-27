@@ -2,8 +2,6 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub const CLOSURES_SCHEMA: u32 = 1;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Closures {
     pub schema: u32,

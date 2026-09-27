@@ -6,19 +6,9 @@ pub use bar::{bars, Row};
 pub use timeline::{timeline, Mark};
 pub use treemap::{treemap, Tile};
 
-use super::d2::{color, D2Style};
+use super::style::Style;
+use crate::conf::palette::{chart as paint, Color};
 use crate::text::chart as t;
-
-pub const COLORS: &[&str] = &[
-    "chartShared",
-    "chartPartial",
-    "chartUnique",
-    "chartMark",
-    "chartInk",
-    "chartMuted",
-    "chartTrack",
-    "chartTileInk",
-];
 
 const W: u64 = 720;
 const PAD: u64 = 8;
@@ -28,7 +18,7 @@ const SWATCH: u64 = 10;
 
 #[derive(PartialEq, Eq)]
 struct Key {
-    color: (&'static str, &'static str, &'static str),
+    color: Color,
     label: &'static str,
 }
 
@@ -59,12 +49,12 @@ impl Band {
         }
     }
 
-    fn color(self) -> (&'static str, &'static str, &'static str) {
+    fn color(self) -> Color {
         match self {
-            Band::Solid | Band::Shared => ("chartShared", "#4a76c4", "#7fa7e8"),
-            Band::Partial => ("chartPartial", "#c47a29", "#d9995a"),
-            Band::Unique => ("chartUnique", "#27893f", "#2ecc71"),
-            Band::Rest => ("chartMuted", "#777777", "#8b949e"),
+            Band::Solid | Band::Shared => paint::SHARED,
+            Band::Partial => paint::PARTIAL,
+            Band::Unique => paint::UNIQUE,
+            Band::Rest => paint::MUTED,
         }
     }
 }
@@ -98,7 +88,7 @@ fn rect(o: &mut String, x: u64, y: u64, w: u64, h: u64, fill: &str) {
     ));
 }
 
-fn svg_open(caption: &str, h: u64, style: &D2Style) -> String {
+fn svg_open(caption: &str, h: u64, style: &Style) -> String {
     let mut o = format!(
         "\
          <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {h}\" \
@@ -134,18 +124,10 @@ fn legend_bands(bands: impl Iterator<Item = Band>) -> Vec<Key> {
     o.into_iter().map(Band::key).collect()
 }
 
-fn legend(o: &mut String, keys: &[Key], mut x: u64, style: &D2Style) {
-    let muted = color(style, "chartMuted", ("#777777", "#8b949e"));
+fn legend(o: &mut String, keys: &[Key], mut x: u64, style: &Style) {
+    let muted = style.color(&paint::MUTED);
     for key in keys {
-        let (name, light, dark) = key.color;
-        rect(
-            o,
-            x,
-            PAD + 2,
-            SWATCH,
-            SWATCH,
-            color(style, name, (light, dark)),
-        );
+        rect(o, x, PAD + 2, SWATCH, SWATCH, style.color(&key.color));
         text(o, x + SWATCH + 5, PAD + 11, 12, muted, false, key.label);
         x += SWATCH + 5 + CH * key.label.len() as u64 + 14;
     }

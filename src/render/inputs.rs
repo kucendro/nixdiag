@@ -1,5 +1,6 @@
-use super::d2::{preamble, write_and_render, D2Style};
+use super::d2::{preamble, write_and_render};
 use super::out::Out;
+use super::style::Style;
 use crate::source::flakelock::Lock;
 use crate::text::d2::inputs as t;
 use crate::text::fill;
@@ -7,7 +8,7 @@ use crate::util::sanitize;
 use anyhow::Result;
 use std::collections::BTreeSet;
 
-pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &D2Style) -> Result<()> {
+pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &Style) -> Result<()> {
     let dups = lock.duplicates();
     let flagged: BTreeSet<&str> = dups
         .iter()

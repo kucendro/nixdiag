@@ -1,5 +1,5 @@
-use crate::render::chart::COLORS;
-use crate::render::d2::PALETTE;
+use crate::conf::palette::{chart, DIAGRAM};
+use crate::render::style::Theme;
 use crate::text::{cli as t, fill, messages as m};
 use clap::Parser;
 use std::path::PathBuf;
@@ -23,8 +23,8 @@ pub struct Cli {
     pub extra_links: Vec<(String, String)>,
     #[arg(long, help = t::NO_SVG)]
     pub no_svg: bool,
-    #[arg(long, default_value = "dark", value_parser = ["dark", "light"], help = t::THEME)]
-    pub theme: String,
+    #[arg(long, value_enum, default_value_t, help = t::THEME)]
+    pub theme: Theme,
     #[arg(long, default_value = "transparent", help = t::BACKGROUND)]
     pub background: String,
     #[arg(long = "color", value_name = "NAME=#HEX", value_parser = color, help = t::COLOR)]
@@ -44,11 +44,7 @@ fn pair<V: From<String>>(s: &str) -> Result<(String, V), String> {
 
 fn color(s: &str) -> Result<(String, String), String> {
     let (name, hex) = pair::<String>(s)?;
-    let known: Vec<&str> = PALETTE
-        .iter()
-        .map(|(p, ..)| *p)
-        .chain(COLORS.iter().copied())
-        .collect();
+    let known: Vec<&str> = DIAGRAM.iter().chain(chart::ALL).map(|c| c.name).collect();
     if known.contains(&name.as_str()) {
         return Ok((name, hex));
     }

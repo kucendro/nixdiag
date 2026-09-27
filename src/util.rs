@@ -10,8 +10,10 @@ pub fn sanitize(seg: &str) -> String {
         .collect()
 }
 
+pub const DAY: i64 = 86_400;
+
 pub fn human_date(unix: i64) -> String {
-    let z = unix.div_euclid(86_400) + 719_468;
+    let z = unix.div_euclid(DAY) + 719_468;
     let era = z.div_euclid(146_097);
     let doe = z.rem_euclid(146_097);
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;

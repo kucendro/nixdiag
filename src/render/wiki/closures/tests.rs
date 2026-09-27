@@ -1,6 +1,6 @@
-use super::charts::TREEMAP_TILES;
 use super::*;
 use crate::closures::ClosurePath;
+use crate::conf::limits::TREEMAP_TILES;
 use crate::render::chart::Band;
 use indexmap::IndexMap;
 

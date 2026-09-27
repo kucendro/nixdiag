@@ -1,4 +1,4 @@
-use super::{color, gutter, legend, rect, svg_open, text, D2Style, Key, LEGEND_H, PAD, W};
+use super::{gutter, legend, paint, rect, svg_open, text, Key, Style, LEGEND_H, PAD, W};
 use crate::text::chart as t;
 use std::cmp::Ordering;
 
@@ -7,11 +7,11 @@ const TICK_W: u64 = 3;
 const TICK_H: u64 = 11;
 
 const DIRECT: Key = Key {
-    color: ("chartMark", "#4a76c4", "#7fa7e8"),
+    color: paint::MARK,
     label: t::DIRECT,
 };
 const TRANSITIVE: Key = Key {
-    color: ("chartMuted", "#777777", "#8b949e"),
+    color: paint::MUTED,
     label: t::TRANSITIVE,
 };
 
@@ -32,10 +32,10 @@ impl Mark {
     }
 }
 
-pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
-    let ink = color(style, "chartInk", ("#333333", "#c9d1d9"));
-    let muted = color(style, "chartMuted", ("#777777", "#8b949e"));
-    let track = color(style, "chartTrack", ("#ebebeb", "#2a2a2e"));
+pub fn timeline(caption: &str, marks: &[Mark], style: &Style) -> String {
+    let ink = style.color(&paint::INK);
+    let muted = style.color(&paint::MUTED);
+    let track = style.color(&paint::TRACK);
 
     let mut order: Vec<&Mark> = marks.iter().collect();
     order.sort_by(|a, b| match (a.at, b.at) {
@@ -86,8 +86,7 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &D2Style) -> String {
             } else {
                 0
             };
-            let (name, light, dark) = m.key().color;
-            let fill = color(style, name, (light, dark));
+            let fill = style.color(&m.key().color);
             rect(&mut o, label_w + x, cy - TICK_H / 2, TICK_W, TICK_H, fill);
         }
         text(
@@ -151,7 +150,7 @@ mod tests {
                 mark("old", Some(100), true),
                 mark("mid", Some(200), true),
             ],
-            &D2Style::default(),
+            &Style::default(),
         );
         let names: Vec<String> = labels(&svg)
             .into_iter()
@@ -169,7 +168,7 @@ mod tests {
                 mark("mid", Some(150), true),
                 mark("new", Some(200), true),
             ],
-            &D2Style::default(),
+            &Style::default(),
         );
         let t = ticks(&svg);
         assert_eq!(t.len(), 3, "{svg}");
@@ -183,7 +182,7 @@ mod tests {
         let svg = timeline(
             "t",
             &[mark("a", Some(7), true), mark("b", Some(7), true)],
-            &D2Style::default(),
+            &Style::default(),
         );
         let t = ticks(&svg);
         assert_eq!(t.len(), 2);
@@ -195,7 +194,7 @@ mod tests {
         let svg = timeline(
             "t",
             &[mark("dated", Some(1), true), mark("path", None, true)],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(svg.contains(">path<"), "{svg}");
         assert!(svg.contains(">—<"), "{svg}");
@@ -212,7 +211,7 @@ mod tests {
         let mixed = timeline(
             "t",
             &[mark("a", Some(1), true), mark("b", Some(2), false)],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(mixed.contains(t::DIRECT), "{mixed}");
         assert!(mixed.contains(t::TRANSITIVE), "{mixed}");
@@ -220,14 +219,14 @@ mod tests {
         let all_direct = timeline(
             "t",
             &[mark("a", Some(1), true), mark("b", Some(2), true)],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(!all_direct.contains(t::DIRECT), "{all_direct}");
     }
 
     #[test]
     fn labels_are_xml_escaped() {
-        let svg = timeline("a & b", &[mark("<in>", Some(1), true)], &D2Style::default());
+        let svg = timeline("a & b", &[mark("<in>", Some(1), true)], &Style::default());
         assert!(svg.starts_with("<svg"), "{svg}");
         assert!(svg.contains("<title>a &amp; b</title>"), "{svg}");
         assert!(svg.contains("&lt;in&gt;"), "{svg}");
@@ -235,9 +234,9 @@ mod tests {
 
     #[test]
     fn a_color_override_reaches_the_marker() {
-        let style = D2Style {
+        let style = Style {
             colors: vec![("chartMark".into(), "#ff0000".into())],
-            ..D2Style::default()
+            ..Style::default()
         };
         let svg = timeline("t", &[mark("a", Some(1), true)], &style);
         assert!(svg.contains("#ff0000"), "{svg}");

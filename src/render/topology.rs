@@ -1,6 +1,7 @@
 use crate::facts::{Expose, Facts, Host, Kind, Scope};
-use crate::render::d2::{preamble, write_and_render, D2Style};
+use crate::render::d2::{preamble, write_and_render};
 use crate::render::out::Out;
+use crate::render::style::Style;
 use crate::text::d2::topology as t;
 use crate::text::fill;
 use crate::topology::{scope_at, Endpoint, Model};
@@ -93,7 +94,7 @@ pub fn generate(
     model: &Model,
     out: &Out,
     render_svg: bool,
-    style: &D2Style,
+    style: &Style,
 ) -> Result<()> {
     let mut per_host: IndexMap<&str, IndexMap<&str, (&'static str, String)>> = facts
         .hosts

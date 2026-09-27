@@ -14,8 +14,8 @@ use hosts::page_hosts;
 use inputs::page_inputs;
 use services::page_services;
 
-use super::d2::D2Style;
 use super::out::Out;
+use super::style::Style;
 use crate::closures::Closures;
 use crate::facts::{Facts, NixosHost};
 use crate::source::flakelock::Lock;
@@ -54,11 +54,11 @@ pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<
     svcs
 }
 
-pub fn generate(out: &Out, opts: &WikiOpts, style: &D2Style, d: &WikiData) -> Result<()> {
+pub fn generate(out: &Out, opts: &WikiOpts, style: &Style, d: &WikiData) -> Result<()> {
     let wiki = PathBuf::from("wiki");
     let src = wiki.join("src");
 
-    book_toml(out, &wiki, &opts.title, style.dark)?;
+    book_toml(out, &wiki, &opts.title, style.theme)?;
     let mut extra = copy_extra_pages(out, &src, &opts.extra_pages)?;
     extra.extend(opts.extra_links.iter().cloned());
     page_summary(out, &src, &extra, d.lock.is_some(), d.closures.is_some())?;

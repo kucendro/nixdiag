@@ -1,5 +1,5 @@
 use super::{
-    color, gutter, legend, legend_bands, rect, svg_open, text, Band, D2Style, LEGEND_H, PAD, W,
+    gutter, legend, legend_bands, paint, rect, svg_open, text, Band, Style, LEGEND_H, PAD, W,
 };
 
 const ROW_H: u64 = 26;
@@ -11,10 +11,10 @@ pub struct Row {
     pub note: String,
 }
 
-pub fn bars(caption: &str, rows: &[Row], style: &D2Style) -> String {
-    let ink = color(style, "chartInk", ("#333333", "#c9d1d9"));
-    let muted = color(style, "chartMuted", ("#777777", "#8b949e"));
-    let track = color(style, "chartTrack", ("#ebebeb", "#2a2a2e"));
+pub fn bars(caption: &str, rows: &[Row], style: &Style) -> String {
+    let ink = style.color(&paint::INK);
+    let muted = style.color(&paint::MUTED);
+    let track = style.color(&paint::TRACK);
 
     let label_w = gutter(rows.iter().map(|r| r.label.as_str()));
     let note_w = gutter(rows.iter().map(|r| r.note.as_str()));
@@ -58,8 +58,7 @@ pub fn bars(caption: &str, rows: &[Row], style: &D2Style) -> String {
                 acc += value;
                 let x1 = acc * plot_w / max;
                 if x1 > x0 {
-                    let (name, light, dark) = band.color();
-                    let fill = color(style, name, (light, dark));
+                    let fill = style.color(&band.color());
                     rect(&mut o, label_w + x0, cy - BAR_H / 2, x1 - x0, BAR_H, fill);
                 }
                 x0 = x1;
@@ -121,7 +120,7 @@ mod tests {
                 ],
                 "300 B",
             )],
-            &D2Style::default(),
+            &Style::default(),
         );
         let w = widths(&svg);
         let (track, segments) = w.split_first().unwrap();
@@ -136,7 +135,7 @@ mod tests {
                 row("big", vec![(Band::Solid, 100)], "100 B"),
                 row("small", vec![(Band::Solid, 25)], "25 B"),
             ],
-            &D2Style::default(),
+            &Style::default(),
         );
         let w = widths(&svg);
         assert_eq!(w[1], w[0], "the largest row fills the plot: {w:?}");
@@ -151,7 +150,7 @@ mod tests {
                 row("measured", vec![(Band::Solid, 10)], "10 B"),
                 row("absent", vec![], "not measured"),
             ],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(svg.contains(">absent<"), "{svg}");
         assert!(svg.contains(">not measured<"), "{svg}");
@@ -167,7 +166,7 @@ mod tests {
                 vec![(Band::Shared, 10), (Band::Unique, 5)],
                 "15 B",
             )],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(two_hosts.contains(Band::Shared.legend()));
         assert!(two_hosts.contains(Band::Unique.legend()));
@@ -176,7 +175,7 @@ mod tests {
         let alone = bars(
             "t",
             &[row("a", vec![(Band::Solid, 10)], "10 B")],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(!alone.contains(Band::Solid.legend()), "{alone}");
     }
@@ -186,7 +185,7 @@ mod tests {
         let svg = bars(
             "a & b",
             &[row("<host>", vec![(Band::Solid, 1)], "1 B")],
-            &D2Style::default(),
+            &Style::default(),
         );
         assert!(svg.starts_with("<svg"), "{svg}");
         assert!(svg.contains("<title>a &amp; b</title>"), "{svg}");
@@ -195,9 +194,9 @@ mod tests {
 
     #[test]
     fn a_color_override_reaches_a_chart_only_name() {
-        let style = D2Style {
+        let style = Style {
             colors: vec![("chartUnique".into(), "#ff0000".into())],
-            ..D2Style::default()
+            ..Style::default()
         };
         let svg = bars("t", &[row("a", vec![(Band::Unique, 1)], "1 B")], &style);
         assert!(svg.contains("#ff0000"), "{svg}");
