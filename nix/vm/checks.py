@@ -14,13 +14,27 @@ def answers(node, url):
     node.wait_until_succeeds(f"curl -s -o /dev/null {url}", timeout=120)
 
 
-def serves(node, name, hosts):
-    page = node.wait_until_succeeds(
-        f"curl -sf --resolve {name}:80:127.0.0.1 http://{name}/closures.html",
+def page(node, name, path):
+    return node.wait_until_succeeds(
+        f"curl -sf --resolve {name}:80:127.0.0.1 http://{name}/{path}",
         timeout=120,
     )
+
+
+def serves(node, name, hosts, endpoints):
+    closures = page(node, name, "closures.html")
+    headings = page(node, name, "hosts.html")
     for host in hosts:
-        assert f"<code>{host}</code>" in page, f"{node.name} docs miss the {host} closure"
+        assert f"<code>{host}</code>" in closures, (
+            f"{node.name} docs miss the {host} closure"
+        )
+        assert f"{host}</a></h2>" in headings, f"{node.name} docs miss the {host} host"
+    rows = page(node, name, "endpoints.html").splitlines()
+    for host, entry, port in endpoints:
+        cells = [f"<code>{entry}</code>", f"<td>{port}</td>", f"<td>{host}</td>"]
+        assert any(all(c in r for c in cells) for r in rows), (
+            f"{node.name} docs miss {entry}:{port} on {host}"
+        )
 
 
 def reaches(src, dst, port, open):

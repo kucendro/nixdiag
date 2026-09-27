@@ -54,8 +54,11 @@ From each VM's own `nixdiag.facts`. Nix writes test lines. No JSON.
 - connection: through its entry, reaches `to`. Nginx: `Host: <name>`, https on 443.
   No entry: `to` answers from the VM.
 - scope: other VM reaches exposed port or not, as scope says.
-- served docs: `web` serves `mkDocs` of all VMs; closures page names every VM.
+- served docs: `web` serves `mkDocs` of all VMs. Closures and hosts pages name every VM,
+  endpoints page has a row per named entry in facts: name, port, host.
   Measures itself without its docs: guards the self-serve loop.
+  Nodes import `module` and `adapters` as own source: facts name definition files,
+  whole repo source would rerun VMs every commit.
 
 No setup scripts. Adapter stays plain config: `vm`, `minimum`, `probe`.
 Maintainer never needs VM internals. Service working together is nixpkgs' test, not ours.

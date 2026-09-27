@@ -21,6 +21,14 @@ let
       ]
     );
   each = f: lib.concatMap f names;
+  named = each (
+    n:
+    map (e: [
+      n
+      e.name
+      e.port
+    ]) (builtins.filter (e: e.name != null) (entries n))
+  );
 
   connection =
     n: c:
@@ -34,7 +42,7 @@ let
     let
       s = nodes.${n}.services.nixdiag.serve;
     in
-    lib.optional s.enable "serves(${n}, ${q s.virtualHost}, ${q names})";
+    lib.optional s.enable "serves(${n}, ${q s.virtualHost}, ${q names}, ${q named})";
 
   scope =
     n: e:
