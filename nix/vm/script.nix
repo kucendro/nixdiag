@@ -12,6 +12,14 @@ let
     );
   claimed = n: lib.unique (lib.concatMap (u: u.ports) (units n) ++ map (e: e.port) (entries n));
   other = n: lib.findFirst (m: m != n) null names;
+  lan =
+    n:
+    q (
+      lib.remove "" [
+        nodes.${n}.networking.primaryIPAddress
+        nodes.${n}.networking.primaryIPv6Address
+      ]
+    );
   each = f: lib.concatMap f names;
 
   connection =
@@ -34,6 +42,6 @@ builtins.readFile ./checks.py
     ++ each (n: map (p: "listens(${n}, ${toString p})") (claimed n))
     ++ each (n: lib.concatMap (connection n) (connections n))
     ++ each (n: lib.concatMap (scope n) (entries n))
-    ++ each (n: [ "listens_only(${n}, [${lib.concatMapStringsSep ", " toString (claimed n)}])" ])
+    ++ each (n: [ "listens_only(${n}, ${lan n}, ${q (claimed n)})" ])
   )
 )

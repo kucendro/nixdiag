@@ -22,10 +22,10 @@ def reaches(src, dst, port, open):
         src.fail(probe)
 
 
-def listens_only(node, claimed):
+def listens_only(node, lan, claimed):
     for line in node.succeed("ss -tlnH").splitlines():
         host, port = line.split()[3].rsplit(":", 1)
-        loopback = host.startswith(("127.", "[::1]"))
-        assert loopback or int(port) in claimed, (
+        reachable = host.strip("[]") in ["0.0.0.0", "::", "*", *lan]
+        assert not reachable or int(port) in claimed, (
             f"{node.name} listens on {port}, no adapter claims it"
         )
