@@ -12,4 +12,5 @@ pub const EXTRA_LINK: &str =
 pub const NO_SVG: &str = "Skip SVG rendering (d2)";
 pub const THEME: &str = "Color theme";
 pub const BACKGROUND: &str = "Diagram canvas fill";
-pub const COLOR: &str = "Palette override as NAME=#HEX (names: the vars block in the d2 output, plus chartShared/chartPartial/chartUnique/chartInk/chartMuted/chartTrack for the SVG charts); repeatable";
+pub const COLOR: &str =
+    "Palette override as NAME=#HEX, repeatable; an unknown NAME lists the palette";

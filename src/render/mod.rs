@@ -1,4 +1,4 @@
-mod chart;
+pub mod chart;
 pub mod d2;
 mod inputs;
 mod modules;

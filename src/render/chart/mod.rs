@@ -9,6 +9,17 @@ pub use treemap::{treemap, Tile};
 use super::d2::{color, D2Style};
 use crate::text::chart as t;
 
+pub const COLORS: &[&str] = &[
+    "chartShared",
+    "chartPartial",
+    "chartUnique",
+    "chartMark",
+    "chartInk",
+    "chartMuted",
+    "chartTrack",
+    "chartTileInk",
+];
+
 const W: u64 = 720;
 const PAD: u64 = 8;
 const CH: u64 = 7;

@@ -1,3 +1,4 @@
+use crate::render::chart::COLORS;
 use crate::render::d2::PALETTE;
 use crate::text::{cli as t, fill, messages as m};
 use clap::Parser;
@@ -43,12 +44,28 @@ fn pair<V: From<String>>(s: &str) -> Result<(String, V), String> {
 
 fn color(s: &str) -> Result<(String, String), String> {
     let (name, hex) = pair::<String>(s)?;
-    if PALETTE.iter().any(|(p, ..)| *p == name) {
+    let known: Vec<&str> = PALETTE
+        .iter()
+        .map(|(p, ..)| *p)
+        .chain(COLORS.iter().copied())
+        .collect();
+    if known.contains(&name.as_str()) {
         return Ok((name, hex));
     }
-    let known: Vec<&str> = PALETTE.iter().map(|(p, ..)| *p).collect();
     Err(fill(
         m::UNKNOWN_COLOR,
         &[("name", &name), ("palette", &known.join(", "))],
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::color;
+
+    #[test]
+    fn chart_and_diagram_colors_pass_and_others_fail() {
+        assert!(color("chartTileInk=#000").is_ok());
+        assert!(color("public=#000").is_ok());
+        assert!(color("nope=#000").is_err());
+    }
 }
