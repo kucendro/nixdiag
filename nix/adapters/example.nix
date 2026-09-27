@@ -48,6 +48,8 @@
     vm = [ "mon" ];
 
     # Minimum setup for successful bootstrap.
+    # Never an option from reads: eval fails.
+    # Every VM has curl and a self-signed cert: /etc/vm/cert.pem, /etc/vm/key.pem.
     minimum.services.example.settings = {
       security.secret_key = "test";
       server.http_addr = "0.0.0.0";
