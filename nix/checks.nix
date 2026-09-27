@@ -84,3 +84,9 @@ in
         echo "$drv" > $out
       '';
 }
+// pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
+  import ./vm {
+    inherit pkgs nixpkgs;
+    inherit (self.lib) adapters;
+  }
+)
