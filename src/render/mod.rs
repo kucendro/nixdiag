@@ -1,5 +1,6 @@
 pub mod chart;
 pub mod d2;
+pub mod dot;
 mod inputs;
 mod modules;
 pub mod out;
@@ -44,11 +45,16 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         style: &opts.style,
         svg: opts.svg,
     };
+    let dot = dot::Dot {
+        out: &out,
+        style: &opts.style,
+        svg: opts.svg,
+    };
     topology::generate(facts, &model, &d2)?;
     modules::generate(facts, &repo, &d2)?;
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
-        inputs::generate(lock, &d2)?;
+        inputs::generate(lock, &dot)?;
     }
     wiki::generate(
         &wiki::Wiki {

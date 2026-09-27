@@ -1,13 +1,14 @@
-use super::d2::D2;
+use super::dot::{Dot, Paint};
 use crate::conf::files::diagram;
+use crate::conf::palette::diagram as p;
 use crate::source::flakelock::Lock;
-use crate::text::d2::inputs as t;
-use crate::text::fill;
+use crate::text::dot::inputs as t;
 use crate::util::sanitize;
 use anyhow::Result;
+use dot_writer::{Attributes, Style};
 use std::collections::BTreeSet;
 
-pub fn generate(lock: &Lock, d2: &D2) -> Result<()> {
+pub fn generate(lock: &Lock, dot: &Dot) -> Result<()> {
     let dups = lock.duplicates();
     let flagged: BTreeSet<&str> = dups
         .iter()
@@ -15,56 +16,29 @@ pub fn generate(lock: &Lock, d2: &D2) -> Result<()> {
         .flat_map(|d| d.nodes())
         .collect();
 
-    let mut o = d2.preamble();
-    o.push(String::new());
-    o.push(fill(t::ROOT, &[("id", &sanitize(&lock.root))]));
-    for (name, locked) in lock.inputs() {
-        let (label, stroke) = if flagged.contains(name.as_str()) {
-            (
-                fill(
-                    t::FLAGGED_LABEL,
-                    &[("name", name), ("rev", &locked.short_rev())],
-                ),
-                t::FLAGGED_STROKE,
-            )
-        } else {
-            (name.clone(), t::STROKE)
-        };
-        o.push(fill(
-            t::INPUT,
-            &[
-                ("id", &sanitize(name)),
-                ("label", &label),
-                ("stroke", stroke),
-            ],
-        ));
-    }
-
-    let mut direct: Vec<String> = Vec::new();
-    let mut follows: Vec<String> = Vec::new();
-    for e in lock.edges() {
-        let label = if e.input == e.child {
-            String::new()
-        } else {
-            fill(t::EDGE_LABEL, &[("input", &e.input)])
-        };
-        let (from, to) = (sanitize(&e.parent), sanitize(&e.child));
-        let vars = [("from", from.as_str()), ("to", &to), ("label", &label)];
-        if e.follows {
-            follows.push(fill(t::FOLLOWS, &vars));
-        } else {
-            direct.push(fill(t::EDGE, &vars));
+    dot.render(diagram::INPUTS, |g| {
+        g.node_named(sanitize(&lock.root))
+            .bold(t::ROOT)
+            .fill(dot.color(&p::HOST_CLOUD))
+            .stroke(dot.color(&p::HOST_STROKE));
+        for (name, locked) in lock.inputs() {
+            let mut n = g.node_named(sanitize(name));
+            if flagged.contains(name.as_str()) {
+                n.text(&[&t::flagged(name, &locked.short_rev())])
+                    .stroke(dot.color(&p::PUBLIC))
+                    .set_pen_width(2.5);
+            } else {
+                n.text(&[name]);
+            }
         }
-    }
-
-    o.push(String::new());
-    o.push(t::DIRECT_EDGES.into());
-    o.extend(direct);
-    if !follows.is_empty() {
-        o.push(String::new());
-        o.push(t::FOLLOWS_EDGES.into());
-        o.extend(follows);
-    }
-
-    d2.write(diagram::INPUTS, &o)
+        for e in lock.edges() {
+            let mut edge = g.edge(sanitize(&e.parent), sanitize(&e.child)).attributes();
+            if e.input != e.child {
+                edge.text(&[&e.input]);
+            }
+            if e.follows {
+                edge.stroke(dot.color(&p::MESH)).set_style(Style::Dashed);
+            }
+        }
+    })
 }

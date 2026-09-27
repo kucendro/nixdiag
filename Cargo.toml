@@ -9,6 +9,7 @@ license = "MIT"
 anyhow = "1"
 bytesize = "2"
 clap = { version = "4", features = ["derive"] }
+dot-writer = "0.1"
 indexmap = { version = "2", features = ["serde"] }
 jiff = { version = "0.2", default-features = false, features = ["std"] }
 num-format = "0.4"

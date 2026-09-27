@@ -10,20 +10,40 @@ const fn c(name: &'static str, light: &'static str, dark: &'static str) -> Color
 }
 
 pub const DIAGRAM: &[Color] = &[
-    c("appFill", "#e6f0ff", "#1c2e4a"),
-    c("appStroke", "#4a76c4", "#7fa7e8"),
-    c("infraFill", "#ffe9cc", "#4a3413"),
-    c("infraStroke", "#c47a29", "#d9995a"),
-    c("baseFill", "#f0f0f0", "#2a2a2e"),
-    c("baseStroke", "#999", "#666"),
-    c("hostFill", "#fbfbfe", "#181825"),
-    c("hostStroke", "#333", "#a6adc8"),
-    c("progFill", "#eaffea", "#1e3a24"),
-    c("hostCloud", "#fff3cd", "#3d3517"),
-    c("public", "#c0392b", "#e74c3c"),
-    c("lan", "#27893f", "#2ecc71"),
-    c("mesh", "#4a76c4", "#7fa7e8"),
+    diagram::APP_FILL,
+    diagram::APP_STROKE,
+    diagram::INFRA_FILL,
+    diagram::INFRA_STROKE,
+    diagram::BASE_FILL,
+    diagram::BASE_STROKE,
+    diagram::HOST_FILL,
+    diagram::HOST_STROKE,
+    diagram::PROG_FILL,
+    diagram::HOST_CLOUD,
+    diagram::PUBLIC,
+    diagram::LAN,
+    diagram::MESH,
 ];
+
+pub mod diagram {
+    use super::{c, Color};
+
+    pub const APP_FILL: Color = c("appFill", "#e6f0ff", "#1c2e4a");
+    pub const APP_STROKE: Color = c("appStroke", "#4a76c4", "#7fa7e8");
+    pub const INFRA_FILL: Color = c("infraFill", "#ffe9cc", "#4a3413");
+    pub const INFRA_STROKE: Color = c("infraStroke", "#c47a29", "#d9995a");
+    pub const BASE_FILL: Color = c("baseFill", "#f0f0f0", "#2a2a2e");
+    pub const BASE_STROKE: Color = c("baseStroke", "#999", "#666");
+    pub const HOST_FILL: Color = c("hostFill", "#fbfbfe", "#181825");
+    pub const HOST_STROKE: Color = c("hostStroke", "#333", "#a6adc8");
+    pub const PROG_FILL: Color = c("progFill", "#eaffea", "#1e3a24");
+    pub const HOST_CLOUD: Color = c("hostCloud", "#fff3cd", "#3d3517");
+    pub const PUBLIC: Color = c("public", "#c0392b", "#e74c3c");
+    pub const LAN: Color = c("lan", "#27893f", "#2ecc71");
+    pub const MESH: Color = c("mesh", "#4a76c4", "#7fa7e8");
+    pub const INK: Color = c("ink", "#1f2328", "#cdd6f4");
+    pub const LINE: Color = c("line", "#57606a", "#a6adc8");
+}
 
 pub mod chart {
     use super::{c, Color};

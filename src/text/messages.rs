@@ -7,7 +7,9 @@ pub const CLOSURES: &str = "closures.json";
 pub const FACTS_PRODUCER: &str = "module";
 pub const CLOSURES_PRODUCER: &str = "derivation";
 pub const NO_TOPOLOGY: &str = "note: no topology facts — the diagram shows hosts and firewall ports only. Set nixdiag.units.<unit> in a module to draw the data flow.";
-pub const NO_D2: &str = "(d2 binary not on PATH -- skipped SVG render)";
+pub fn no_renderer(tool: &str) -> String {
+    format!("({tool} binary not on PATH -- skipped SVG render)")
+}
 
 pub fn wrote(path: impl Display) -> String {
     format!("wrote {path}")
@@ -47,10 +49,10 @@ pub enum Fail {
         target: String,
         reason: Unresolved,
     },
-    #[error("d2 render of {0}.d2 failed: {1}")]
-    D2(String, std::io::Error),
-    #[error("d2 render of {0}.d2 failed:\n{1}")]
-    D2Output(String, String),
+    #[error("{0} render of {1} failed: {2}")]
+    Render(&'static str, String, std::io::Error),
+    #[error("{0} render of {1} failed:\n{2}")]
+    RenderOutput(&'static str, String, String),
 }
 
 #[derive(Debug, Error)]

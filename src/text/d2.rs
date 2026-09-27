@@ -44,17 +44,3 @@ pub mod modules {
     pub const IMPORT_EDGES: &str = "# module imports";
     pub const EDGE: &str = "{from} -> {to}";
 }
-
-pub mod inputs {
-    pub const ROOT: &str = "{id}: \"this flake\" { style.fill: ${hostCloud}; style.bold: true }";
-    pub const INPUT: &str = "{id}: \"{label}\" { style.fill: ${baseFill}; {stroke} }";
-    pub const FLAGGED_LABEL: &str = "{name} {rev}";
-    pub const FLAGGED_STROKE: &str = "style.stroke: ${public}; style.stroke-width: 2";
-    pub const STROKE: &str = "style.stroke: ${baseStroke}";
-    pub const EDGE: &str = "{from} -> {to}{label}";
-    pub const EDGE_LABEL: &str = ": \"{input}\"";
-    pub const FOLLOWS: &str =
-        "{from} -> {to}{label} { style.stroke: ${mesh}; style.stroke-dash: 3 }";
-    pub const DIRECT_EDGES: &str = "# direct inputs";
-    pub const FOLLOWS_EDGES: &str = "# follows (deduplication)";
-}

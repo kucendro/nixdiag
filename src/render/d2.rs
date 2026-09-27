@@ -45,13 +45,13 @@ impl D2<'_> {
             .output();
         match run {
             Err(e) if e.kind() == ErrorKind::NotFound => {
-                println!("{}", m::NO_D2);
+                println!("{}", m::no_renderer("d2"));
                 Ok(())
             }
-            Err(e) => bail!(Fail::D2(stem.into(), e)),
+            Err(e) => bail!(Fail::Render("d2", stem.into(), e)),
             Ok(o) if !o.status.success() => {
                 let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
-                bail!(Fail::D2Output(stem.into(), stderr))
+                bail!(Fail::RenderOutput("d2", stem.into(), stderr))
             }
             Ok(_) => self
                 .out
