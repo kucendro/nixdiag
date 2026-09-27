@@ -1,7 +1,8 @@
 use super::Wiki;
 use crate::conf::files::{page, BOOK};
+use crate::text::fill;
+use crate::text::messages::Fail;
 use crate::text::wiki::{summary as t, INDEX};
-use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
 use serde_json::json;
 use std::path::PathBuf;
@@ -28,13 +29,11 @@ pub(super) fn copy_extra_pages(
             .map(|f| f.to_string_lossy().into_owned())
             .unwrap_or_default();
         if fname.is_empty() {
-            bail!(fill(m::EXTRA_PAGE_NO_NAME, &[("title", title)]));
+            bail!(Fail::ExtraPageNoName(title.clone()));
         }
         if !source.exists() {
-            bail!(fill(
-                m::EXTRA_PAGE_MISSING,
-                &[("title", title), ("path", &source.display().to_string())]
-            ));
+            let (title, path) = (title.clone(), source.clone());
+            bail!(Fail::ExtraPageMissing { title, path });
         }
         w.src.copy(source, &fname)?;
         links.push((title.clone(), fname));

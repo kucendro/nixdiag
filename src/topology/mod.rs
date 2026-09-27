@@ -5,8 +5,8 @@ pub mod target;
 pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
 
 use crate::facts::Facts;
-use crate::text::{fill, messages as m};
-use anyhow::{anyhow, Result};
+use crate::text::messages::Fail;
+use anyhow::Result;
 use std::iter::once;
 
 pub fn build(facts: &Facts) -> Result<Model> {
@@ -21,15 +21,13 @@ pub fn build(facts: &Facts) -> Result<Model> {
             let node = Endpoint::Unit(host.clone(), unit.clone());
             for c in &u.connections {
                 let to = resolve::target(facts, &book, host, &c.to).map_err(|reason| {
-                    anyhow!(fill(
-                        m::CONNECTION_ERROR,
-                        &[
-                            ("host", host),
-                            ("unit", unit),
-                            ("target", &c.to),
-                            ("reason", &reason),
-                        ],
-                    ))
+                    let (host, unit, target) = (host.clone(), unit.clone(), c.to.clone());
+                    Fail::Connection {
+                        host,
+                        unit,
+                        target,
+                        reason,
+                    }
                 })?;
                 if let Some(name) = &c.name {
                     model.named.push(NamedEndpoint {

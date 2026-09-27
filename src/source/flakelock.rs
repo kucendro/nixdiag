@@ -5,7 +5,7 @@ mod tests;
 pub use dups::Dup;
 
 use crate::conf::{limits::SHORT_REV, repo, schema};
-use crate::text::{fill, messages as m};
+use crate::text::messages as m;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -100,15 +100,12 @@ impl Lock {
         match serde_json::from_str::<Lock>(&text) {
             Ok(lock) => {
                 if lock.version != 0 && lock.version != schema::LOCK {
-                    let version = lock.version.to_string();
-                    let expected = schema::LOCK.to_string();
-                    let vars = [("version", version.as_str()), ("expected", &expected)];
-                    eprintln!("{}", fill(m::LOCK_VERSION, &vars));
+                    eprintln!("{}", m::lock_version(lock.version, schema::LOCK));
                 }
                 Some(lock)
             }
             Err(e) => {
-                eprintln!("{}", fill(m::LOCK_UNREADABLE, &[("error", &e.to_string())]));
+                eprintln!("{}", m::lock_unreadable(e));
                 None
             }
         }

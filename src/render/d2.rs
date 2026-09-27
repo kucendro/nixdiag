@@ -4,7 +4,7 @@ use crate::conf::palette::DIAGRAM;
 use crate::conf::tools::D2_LAYOUT;
 use crate::render::out::Out;
 use crate::text::d2::DIRECTION;
-use crate::text::{fill, messages as m};
+use crate::text::messages::{self as m, Fail};
 use anyhow::{bail, Result};
 use std::fs;
 use std::io::ErrorKind;
@@ -48,17 +48,11 @@ impl D2<'_> {
                 println!("{}", m::NO_D2);
                 Ok(())
             }
-            Err(e) => bail!(fill(
-                m::D2_FAILED,
-                &[("stem", stem), ("error", &e.to_string())]
-            )),
-            Ok(o) if !o.status.success() => bail!(fill(
-                m::D2_FAILED_OUTPUT,
-                &[
-                    ("stem", stem),
-                    ("stderr", &String::from_utf8_lossy(&o.stderr))
-                ]
-            )),
+            Err(e) => bail!(Fail::D2(stem.into(), e)),
+            Ok(o) if !o.status.success() => {
+                let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
+                bail!(Fail::D2Output(stem.into(), stderr))
+            }
             Ok(_) => self
                 .out
                 .put(&svg, |p| fs::write(p, unmask(&fs::read_to_string(p)?))),

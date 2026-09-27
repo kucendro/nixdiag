@@ -4,7 +4,7 @@ use crate::closures::Closures;
 use crate::conf::schema;
 use crate::facts::Facts;
 use crate::render::{render_all, style::Style, RenderOpts, WikiOpts};
-use crate::text::{fill, messages as m};
+use crate::text::messages::{self as m, Fail};
 use anyhow::{bail, Context, Result};
 use args::Cli;
 use clap::Parser;
@@ -49,28 +49,23 @@ pub fn run() -> Result<()> {
     )
 }
 
-fn read_json<T: DeserializeOwned>(path: &Path, file: &str) -> Result<T> {
+fn read_json<T: DeserializeOwned>(path: &Path, file: &'static str) -> Result<T> {
     let text = if path == Path::new("-") {
         std::io::read_to_string(std::io::stdin())?
     } else {
-        std::fs::read_to_string(path)
-            .with_context(|| fill(m::READING, &[("path", &path.display().to_string())]))?
+        std::fs::read_to_string(path).with_context(|| Fail::Reading(path.into()))?
     };
-    serde_json::from_str(&text).with_context(|| fill(m::PARSING, &[("file", file)]))
+    serde_json::from_str(&text).with_context(|| Fail::Parsing(file))
 }
 
-fn check(file: &str, producer: &str, found: u32, expected: u32) -> Result<()> {
+fn check(file: &'static str, producer: &'static str, found: u32, expected: u32) -> Result<()> {
     if found != expected {
-        bail!(fill(
-            m::SCHEMA_MISMATCH,
-            &[
-                ("file", file),
-                ("producer", producer),
-                ("found", &found.to_string()),
-                ("version", env!("CARGO_PKG_VERSION")),
-                ("expected", &expected.to_string()),
-            ],
-        ));
+        bail!(Fail::Schema {
+            file,
+            producer,
+            found,
+            expected
+        });
     }
     Ok(())
 }

@@ -1,7 +1,7 @@
 use super::target::Target;
 use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
-use crate::text::{fill, messages as m};
+use crate::text::messages::Unresolved;
 use std::collections::BTreeMap;
 
 struct Entry {
@@ -44,7 +44,7 @@ impl Book {
         Book(book)
     }
 
-    fn lookup(&self, name: &str, port: Option<u32>) -> Result<Option<Endpoint>, String> {
+    fn lookup(&self, name: &str, port: Option<u32>) -> Result<Option<Endpoint>, Unresolved> {
         let Some(entries) = self.0.get(name) else {
             return Ok(None);
         };
@@ -54,7 +54,7 @@ impl Book {
         }
         match nodes.as_slice() {
             [n] => Ok(Some(n.clone())),
-            _ => Err(fill(m::AMBIGUOUS_NAME, &[("name", name)])),
+            _ => Err(Unresolved::AmbiguousName(name.into())),
         }
     }
 }
@@ -69,7 +69,12 @@ fn unique<'a>(entries: impl Iterator<Item = &'a Entry>) -> Vec<Endpoint> {
     v
 }
 
-pub fn target(facts: &Facts, book: &Book, from: &str, target: &str) -> Result<Endpoint, String> {
+pub fn target(
+    facts: &Facts,
+    book: &Book,
+    from: &str,
+    target: &str,
+) -> Result<Endpoint, Unresolved> {
     if target == INTERNET {
         return Ok(Endpoint::Internet);
     }
@@ -88,12 +93,11 @@ pub fn target(facts: &Facts, book: &Book, from: &str, target: &str) -> Result<En
         return Ok(e);
     }
     let Some(t) = Target::parse(target) else {
-        return Err(m::UNKNOWN_TARGET.into());
+        return Err(Unresolved::Unknown);
     };
     if t.is_loopback() {
-        let port_text = t.port.map(|p| p.to_string()).unwrap_or_default();
-        return unit_on_port(facts, from, t.port)
-            .ok_or_else(|| fill(m::NO_PORT, &[("host", from), ("port", &port_text)]));
+        let port = t.port.map(|p| p.to_string()).unwrap_or_default();
+        return unit_on_port(facts, from, t.port).ok_or(Unresolved::NoPort(from.into(), port));
     }
     let name = t.host.to_string();
     if let Some(e) = book.lookup(&name, t.port)? {
@@ -103,21 +107,22 @@ pub fn target(facts: &Facts, book: &Book, from: &str, target: &str) -> Result<En
     if facts.hosts.contains_key(first) {
         return Ok(unit_on_port(facts, first, t.port).unwrap_or(Endpoint::Host(first.into())));
     }
-    Err(m::UNKNOWN_TARGET.into())
+    Err(Unresolved::Unknown)
 }
 
-fn host_unit(facts: &Facts, host: &str, unit: &str) -> Result<Endpoint, String> {
+fn host_unit(facts: &Facts, host: &str, unit: &str) -> Result<Endpoint, Unresolved> {
     let Some(h) = facts.hosts.get(host) else {
-        return Err(fill(m::UNKNOWN_HOST, &[("host", host)]));
+        return Err(Unresolved::Host(host.into()));
     };
     if h.topology().units.contains_key(unit) || h.units().any(|u| u.name == unit) {
         Ok(Endpoint::Unit(host.into(), unit.into()))
     } else {
-        Err(fill(m::NOT_ENABLED, &[("unit", unit), ("host", host)]))
+        let (unit, host) = (unit.into(), host.into());
+        Err(Unresolved::NotEnabled { unit, host })
     }
 }
 
-fn unique_unit(facts: &Facts, unit: &str) -> Result<Option<Endpoint>, String> {
+fn unique_unit(facts: &Facts, unit: &str) -> Result<Option<Endpoint>, Unresolved> {
     let declared: Vec<&String> = facts
         .hosts
         .iter()
@@ -139,10 +144,7 @@ fn unique_unit(facts: &Facts, unit: &str) -> Result<Option<Endpoint>, String> {
         [h] => Ok(Some(Endpoint::Unit((*h).clone(), unit.into()))),
         _ => {
             let list = hosts.iter().map(|h| h.as_str()).collect::<Vec<_>>();
-            Err(fill(
-                m::AMBIGUOUS_UNIT,
-                &[("unit", unit), ("hosts", &list.join(", "))],
-            ))
+            Err(Unresolved::AmbiguousUnit(unit.into(), list.join(", ")))
         }
     }
 }

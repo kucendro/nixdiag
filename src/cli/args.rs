@@ -1,6 +1,7 @@
 use crate::conf::palette::{chart, DIAGRAM};
 use crate::render::style::Theme;
-use crate::text::{cli as t, fill, messages as m};
+use crate::text::cli as t;
+use crate::text::messages::BadArg;
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -35,23 +36,20 @@ fn absolute(s: &str) -> std::io::Result<PathBuf> {
     std::path::absolute(s)
 }
 
-fn pair<V: From<String>>(s: &str) -> Result<(String, V), String> {
+fn pair<V: From<String>>(s: &str) -> Result<(String, V), BadArg> {
     match s.split_once('=') {
         Some((k, v)) if !k.is_empty() && !v.is_empty() => Ok((k.into(), V::from(v.into()))),
-        _ => Err(m::BAD_PAIR.into()),
+        _ => Err(BadArg::Pair),
     }
 }
 
-fn color(s: &str) -> Result<(String, String), String> {
+fn color(s: &str) -> Result<(String, String), BadArg> {
     let (name, hex) = pair::<String>(s)?;
     let known: Vec<&str> = DIAGRAM.iter().chain(chart::ALL).map(|c| c.name).collect();
     if known.contains(&name.as_str()) {
         return Ok((name, hex));
     }
-    Err(fill(
-        m::UNKNOWN_COLOR,
-        &[("name", &name), ("palette", &known.join(", "))],
-    ))
+    Err(BadArg::Color(name, known.join(", ")))
 }
 
 #[cfg(test)]

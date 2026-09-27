@@ -1,5 +1,5 @@
 use crate::conf::repo::{DEFAULT, FLAKE, STORE_SOURCE};
-use crate::text::{fill, messages as m};
+use crate::text::messages::Fail;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
@@ -14,8 +14,7 @@ impl Repo {
 
     pub fn flake(&self) -> Result<String> {
         let path = self.root.join(FLAKE);
-        std::fs::read_to_string(&path)
-            .with_context(|| fill(m::READING, &[("path", &path.display().to_string())]))
+        std::fs::read_to_string(&path).with_context(|| Fail::Reading(path.clone()))
     }
 
     pub fn file(&self, store_path: &str) -> Option<String> {

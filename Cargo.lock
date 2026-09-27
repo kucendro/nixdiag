@@ -419,6 +419,7 @@ dependencies = [
  "streemap",
  "svg",
  "tabled",
+ "thiserror",
  "toml",
  "url",
 ]
