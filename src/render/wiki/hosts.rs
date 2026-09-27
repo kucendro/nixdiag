@@ -1,11 +1,10 @@
-use super::{codes, repo_services, Wiki};
+use super::{code, codes, repo_services, size_paths, table, Wiki};
 use crate::closures::Closures;
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Host, NixosHost};
-use crate::human::{Bytes, Count};
 use crate::source::repo::Repo;
 use crate::text::fill;
-use crate::text::wiki::{hosts as t, NONE, NOT_MEASURED};
+use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
 use anyhow::Result;
 
 fn join_or_dash(items: &[String]) -> String {
@@ -44,32 +43,20 @@ fn host_nixos(
     } else {
         &f.platform
     };
-    let mut rows = vec![fill(t::PLATFORM, &[("platform", platform)])];
+    let mut rows = vec![[t::PLATFORM.into(), code(platform)]];
     if !f.state_version.is_empty() {
-        rows.push(fill(t::STATE, &[("state", &f.state_version)]));
+        rows.push([t::STATE.into(), code(&f.state_version)]);
     }
-    rows.push(fill(t::USERS, &[("users", &join_or_dash(&f.users))]));
-    rows.push(fill(t::PACKAGES, &[("count", &f.pkg_count.to_string())]));
+    rows.push([t::USERS.into(), join_or_dash(&f.users)]);
+    rows.push([t::PACKAGES.into(), f.pkg_count.to_string()]);
     if let Some(cs) = closures {
-        let closure = match cs.hosts.get(host).map(|c| c.total()) {
-            Some(c) => fill(
-                t::CLOSURE_SIZE,
-                &[
-                    ("size", &Bytes(c.size).to_string()),
-                    ("paths", &Count(c.paths).to_string()),
-                ],
-            ),
-            None => NOT_MEASURED.into(),
-        };
-        rows.push(fill(t::CLOSURE, &[("closure", &closure)]));
+        let closure = cs.hosts.get(host).map(|c| size_paths(&c.total()));
+        rows.push([t::CLOSURE.into(), closure.unwrap_or(NOT_MEASURED.into())]);
     }
-    rows.push(fill(t::TCP, &[("ports", &ports(&f.tcp))]));
-    rows.push(fill(t::UDP, &[("ports", &ports(&f.udp))]));
-    rows.push(fill(
-        t::SERVICES_COUNT,
-        &[("count", &svcs.len().to_string())],
-    ));
-    o.push(fill(t::TABLE, &[("rows", &rows.join("\n"))]));
+    rows.push([t::TCP.into(), ports(&f.tcp)]);
+    rows.push([t::UDP.into(), ports(&f.udp)]);
+    rows.push([t::SERVICES_COUNT.into(), svcs.len().to_string()]);
+    o.push(table(KV, rows));
 
     if !svcs.is_empty() {
         let rows: Vec<String> = svcs

@@ -3,13 +3,13 @@ mod charts;
 mod tests;
 
 use super::super::chart;
-use super::{table, Wiki};
+use super::{code, size_paths, table, Wiki};
 use crate::closures::{Closures, HostClosure};
 use crate::conf::files::{chart as svg, page};
 use crate::conf::limits::TOP_PATHS;
 use crate::human::{Bytes, Count};
 use crate::text::fill;
-use crate::text::wiki::closures as t;
+use crate::text::wiki::{closures as t, KV, NONE};
 use crate::util::{sanitize, store_name};
 use anyhow::Result;
 use charts::{bar_rows, treemap_tiles};
@@ -29,24 +29,21 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
         w.src.write(svg::CLOSURES, &bars)?;
         o.push(fill(t::CHART, &[("caption", t::CHART_CAPTION)]));
     }
-    o.push(table(&t::HEAD, &summary_rows(closures, &hosts)));
+    o.push(table(t::HEAD, summary_rows(closures, &hosts)));
 
     let measured = hosts.iter().filter(|(_, c)| c.is_some()).count();
     if measured > 1 {
         let (shared, deduped) = (closures.shared(), closures.deduped());
         let naive = closures.naive_sum();
-        o.push(fill(
-            t::FLEET,
-            &[
-                ("shared", &Bytes(shared.size).to_string()),
-                ("shared_paths", &Count(shared.paths).to_string()),
-                ("deduped", &Bytes(deduped.size).to_string()),
-                ("deduped_paths", &Count(deduped.paths).to_string()),
-                ("sum", &Bytes(naive).to_string()),
-                (
-                    "saved",
-                    &Bytes(naive.saturating_sub(deduped.size)).to_string(),
-                ),
+        let saved = naive.saturating_sub(deduped.size);
+        o.push(t::FLEET.into());
+        o.push(table(
+            KV,
+            [
+                [t::SHARED.into(), size_paths(&shared)],
+                [t::DEDUPED.into(), size_paths(&deduped)],
+                [t::SUM.into(), Bytes(naive).to_string()],
+                [t::SAVED.into(), Bytes(saved).to_string()],
             ],
         ));
     }
@@ -67,43 +64,30 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
             o.push(fill(t::TREEMAP, &[("caption", &caption), ("file", &file)]));
         }
 
-        let rows: Vec<String> = h
+        let rows = h
             .largest(TOP_PATHS)
-            .iter()
-            .map(|p| {
-                fill(
-                    t::LARGEST_ROW,
-                    &[
-                        ("package", store_name(&p.path)),
-                        ("size", &Bytes(p.nar_size).to_string()),
-                    ],
-                )
-            })
-            .collect();
+            .into_iter()
+            .map(|p| [code(store_name(&p.path)), Bytes(p.nar_size).to_string()]);
         o.push(t::LARGEST.into());
-        o.push(table(&t::LARGEST_HEAD, &rows));
+        o.push(table(t::LARGEST_HEAD, rows));
     }
 
     w.page(page::CLOSURES, &o)
 }
 
-fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<String> {
-    hosts
-        .iter()
-        .map(|(host, closure)| match closure {
-            Some(h) => {
-                let total = h.total();
-                fill(
-                    t::ROW,
-                    &[
-                        ("host", host),
-                        ("closure", &Bytes(total.size).to_string()),
-                        ("paths", &Count(total.paths).to_string()),
-                        ("unique", &Bytes(closures.unique(host).size).to_string()),
-                    ],
-                )
-            }
-            None => fill(t::ROW_UNMEASURED, &[("host", host)]),
-        })
-        .collect()
+fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<[String; 4]> {
+    let row = |host: &str, closure: Option<&HostClosure>| {
+        let Some(h) = closure else {
+            return [code(host), NONE.into(), NONE.into(), NONE.into()];
+        };
+        let (total, unique) = (h.total(), closures.unique(host).size);
+        let (size, paths) = (Bytes(total.size), Count(total.paths));
+        [
+            code(host),
+            size.to_string(),
+            paths.to_string(),
+            Bytes(unique).to_string(),
+        ]
+    };
+    hosts.iter().map(|(host, c)| row(host, *c)).collect()
 }

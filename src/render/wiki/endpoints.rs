@@ -37,24 +37,10 @@ impl Row {
         )
     }
 
-    fn line(&self) -> String {
-        let port = format!(
-            "{}{}",
-            self.port
-                .map(|p| p.to_string())
-                .unwrap_or_else(|| NONE.into()),
-            if self.udp { t::UDP } else { "" }
-        );
-        fill(
-            t::ROW,
-            &[
-                ("endpoint", &self.cell()),
-                ("port", &port),
-                ("scope", &self.scope),
-                ("host", &self.host),
-                ("service", &self.service),
-            ],
-        )
+    fn cells(self) -> [String; 5] {
+        let port = self.port.map_or(NONE.into(), |p| p.to_string());
+        let port = port + if self.udp { t::UDP } else { "" };
+        [self.cell(), port, self.scope, self.host, self.service]
     }
 }
 
@@ -94,9 +80,6 @@ pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
     });
     let mut rows: Vec<Row> = exposed.chain(named).collect();
     rows.sort();
-    let lines: Vec<String> = rows.iter().map(Row::line).collect();
-    w.page(
-        page::ENDPOINTS,
-        &[t::TITLE.to_string(), table(&t::HEAD, &lines)],
-    )
+    let table = table(t::HEAD, rows.into_iter().map(Row::cells));
+    w.page(page::ENDPOINTS, &[t::TITLE.to_string(), table])
 }

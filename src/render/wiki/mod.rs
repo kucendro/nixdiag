@@ -16,16 +16,19 @@ use services::page_services;
 
 use super::out::Out;
 use super::style::Style;
-use crate::closures::Closures;
+use crate::closures::{Closures, Total};
 use crate::facts::{Facts, HostBase};
+use crate::human::{Bytes, Count};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use crate::text::fill;
-use crate::text::wiki::{CODE, NONE};
+use crate::text::wiki::{CODE, NONE, SIZE_PATHS};
 use crate::topology::Model;
 use anyhow::Result;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use tabled::builder::Builder;
+use tabled::settings::Style as Grid;
 
 pub struct Wiki<'a> {
     pub out: &'a Out,
@@ -50,14 +53,18 @@ impl Wiki<'_> {
     }
 }
 
-fn table(head: &[&str], rows: &[String]) -> String {
-    let line = |cells: &[&str]| format!("| {} |", cells.join(" | "));
-    let mut o = vec![line(head), format!("|{}", "---|".repeat(head.len()))];
-    if rows.is_empty() {
-        o.push(line(&vec![NONE; head.len()]));
+fn table<const N: usize>(head: [&str; N], rows: impl IntoIterator<Item = [String; N]>) -> String {
+    let mut b = Builder::from_iter(rows);
+    if b.count_records() == 0 {
+        b.push_record([NONE; N]);
     }
-    o.extend_from_slice(rows);
-    o.join("\n")
+    b.insert_record(0, head);
+    b.build().with(Grid::markdown()).to_string()
+}
+
+fn size_paths(t: &Total) -> String {
+    let (size, paths) = (Bytes(t.size).to_string(), Count(t.paths).to_string());
+    fill(SIZE_PATHS, &[("size", &size), ("paths", &paths)])
 }
 
 fn code(s: &str) -> String {

@@ -32,19 +32,10 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
 }
 
 fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
-    let mut rows = Vec::new();
-    for r in &d.revs {
-        for n in &r.nodes {
-            rows.push(fill(
-                t::DIAMOND_ROW,
-                &[
-                    ("rev", &short(&r.rev)),
-                    ("node", n),
-                    ("parents", &pulled_in_by(lock, n)),
-                ],
-            ));
-        }
-    }
+    let rows = d.revs.iter().flat_map(|r| {
+        let row = |n: &String| [code(&short(&r.rev)), code(n), pulled_in_by(lock, n)];
+        r.nodes.iter().map(row)
+    });
     o.push(fill(
         t::DIAMOND,
         &[
@@ -52,7 +43,7 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
             ("revisions", &d.revs.len().to_string()),
         ],
     ));
-    o.push(table(&t::DIAMOND_HEAD, &rows));
+    o.push(table(t::DIAMOND_HEAD, rows));
 
     let Some(target) = lock.root_input_for(&d.identity) else {
         return;
@@ -119,25 +110,14 @@ fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
 pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
     w.src.mirror(w.out, &format!("{}.svg", diagram::INPUTS))?;
 
-    let rows: Vec<String> = lock
+    let rows = lock
         .inputs()
         .into_iter()
-        .map(|(name, locked)| {
-            fill(
-                t::ROW,
-                &[
-                    ("name", name),
-                    ("source", &locked.source()),
-                    ("rev", &locked.short_rev()),
-                    ("date", &date(locked)),
-                ],
-            )
-        })
-        .collect();
+        .map(|(name, l)| [code(name), code(&l.source()), code(&l.short_rev()), date(l)]);
     let mut o = vec![
         t::TITLE.to_string(),
         t::INTRO.to_string(),
-        table(&t::HEAD, &rows),
+        table(t::HEAD, rows),
     ];
 
     lock_dates(&mut o, w, lock)?;

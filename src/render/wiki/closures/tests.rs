@@ -14,20 +14,17 @@ fn unselected_hosts_still_get_a_row() {
     let c = closures();
     let nas = c.hosts.get("nas");
     let rows = summary_rows(&c, &[("nas", nas), ("edge", None)]);
-    assert!(
-        rows.iter().any(|r| r.starts_with("| `nas` | 1.0 KiB")),
-        "{rows:?}"
-    );
-    assert!(
-        rows.contains(&fill(t::ROW_UNMEASURED, &[("host", "edge")])),
-        "{rows:?}"
+    assert_eq!(rows[0][..2], [code("nas"), "1.0 KiB".into()], "{rows:?}");
+    assert_eq!(
+        rows[1],
+        [code("edge"), NONE.into(), NONE.into(), NONE.into()]
     );
 }
 
 #[test]
 fn no_nixos_hosts_at_all_renders_a_placeholder() {
-    let rows = summary_rows(&closures(), &[]);
-    assert!(table(&t::HEAD, &rows).ends_with("\n| — | — | — | — |"));
+    let table = table(t::HEAD, summary_rows(&closures(), &[]));
+    assert_eq!(table.lines().last().unwrap().matches(NONE).count(), 4);
 }
 
 #[test]

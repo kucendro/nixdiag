@@ -15,21 +15,11 @@ pub(super) fn page_services(w: &Wiki) -> Result<()> {
             e.1.extend(files);
         }
     }
-    let rows: Vec<String> = index
-        .iter()
-        .map(|(name, (hosts, files))| {
-            let hosts = hosts.iter().cloned().collect::<Vec<_>>().join(", ");
-            fill(
-                t::ROW,
-                &[
-                    ("name", name),
-                    ("hosts", &hosts),
-                    ("files", &codes(files, " ")),
-                ],
-            )
-        })
-        .collect();
-    let mut o = vec![t::TITLE.to_string(), table(&t::HEAD, &rows)];
+    let rows = index.iter().map(|(name, (hosts, files))| {
+        let hosts = hosts.iter().cloned().collect::<Vec<_>>().join(", ");
+        [fill(t::NAME, &[("name", name)]), hosts, codes(files, " ")]
+    });
+    let mut o = vec![t::TITLE.to_string(), table(t::HEAD, rows)];
     let mut described: BTreeMap<&str, &str> = BTreeMap::new();
     for f in w.facts.hosts.values() {
         for (name, u) in &f.topology().units {

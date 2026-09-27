@@ -1,6 +1,8 @@
 pub const NONE: &str = "—";
 pub const CODE: &str = "`{code}`";
 pub const NOT_MEASURED: &str = "not measured";
+pub const KV: [&str; 2] = ["", ""];
+pub const SIZE_PATHS: &str = "{size} ({paths} paths)";
 
 pub const INDEX: &str = "\
 # Infrastructure wiki
@@ -36,17 +38,15 @@ pub mod hosts {
     pub const NIXOS: &str = "## 🖥️ {host}";
     pub const DARWIN: &str = "## 🍏 {host}";
     pub const DARWIN_INTRO: &str = "_nix-darwin host._";
-    pub const TABLE: &str = "| | |\n|---|---|\n{rows}";
-    pub const PLATFORM: &str = "| Platform | `{platform}` |";
+    pub const PLATFORM: &str = "Platform";
     pub const UNKNOWN_PLATFORM: &str = "?";
-    pub const STATE: &str = "| State version | `{state}` |";
-    pub const USERS: &str = "| Users | {users} |";
-    pub const PACKAGES: &str = "| System packages | {count} |";
-    pub const CLOSURE: &str = "| Closure | {closure} |";
-    pub const CLOSURE_SIZE: &str = "{size} ({paths} paths)";
-    pub const TCP: &str = "| Open TCP ports | {ports} |";
-    pub const UDP: &str = "| Open UDP ports | {ports} |";
-    pub const SERVICES_COUNT: &str = "| Repo-configured services | {count} |";
+    pub const STATE: &str = "State version";
+    pub const USERS: &str = "Users";
+    pub const PACKAGES: &str = "System packages";
+    pub const CLOSURE: &str = "Closure";
+    pub const TCP: &str = "Open TCP ports";
+    pub const UDP: &str = "Open UDP ports";
+    pub const SERVICES_COUNT: &str = "Repo-configured services";
     pub const SERVICES: &str = "**Services:**\n\n{rows}";
     pub const SERVICE: &str = "- **{name}** — {files}";
     pub const LIST: &str = "**{title}:** {items}";
@@ -58,14 +58,13 @@ pub mod hosts {
 pub mod services {
     pub const TITLE: &str = "# Services";
     pub const HEAD: [&str; 3] = ["Service", "Hosts", "Defined in"];
-    pub const ROW: &str = "| **{name}** | {hosts} | {files} |";
+    pub const NAME: &str = "**{name}**";
     pub const UNIT: &str = "## {name}\n\n{description}";
 }
 
 pub mod endpoints {
     pub const TITLE: &str = "# Endpoints";
     pub const HEAD: [&str; 5] = ["Endpoint", "Port", "Scope", "Host", "Service"];
-    pub const ROW: &str = "| {endpoint} | {port} | {scope} | {host} | {service} |";
     pub const LINK: &str = "[`{name}`]({scheme}://{name}{port})";
     pub const HTTP: &str = "http";
     pub const HTTPS: &str = "https";
@@ -80,7 +79,6 @@ Dashed edges are `follows`, which *removes* a duplicate.
 
 ![Input graph](./inputs.svg)";
     pub const HEAD: [&str; 4] = ["Input", "Source", "Rev", "Locked"];
-    pub const ROW: &str = "| `{name}` | `{source}` | `{rev}` | {date} |";
     pub const DATES_CAPTION: &str = "Locked inputs by date, oldest first";
     pub const DATES: &str = "\
 ## Lock dates
@@ -92,7 +90,6 @@ Dashed edges are `follows`, which *removes* a duplicate.
     pub const DIAMONDS: &str = "## Duplicate inputs";
     pub const DIAMOND: &str = "`{source}` is locked at **{revisions} revisions**, so every copy is fetched and evaluated separately:";
     pub const DIAMOND_HEAD: [&str; 3] = ["Rev", "Node", "Pulled in by"];
-    pub const DIAMOND_ROW: &str = "| `{rev}` | `{node}` | {parents} |";
     pub const THIS_FLAKE: &str = "this flake";
     pub const PARENT_AS: &str = "`{parent}` (as `{input}`)";
     pub const FIX: &str = "Point the extra copies at `{target}`:\n\n```nix\n{lines}\n```";
@@ -111,17 +108,11 @@ pub mod closures {
     pub const CHART_CAPTION: &str = "System closure size by host";
     pub const CHART: &str = "![{caption}](./closures.svg)";
     pub const HEAD: [&str; 4] = ["Host", "Closure", "Paths", "Unique"];
-    pub const ROW: &str = "| `{host}` | {closure} | {paths} | {unique} |";
-    pub const ROW_UNMEASURED: &str = "| `{host}` | — | — | — |";
-    pub const FLEET: &str = "\
-## Fleet
-
-| | |
-|---|---|
-| Shared by every host | {shared} ({shared_paths} paths) |
-| Fleet total, deduplicated | {deduped} ({deduped_paths} paths) |
-| Sum of per-host closures | {sum} |
-| Saved by sharing | {saved} |";
+    pub const FLEET: &str = "## Fleet";
+    pub const SHARED: &str = "Shared by every host";
+    pub const DEDUPED: &str = "Fleet total, deduplicated";
+    pub const SUM: &str = "Sum of per-host closures";
+    pub const SAVED: &str = "Saved by sharing";
     pub const HOST: &str = "## {host}";
     pub const SERVED: &str = "Measured without the docs it serves.";
     pub const TREEMAP_CAPTION: &str = "{host} closure by package";
@@ -129,5 +120,4 @@ pub mod closures {
     pub const MORE: &str = "{count} more";
     pub const LARGEST: &str = "Largest single paths:";
     pub const LARGEST_HEAD: [&str; 2] = ["Package", "Size"];
-    pub const LARGEST_ROW: &str = "| `{package}` | {size} |";
 }
