@@ -1,10 +1,10 @@
-use super::{repo_services, Wiki};
+use super::{codes, repo_services, Wiki};
 use crate::closures::Closures;
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Host, NixosHost};
 use crate::source::repo::Repo;
 use crate::text::fill;
-use crate::text::wiki::{hosts as t, NONE};
+use crate::text::wiki::{hosts as t, NONE, NOT_MEASURED};
 use crate::util::{human_count, human_size};
 use anyhow::Result;
 
@@ -59,7 +59,7 @@ fn host_nixos(
                     ("paths", &human_count(c.paths)),
                 ],
             ),
-            None => t::NOT_MEASURED.into(),
+            None => NOT_MEASURED.into(),
         };
         rows.push(fill(t::CLOSURE, &[("closure", &closure)]));
     }
@@ -74,13 +74,7 @@ fn host_nixos(
     if !svcs.is_empty() {
         let rows: Vec<String> = svcs
             .iter()
-            .map(|(name, files)| {
-                let files: Vec<String> = files
-                    .iter()
-                    .map(|f| fill(t::FILE, &[("file", f)]))
-                    .collect();
-                fill(t::SERVICE, &[("name", name), ("files", &files.join(" "))])
-            })
+            .map(|(name, files)| fill(t::SERVICE, &[("name", name), ("files", &codes(files, " "))]))
             .collect();
         o.push(fill(t::SERVICES, &[("rows", &rows.join("\n"))]));
     }

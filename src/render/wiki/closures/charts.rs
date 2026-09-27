@@ -2,7 +2,7 @@ use crate::closures::{Closures, HostClosure};
 use crate::conf::limits::TREEMAP_TILES;
 use crate::render::chart::{Band, Row, Tile};
 use crate::text::fill;
-use crate::text::wiki::closures as t;
+use crate::text::wiki::{closures as t, NOT_MEASURED};
 use crate::util::{human_count, human_size};
 
 pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<Row> {
@@ -12,7 +12,7 @@ pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>
         .map(|(host, closure)| {
             let label = (*host).to_string();
             let Some(h) = closure else {
-                let note = t::NOT_MEASURED.into();
+                let note = NOT_MEASURED.into();
                 return Row {
                     label,
                     bands: Vec::new(),

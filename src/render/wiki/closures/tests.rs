@@ -27,7 +27,7 @@ fn unselected_hosts_still_get_a_row() {
 #[test]
 fn no_nixos_hosts_at_all_renders_a_placeholder() {
     let rows = summary_rows(&closures(), &[]);
-    assert_eq!(rows.last().unwrap(), t::EMPTY);
+    assert!(table(&t::HEAD, &rows).ends_with("\n| — | — | — | — |"));
 }
 
 #[test]
@@ -37,7 +37,7 @@ fn a_lone_measured_host_gets_one_plain_band() {
     assert_eq!(rows[0].bands, vec![(Band::Solid, 1024)]);
     assert_eq!(rows[0].note, "1.0 KiB");
     assert!(rows[1].bands.is_empty());
-    assert_eq!(rows[1].note, t::NOT_MEASURED);
+    assert_eq!(rows[1].note, crate::text::wiki::NOT_MEASURED);
 }
 
 #[test]

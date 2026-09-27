@@ -3,7 +3,7 @@ mod charts;
 mod tests;
 
 use super::super::chart;
-use super::Wiki;
+use super::{table, Wiki};
 use crate::closures::{Closures, HostClosure};
 use crate::conf::files::{chart as svg, page};
 use crate::conf::limits::TOP_PATHS;
@@ -28,10 +28,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
         w.src.write(svg::CLOSURES, &bars)?;
         o.push(fill(t::CHART, &[("caption", t::CHART_CAPTION)]));
     }
-    o.push(fill(
-        t::TABLE,
-        &[("rows", &summary_rows(closures, &hosts).join("\n"))],
-    ));
+    o.push(table(&t::HEAD, &summary_rows(closures, &hosts)));
 
     let measured = hosts.iter().filter(|(_, c)| c.is_some()).count();
     if measured > 1 {
@@ -66,7 +63,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
             o.push(fill(t::TREEMAP, &[("caption", &caption), ("file", &file)]));
         }
 
-        let mut rows: Vec<String> = h
+        let rows: Vec<String> = h
             .largest(TOP_PATHS)
             .iter()
             .map(|p| {
@@ -79,19 +76,14 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
                 )
             })
             .collect();
-        if rows.is_empty() {
-            rows.push(t::LARGEST_EMPTY.into());
-        }
-        o.push(fill(t::LARGEST, &[("rows", &rows.join("\n"))]));
+        o.push(t::LARGEST.into());
+        o.push(table(&t::LARGEST_HEAD, &rows));
     }
 
     w.page(page::CLOSURES, &o)
 }
 
 fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<String> {
-    if hosts.is_empty() {
-        return vec![t::EMPTY.into()];
-    }
     hosts
         .iter()
         .map(|(host, closure)| match closure {

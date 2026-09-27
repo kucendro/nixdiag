@@ -20,6 +20,8 @@ use crate::closures::Closures;
 use crate::facts::{Facts, HostBase};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
+use crate::text::fill;
+use crate::text::wiki::{CODE, NONE};
 use crate::topology::Model;
 use anyhow::Result;
 use std::collections::BTreeMap;
@@ -46,6 +48,25 @@ impl Wiki<'_> {
     fn page(&self, name: &str, sections: &[String]) -> Result<()> {
         self.src.write(name, &sections.join("\n\n"))
     }
+}
+
+fn table(head: &[&str], rows: &[String]) -> String {
+    let line = |cells: &[&str]| format!("| {} |", cells.join(" | "));
+    let mut o = vec![line(head), format!("|{}", "---|".repeat(head.len()))];
+    if rows.is_empty() {
+        o.push(line(&vec![NONE; head.len()]));
+    }
+    o.extend_from_slice(rows);
+    o.join("\n")
+}
+
+fn code(s: &str) -> String {
+    fill(CODE, &[("code", s)])
+}
+
+fn codes<S: AsRef<str>>(items: impl IntoIterator<Item = S>, sep: &str) -> String {
+    let items: Vec<String> = items.into_iter().map(|s| code(s.as_ref())).collect();
+    items.join(sep)
 }
 
 pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<String>> {

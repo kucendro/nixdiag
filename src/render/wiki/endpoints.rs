@@ -1,4 +1,4 @@
-use super::Wiki;
+use super::{code, table, Wiki};
 use crate::conf::files::page;
 use crate::facts::Scope;
 use crate::text::fill;
@@ -20,7 +20,7 @@ struct Row {
 impl Row {
     fn cell(&self) -> String {
         if !self.named || self.udp {
-            return fill(t::NAME, &[("name", &self.endpoint)]);
+            return code(&self.endpoint);
         }
         let (scheme, port) = match self.port {
             Some(80) => (t::HTTP, String::new()),
@@ -94,15 +94,9 @@ pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
     });
     let mut rows: Vec<Row> = exposed.chain(named).collect();
     rows.sort();
-    let mut lines: Vec<String> = rows.iter().map(Row::line).collect();
-    if lines.is_empty() {
-        lines.push(t::EMPTY.into());
-    }
+    let lines: Vec<String> = rows.iter().map(Row::line).collect();
     w.page(
         page::ENDPOINTS,
-        &[
-            t::TITLE.to_string(),
-            fill(t::TABLE, &[("rows", &lines.join("\n"))]),
-        ],
+        &[t::TITLE.to_string(), table(&t::HEAD, &lines)],
     )
 }

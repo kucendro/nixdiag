@@ -1,11 +1,15 @@
 use super::super::chart::{self, Mark};
-use super::Wiki;
+use super::{code, codes, table, Wiki};
 use crate::conf::files::{chart as svg, diagram, page};
-use crate::source::flakelock::{short, Dup, Lock};
+use crate::source::flakelock::{short, Dup, Lock, Locked};
 use crate::text::fill;
 use crate::text::wiki::{inputs as t, NONE};
 use crate::util::{human_date, DAY};
 use anyhow::Result;
+
+fn date(l: &Locked) -> String {
+    l.last_modified.map_or(NONE.into(), human_date)
+}
 
 fn pulled_in_by(lock: &Lock, node: &str) -> String {
     let parents = lock.parents_of(node);
@@ -18,7 +22,7 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
             if e.parent == lock.root {
                 t::THIS_FLAKE.to_string()
             } else if e.parent == e.input {
-                fill(t::PARENT, &[("parent", &e.parent)])
+                code(&e.parent)
             } else {
                 fill(t::PARENT_AS, &[("parent", &e.parent), ("input", &e.input)])
             }
@@ -46,9 +50,9 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
         &[
             ("source", &d.source),
             ("revisions", &d.revs.len().to_string()),
-            ("rows", &rows.join("\n")),
         ],
     ));
+    o.push(table(&t::DIAMOND_HEAD, &rows));
 
     let Some(target) = lock.root_input_for(&d.identity) else {
         return;
@@ -92,10 +96,7 @@ fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
             label: name.clone(),
             at: locked.last_modified,
             direct: roots.contains(name.as_str()),
-            note: locked
-                .last_modified
-                .map(human_date)
-                .unwrap_or_else(|| NONE.into()),
+            note: date(locked),
         })
         .collect();
     let Some((lo, hi)) = lock.date_span() else {
@@ -118,32 +119,25 @@ fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
 pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
     w.src.mirror(w.out, &format!("{}.svg", diagram::INPUTS))?;
 
-    let mut rows: Vec<String> = lock
+    let rows: Vec<String> = lock
         .inputs()
         .into_iter()
         .map(|(name, locked)| {
-            let date = locked
-                .last_modified
-                .map(human_date)
-                .unwrap_or_else(|| NONE.into());
             fill(
                 t::ROW,
                 &[
                     ("name", name),
                     ("source", &locked.source()),
                     ("rev", &locked.short_rev()),
-                    ("date", &date),
+                    ("date", &date(locked)),
                 ],
             )
         })
         .collect();
-    if rows.is_empty() {
-        rows.push(t::EMPTY.into());
-    }
     let mut o = vec![
         t::TITLE.to_string(),
         t::INTRO.to_string(),
-        fill(t::TABLE, &[("rows", &rows.join("\n"))]),
+        table(&t::HEAD, &rows),
     ];
 
     lock_dates(&mut o, w, lock)?;
@@ -162,14 +156,9 @@ pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
         let rows: Vec<String> = redundant
             .iter()
             .map(|d| {
-                let nodes: Vec<String> = d
-                    .nodes()
-                    .iter()
-                    .map(|n| fill(t::NODE, &[("node", n)]))
-                    .collect();
                 fill(
                     t::REDUNDANT_ROW,
-                    &[("source", &d.source), ("nodes", &nodes.join(", "))],
+                    &[("source", &d.source), ("nodes", &codes(d.nodes(), ", "))],
                 )
             })
             .collect();
