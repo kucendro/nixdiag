@@ -24,7 +24,7 @@
 
     # Minimum setup for successful bootstrap
     minimum.services.grafana.settings = {
-      security.secret_key = "test";
+      security.secret_key = "PLACEHOLDER_SECRET";
       server.http_addr = "0.0.0.0";
     };
   };
