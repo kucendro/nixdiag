@@ -1,6 +1,5 @@
 use super::Wiki;
 use crate::conf::files::{page, BOOK};
-use crate::text::fill;
 use crate::text::messages::Fail;
 use crate::text::wiki::{summary as t, INDEX};
 use anyhow::{bail, Result};
@@ -50,7 +49,7 @@ pub(super) fn page_summary(w: &Wiki, extra: &[(String, String)]) -> Result<()> {
         entries.push(t::CLOSURES.into());
     }
     for (title, file) in extra {
-        entries.push(fill(t::EXTRA, &[("title", title), ("file", file)]));
+        entries.push(t::extra(title, file));
     }
     w.page(page::SUMMARY, &[t::TITLE.to_string(), entries.join("\n")])
 }

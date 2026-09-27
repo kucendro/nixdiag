@@ -3,7 +3,6 @@ use crate::closures::Closures;
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Host, NixosHost};
 use crate::source::repo::Repo;
-use crate::text::fill;
 use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
 use anyhow::Result;
 
@@ -35,7 +34,7 @@ fn host_nixos(
 ) {
     let svcs = repo_services(&f.base, repo);
     let ports = |ps: &[u32]| join_or_dash(&ps.iter().map(u32::to_string).collect::<Vec<_>>());
-    o.push(fill(t::NIXOS, &[("host", host)]));
+    o.push(t::nixos(host));
     o.extend(f.base.description.clone());
 
     let platform = if f.platform.is_empty() {
@@ -61,14 +60,14 @@ fn host_nixos(
     if !svcs.is_empty() {
         let rows: Vec<String> = svcs
             .iter()
-            .map(|(name, files)| fill(t::SERVICE, &[("name", name), ("files", &codes(files, " "))]))
+            .map(|(name, files)| t::service(name, &codes(files, " ")))
             .collect();
-        o.push(fill(t::SERVICES, &[("rows", &rows.join("\n"))]));
+        o.push(t::services(&rows.join("\n")));
     }
 }
 
 fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
-    o.push(fill(t::DARWIN, &[("host", host)]));
+    o.push(t::darwin(host));
     o.push(
         f.base
             .description
@@ -83,10 +82,7 @@ fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
         if !items.is_empty() {
             let mut sorted = items.clone();
             sorted.sort();
-            o.push(fill(
-                t::LIST,
-                &[("title", title), ("items", &sorted.join(", "))],
-            ));
+            o.push(t::list(title, &sorted.join(", ")));
         }
     }
 }

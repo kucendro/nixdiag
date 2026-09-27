@@ -66,7 +66,7 @@ fn the_treemap_tail_folds_into_one_counted_tile() {
     let tiles = treemap_tiles(&c, "nas");
     assert_eq!(tiles.len(), TREEMAP_TILES + 1);
     let last = tiles.last().unwrap();
-    assert_eq!(last.label, fill(t::MORE, &[("count", "3")]));
+    assert_eq!(last.label, t::more(3));
     assert_eq!(last.value, 21);
     assert_eq!(last.band, Band::Rest);
 }

@@ -1,8 +1,16 @@
+use std::fmt::Display;
+
 pub const NONE: &str = "—";
-pub const CODE: &str = "`{code}`";
 pub const NOT_MEASURED: &str = "not measured";
 pub const KV: [&str; 2] = ["", ""];
-pub const SIZE_PATHS: &str = "{size} ({paths} paths)";
+
+pub fn code(s: impl Display) -> String {
+    format!("`{s}`")
+}
+
+pub fn size_paths(size: impl Display, paths: impl Display) -> String {
+    format!("{size} ({paths} paths)")
+}
 
 pub const INDEX: &str = "\
 # Infrastructure wiki
@@ -30,13 +38,14 @@ pub mod summary {
 - [Endpoints](./endpoints.md)";
     pub const INPUTS: &str = "- [Inputs](./inputs.md)";
     pub const CLOSURES: &str = "- [Closures](./closures.md)";
-    pub const EXTRA: &str = "- [{title}](./{file})";
+
+    pub fn extra(title: &str, file: &str) -> String {
+        format!("- [{title}](./{file})")
+    }
 }
 
 pub mod hosts {
     pub const TITLE: &str = "# Hosts";
-    pub const NIXOS: &str = "## 🖥️ {host}";
-    pub const DARWIN: &str = "## 🍏 {host}";
     pub const DARWIN_INTRO: &str = "_nix-darwin host._";
     pub const PLATFORM: &str = "Platform";
     pub const UNKNOWN_PLATFORM: &str = "?";
@@ -47,29 +56,58 @@ pub mod hosts {
     pub const TCP: &str = "Open TCP ports";
     pub const UDP: &str = "Open UDP ports";
     pub const SERVICES_COUNT: &str = "Repo-configured services";
-    pub const SERVICES: &str = "**Services:**\n\n{rows}";
-    pub const SERVICE: &str = "- **{name}** — {files}";
-    pub const LIST: &str = "**{title}:** {items}";
     pub const DAEMONS: &str = "LaunchDaemons";
     pub const AGENTS: &str = "User agents";
     pub const CASKS: &str = "Homebrew casks";
+
+    pub fn nixos(host: &str) -> String {
+        format!("## 🖥️ {host}")
+    }
+
+    pub fn darwin(host: &str) -> String {
+        format!("## 🍏 {host}")
+    }
+
+    pub fn services(rows: &str) -> String {
+        format!("**Services:**\n\n{rows}")
+    }
+
+    pub fn service(name: &str, files: &str) -> String {
+        format!("- **{name}** — {files}")
+    }
+
+    pub fn list(title: &str, items: &str) -> String {
+        format!("**{title}:** {items}")
+    }
 }
 
 pub mod services {
     pub const TITLE: &str = "# Services";
     pub const HEAD: [&str; 3] = ["Service", "Hosts", "Defined in"];
-    pub const NAME: &str = "**{name}**";
-    pub const UNIT: &str = "## {name}\n\n{description}";
+
+    pub fn name(name: &str) -> String {
+        format!("**{name}**")
+    }
+
+    pub fn unit(name: &str, description: &str) -> String {
+        format!("## {name}\n\n{description}")
+    }
 }
 
 pub mod endpoints {
     pub const TITLE: &str = "# Endpoints";
     pub const HEAD: [&str; 5] = ["Endpoint", "Port", "Scope", "Host", "Service"];
-    pub const LINK: &str = "[`{name}`]({scheme}://{name}{port})";
     pub const HTTP: &str = "http";
     pub const HTTPS: &str = "https";
-    pub const UNNAMED: &str = "{host}:{port}";
     pub const UDP: &str = "/udp";
+
+    pub fn link(name: &str, scheme: &str, port: &str) -> String {
+        format!("[`{name}`]({scheme}://{name}{port})")
+    }
+
+    pub fn unnamed(host: &str, port: u32) -> String {
+        format!("{host}:{port}")
+    }
 }
 
 pub mod inputs {
@@ -86,38 +124,65 @@ Dashed edges are `follows`, which *removes* a duplicate.
 ![Input dates](./inputs-timeline.svg)
 
 `lastModified` is a fixed integer in the lock, not a clock read: this is the *spread*, not a claim about today.";
-    pub const SPAN: &str = "**{days} days** separate the oldest input from the newest.";
     pub const DIAMONDS: &str = "## Duplicate inputs";
-    pub const DIAMOND: &str = "`{source}` is locked at **{revisions} revisions**, so every copy is fetched and evaluated separately:";
     pub const DIAMOND_HEAD: [&str; 3] = ["Rev", "Node", "Pulled in by"];
     pub const THIS_FLAKE: &str = "this flake";
-    pub const PARENT_AS: &str = "`{parent}` (as `{input}`)";
-    pub const FIX: &str = "Point the extra copies at `{target}`:\n\n```nix\n{lines}\n```";
-    pub const FIX_LINE: &str = "inputs.{parent}.inputs.{input}.follows = \"{target}\";";
     pub const REDUNDANT: &str = "\
 ## Redundant inputs
 
-One revision under several node names. Harmless; a `follows` drops the extra fetch.
+One revision under several node names. Harmless; a `follows` drops the extra fetch.";
 
-{rows}";
-    pub const REDUNDANT_ROW: &str = "- `{source}` — {nodes}";
+    pub fn span(days: i64) -> String {
+        format!("**{days} days** separate the oldest input from the newest.")
+    }
+
+    pub fn diamond(source: &str, revisions: usize) -> String {
+        format!("`{source}` is locked at **{revisions} revisions**, so every copy is fetched and evaluated separately:")
+    }
+
+    pub fn parent_as(parent: &str, input: &str) -> String {
+        format!("`{parent}` (as `{input}`)")
+    }
+
+    pub fn fix(target: &str, lines: &str) -> String {
+        format!("Point the extra copies at `{target}`:\n\n```nix\n{lines}\n```")
+    }
+
+    pub fn fix_line(parent: &str, input: &str, target: &str) -> String {
+        format!("inputs.{parent}.inputs.{input}.follows = \"{target}\";")
+    }
+
+    pub fn redundant(source: &str, nodes: &str) -> String {
+        format!("- `{source}` — {nodes}")
+    }
 }
 
 pub mod closures {
     pub const TITLE: &str = "# Closures";
     pub const CHART_CAPTION: &str = "System closure size by host";
-    pub const CHART: &str = "![{caption}](./closures.svg)";
     pub const HEAD: [&str; 4] = ["Host", "Closure", "Paths", "Unique"];
     pub const FLEET: &str = "## Fleet";
     pub const SHARED: &str = "Shared by every host";
     pub const DEDUPED: &str = "Fleet total, deduplicated";
     pub const SUM: &str = "Sum of per-host closures";
     pub const SAVED: &str = "Saved by sharing";
-    pub const HOST: &str = "## {host}";
     pub const SERVED: &str = "Measured without the docs it serves.";
-    pub const TREEMAP_CAPTION: &str = "{host} closure by package";
-    pub const TREEMAP: &str = "![{caption}](./{file})";
-    pub const MORE: &str = "{count} more";
     pub const LARGEST: &str = "Largest single paths:";
     pub const LARGEST_HEAD: [&str; 2] = ["Package", "Size"];
+
+    pub fn image(caption: &str, file: &str) -> String {
+        format!("![{caption}](./{file})")
+    }
+
+    pub fn host(host: &str) -> String {
+        format!("## {host}")
+    }
+
+    pub fn treemap_caption(host: &str) -> String {
+        format!("{host} closure by package")
+    }
+
+    pub fn more(count: impl std::fmt::Display) -> String {
+        format!("{count} more")
+    }
 }

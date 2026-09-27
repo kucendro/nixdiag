@@ -21,8 +21,7 @@ use crate::facts::{Facts, HostBase};
 use crate::human::{Bytes, Count};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
-use crate::text::fill;
-use crate::text::wiki::{CODE, NONE, SIZE_PATHS};
+use crate::text::wiki::{self as text, code, NONE};
 use crate::topology::Model;
 use anyhow::Result;
 use std::collections::BTreeMap;
@@ -63,12 +62,7 @@ fn table<const N: usize>(head: [&str; N], rows: impl IntoIterator<Item = [String
 }
 
 fn size_paths(t: &Total) -> String {
-    let (size, paths) = (Bytes(t.size).to_string(), Count(t.paths).to_string());
-    fill(SIZE_PATHS, &[("size", &size), ("paths", &paths)])
-}
-
-fn code(s: &str) -> String {
-    fill(CODE, &[("code", s)])
+    text::size_paths(Bytes(t.size), Count(t.paths))
 }
 
 fn codes<S: AsRef<str>>(items: impl IntoIterator<Item = S>, sep: &str) -> String {

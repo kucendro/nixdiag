@@ -3,7 +3,6 @@ use super::{code, codes, table, Wiki};
 use crate::conf::files::{chart as svg, diagram, page};
 use crate::human::{Date, DAY};
 use crate::source::flakelock::{short, Dup, Lock, Locked};
-use crate::text::fill;
 use crate::text::wiki::{inputs as t, NONE};
 use anyhow::Result;
 
@@ -24,7 +23,7 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
             } else if e.parent == e.input {
                 code(&e.parent)
             } else {
-                fill(t::PARENT_AS, &[("parent", &e.parent), ("input", &e.input)])
+                t::parent_as(&e.parent, &e.input)
             }
         })
         .collect::<Vec<_>>()
@@ -33,16 +32,10 @@ fn pulled_in_by(lock: &Lock, node: &str) -> String {
 
 fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     let rows = d.revs.iter().flat_map(|r| {
-        let row = |n: &String| [code(&short(&r.rev)), code(n), pulled_in_by(lock, n)];
+        let row = |n: &String| [code(short(&r.rev)), code(n), pulled_in_by(lock, n)];
         r.nodes.iter().map(row)
     });
-    o.push(fill(
-        t::DIAMOND,
-        &[
-            ("source", &d.source),
-            ("revisions", &d.revs.len().to_string()),
-        ],
-    ));
+    o.push(t::diamond(&d.source, d.revs.len()));
     o.push(table(t::DIAMOND_HEAD, rows));
 
     let Some(target) = lock.root_input_for(&d.identity) else {
@@ -57,14 +50,7 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
             if e.parent == lock.root {
                 continue;
             }
-            fixes.push(fill(
-                t::FIX_LINE,
-                &[
-                    ("parent", &e.parent),
-                    ("input", &e.input),
-                    ("target", &target),
-                ],
-            ));
+            fixes.push(t::fix_line(&e.parent, &e.input, &target));
         }
     }
     if fixes.is_empty() {
@@ -72,10 +58,7 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     }
     fixes.sort();
     fixes.dedup();
-    o.push(fill(
-        t::FIX,
-        &[("target", &target), ("lines", &fixes.join("\n"))],
-    ));
+    o.push(t::fix(&target, &fixes.join("\n")));
 }
 
 fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
@@ -102,7 +85,7 @@ fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
     o.push(t::DATES.into());
     let days = (hi - lo) / DAY;
     if days > 0 {
-        o.push(fill(t::SPAN, &[("days", &days.to_string())]));
+        o.push(t::span(days));
     }
     Ok(())
 }
@@ -113,7 +96,7 @@ pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
     let rows = lock
         .inputs()
         .into_iter()
-        .map(|(name, l)| [code(name), code(&l.source()), code(&l.short_rev()), date(l)]);
+        .map(|(name, l)| [code(name), code(l.source()), code(l.short_rev()), date(l)]);
     let mut o = vec![
         t::TITLE.to_string(),
         t::INTRO.to_string(),
@@ -133,16 +116,11 @@ pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
     }
 
     if !redundant.is_empty() {
-        let rows: Vec<String> = redundant
+        let rows = redundant
             .iter()
-            .map(|d| {
-                fill(
-                    t::REDUNDANT_ROW,
-                    &[("source", &d.source), ("nodes", &codes(d.nodes(), ", "))],
-                )
-            })
-            .collect();
-        o.push(fill(t::REDUNDANT, &[("rows", &rows.join("\n"))]));
+            .map(|d| t::redundant(&d.source, &codes(d.nodes(), ", ")));
+        o.push(t::REDUNDANT.into());
+        o.push(rows.collect::<Vec<_>>().join("\n"));
     }
 
     w.page(page::INPUTS, &o)

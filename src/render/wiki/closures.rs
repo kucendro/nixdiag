@@ -8,7 +8,6 @@ use crate::closures::{Closures, HostClosure};
 use crate::conf::files::{chart as svg, page};
 use crate::conf::limits::TOP_PATHS;
 use crate::human::{Bytes, Count};
-use crate::text::fill;
 use crate::text::wiki::{closures as t, KV, NONE};
 use crate::util::{sanitize, store_name};
 use anyhow::Result;
@@ -27,7 +26,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
     if !hosts.is_empty() {
         let bars = chart::bars(t::CHART_CAPTION, &bar_rows(closures, &hosts), w.style);
         w.src.write(svg::CLOSURES, &bars)?;
-        o.push(fill(t::CHART, &[("caption", t::CHART_CAPTION)]));
+        o.push(t::image(t::CHART_CAPTION, svg::CLOSURES));
     }
     o.push(table(t::HEAD, summary_rows(closures, &hosts)));
 
@@ -50,18 +49,18 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
 
     for (host, closure) in &hosts {
         let Some(h) = closure else { continue };
-        o.push(fill(t::HOST, &[("host", host)]));
+        o.push(t::host(host));
         if closures.served.iter().any(|s| s == *host) {
             o.push(t::SERVED.into());
         }
 
         let tiles = treemap_tiles(closures, host);
         if !tiles.is_empty() {
-            let file = fill(svg::HOST_CLOSURE, &[("host", &sanitize(host))]);
-            let caption = fill(t::TREEMAP_CAPTION, &[("host", host)]);
+            let file = svg::host_closure(&sanitize(host));
+            let caption = t::treemap_caption(host);
             w.src
                 .write(&file, &chart::treemap(&caption, &tiles, w.style))?;
-            o.push(fill(t::TREEMAP, &[("caption", &caption), ("file", &file)]));
+            o.push(t::image(&caption, &file));
         }
 
         let rows = h

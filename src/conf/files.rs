@@ -21,5 +21,8 @@ pub mod page {
 pub mod chart {
     pub const TIMELINE: &str = "inputs-timeline.svg";
     pub const CLOSURES: &str = "closures.svg";
-    pub const HOST_CLOSURE: &str = "closures-{host}.svg";
+
+    pub fn host_closure(host: &str) -> String {
+        format!("closures-{host}.svg")
+    }
 }

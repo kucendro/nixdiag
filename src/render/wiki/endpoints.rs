@@ -1,7 +1,6 @@
 use super::{code, table, Wiki};
 use crate::conf::files::page;
 use crate::facts::Scope;
-use crate::text::fill;
 use crate::text::wiki::{endpoints as t, NONE};
 use crate::topology::{Endpoint, INTERNET, LAN};
 use anyhow::Result;
@@ -27,14 +26,7 @@ impl Row {
             Some(443) | None => (t::HTTPS, String::new()),
             Some(p) => (t::HTTP, format!(":{p}")),
         };
-        fill(
-            t::LINK,
-            &[
-                ("name", &self.endpoint),
-                ("scheme", scheme),
-                ("port", &port),
-            ],
-        )
+        t::link(&self.endpoint, scheme, &port)
     }
 
     fn cells(self) -> [String; 5] {
@@ -50,12 +42,10 @@ fn scope(s: Option<Scope>) -> String {
 
 pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
     let exposed = w.model.exposed.iter().map(|x| Row {
-        endpoint: x.name.clone().unwrap_or_else(|| {
-            fill(
-                t::UNNAMED,
-                &[("host", &x.host), ("port", &x.port.to_string())],
-            )
-        }),
+        endpoint: x
+            .name
+            .clone()
+            .unwrap_or_else(|| t::unnamed(&x.host, x.port)),
         port: Some(x.port),
         udp: x.udp,
         scope: scope(x.scope),

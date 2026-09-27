@@ -1,6 +1,5 @@
 use super::{codes, repo_services, table, Wiki};
 use crate::conf::files::page;
-use crate::text::fill;
 use crate::text::wiki::services as t;
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,7 +16,7 @@ pub(super) fn page_services(w: &Wiki) -> Result<()> {
     }
     let rows = index.iter().map(|(name, (hosts, files))| {
         let hosts = hosts.iter().cloned().collect::<Vec<_>>().join(", ");
-        [fill(t::NAME, &[("name", name)]), hosts, codes(files, " ")]
+        [t::name(name), hosts, codes(files, " ")]
     });
     let mut o = vec![t::TITLE.to_string(), table(t::HEAD, rows)];
     let mut described: BTreeMap<&str, &str> = BTreeMap::new();
@@ -28,11 +27,6 @@ pub(super) fn page_services(w: &Wiki) -> Result<()> {
             }
         }
     }
-    for (name, description) in described {
-        o.push(fill(
-            t::UNIT,
-            &[("name", name), ("description", description)],
-        ));
-    }
+    o.extend(described.iter().map(|(name, d)| t::unit(name, d)));
     w.page(page::SERVICES, &o)
 }
