@@ -10,35 +10,6 @@ pub fn sanitize(seg: &str) -> String {
         .collect()
 }
 
-pub const DAY: i64 = 86_400;
-
-pub fn human_date(unix: i64) -> String {
-    let z = unix.div_euclid(DAY) + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + i64::from(m <= 2);
-    format!("{y:04}-{m:02}-{d:02}")
-}
-
-pub fn human_size(bytes: u64) -> String {
-    const KIB: f64 = 1024.0;
-    const MIB: f64 = 1024.0 * KIB;
-    const GIB: f64 = 1024.0 * MIB;
-    let b = bytes as f64;
-    if b >= GIB {
-        format!("{:.1} GiB", b / GIB)
-    } else if b >= MIB {
-        format!("{:.1} MiB", b / MIB)
-    } else {
-        format!("{:.1} KiB", b / KIB)
-    }
-}
-
 pub fn store_name(path: &str) -> &str {
     let base = path.rsplit('/').next().unwrap_or(path);
     base.split_once('-').map(|(_, name)| name).unwrap_or(base)
@@ -54,30 +25,9 @@ pub fn package_name(name: &str) -> &str {
     name
 }
 
-pub fn human_count(n: usize) -> String {
-    let s = n.to_string();
-    let mut out = String::with_capacity(s.len() + s.len() / 3);
-    for (i, c) in s.chars().enumerate() {
-        if i > 0 && (s.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn sizes_pick_a_unit_and_one_decimal() {
-        assert_eq!(human_size(0), "0.0 KiB");
-        assert_eq!(human_size(1024), "1.0 KiB");
-        assert_eq!(human_size(1024 * 1024), "1.0 MiB");
-        assert_eq!(human_size(3_221_225_472), "3.0 GiB");
-        assert_eq!(human_size(1_500_000_000), "1.4 GiB");
-    }
 
     #[test]
     fn store_names_drop_the_hash() {
@@ -106,26 +56,5 @@ mod tests {
         assert_eq!(package_name("playwright-chromium"), "playwright-chromium");
         assert_eq!(package_name(""), "");
         assert_eq!(package_name("-"), "-");
-    }
-
-    #[test]
-    fn counts_get_thousands_separators() {
-        assert_eq!(human_count(0), "0");
-        assert_eq!(human_count(999), "999");
-        assert_eq!(human_count(1000), "1,000");
-        assert_eq!(human_count(5204), "5,204");
-        assert_eq!(human_count(1234567), "1,234,567");
-    }
-
-    #[test]
-    fn dates_are_civil_and_utc() {
-        assert_eq!(human_date(0), "1970-01-01");
-        assert_eq!(human_date(1_700_000_000), "2023-11-14");
-        assert_eq!(human_date(1_787_498_568), "2026-08-23");
-    }
-
-    #[test]
-    fn dates_before_the_epoch_do_not_panic() {
-        assert_eq!(human_date(-1), "1969-12-31");
     }
 }

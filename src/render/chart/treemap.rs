@@ -1,5 +1,5 @@
 use super::{legend_bands, paint, top, Band, Canvas, Style, CH, INSET, LABEL_PX, NOTE_PX, PAD, W};
-use crate::util::human_size;
+use crate::human::Bytes;
 
 const TREE_H: u64 = 400;
 
@@ -115,7 +115,7 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
             if let Some(label) = fit_label(&t.label, cap) {
                 c.text(px + INSET, py + 15, LABEL_PX, tile_ink, false, &label);
             }
-            let size = human_size(t.value);
+            let size = Bytes(t.value).to_string();
             if th >= 34 && cap >= size.chars().count() {
                 c.text(px + INSET, py + 30, NOTE_PX, tile_ink, false, &size);
             }

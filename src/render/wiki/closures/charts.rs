@@ -1,9 +1,9 @@
 use crate::closures::{Closures, HostClosure};
 use crate::conf::limits::TREEMAP_TILES;
+use crate::human::{Bytes, Count};
 use crate::render::chart::{Band, Row, Tile};
 use crate::text::fill;
 use crate::text::wiki::{closures as t, NOT_MEASURED};
-use crate::util::{human_count, human_size};
 
 pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> Vec<Row> {
     let comparable = closures.hosts.len() > 1;
@@ -33,7 +33,7 @@ pub(super) fn bar_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>
             Row {
                 label,
                 bands,
-                note: human_size(size),
+                note: Bytes(size).to_string(),
             }
         })
         .collect()
@@ -62,7 +62,10 @@ pub(super) fn treemap_tiles(closures: &Closures, host: &str) -> Vec<Tile> {
     let rest: u64 = v.iter().skip(TREEMAP_TILES).map(|s| s.size).sum();
     if rest > 0 {
         tiles.push(Tile {
-            label: fill(t::MORE, &[("count", &human_count(v.len() - TREEMAP_TILES))]),
+            label: fill(
+                t::MORE,
+                &[("count", &Count(v.len() - TREEMAP_TILES).to_string())],
+            ),
             value: rest,
             band: Band::Rest,
         });

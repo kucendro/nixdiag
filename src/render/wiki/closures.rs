@@ -7,9 +7,10 @@ use super::{table, Wiki};
 use crate::closures::{Closures, HostClosure};
 use crate::conf::files::{chart as svg, page};
 use crate::conf::limits::TOP_PATHS;
+use crate::human::{Bytes, Count};
 use crate::text::fill;
 use crate::text::wiki::closures as t;
-use crate::util::{human_count, human_size, sanitize, store_name};
+use crate::util::{sanitize, store_name};
 use anyhow::Result;
 use charts::{bar_rows, treemap_tiles};
 
@@ -37,12 +38,15 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
         o.push(fill(
             t::FLEET,
             &[
-                ("shared", &human_size(shared.size)),
-                ("shared_paths", &human_count(shared.paths)),
-                ("deduped", &human_size(deduped.size)),
-                ("deduped_paths", &human_count(deduped.paths)),
-                ("sum", &human_size(naive)),
-                ("saved", &human_size(naive.saturating_sub(deduped.size))),
+                ("shared", &Bytes(shared.size).to_string()),
+                ("shared_paths", &Count(shared.paths).to_string()),
+                ("deduped", &Bytes(deduped.size).to_string()),
+                ("deduped_paths", &Count(deduped.paths).to_string()),
+                ("sum", &Bytes(naive).to_string()),
+                (
+                    "saved",
+                    &Bytes(naive.saturating_sub(deduped.size)).to_string(),
+                ),
             ],
         ));
     }
@@ -71,7 +75,7 @@ pub(super) fn page_closures(w: &Wiki, closures: &Closures) -> Result<()> {
                     t::LARGEST_ROW,
                     &[
                         ("package", store_name(&p.path)),
-                        ("size", &human_size(p.nar_size)),
+                        ("size", &Bytes(p.nar_size).to_string()),
                     ],
                 )
             })
@@ -93,9 +97,9 @@ fn summary_rows(closures: &Closures, hosts: &[(&str, Option<&HostClosure>)]) -> 
                     t::ROW,
                     &[
                         ("host", host),
-                        ("closure", &human_size(total.size)),
-                        ("paths", &human_count(total.paths)),
-                        ("unique", &human_size(closures.unique(host).size)),
+                        ("closure", &Bytes(total.size).to_string()),
+                        ("paths", &Count(total.paths).to_string()),
+                        ("unique", &Bytes(closures.unique(host).size).to_string()),
                     ],
                 )
             }

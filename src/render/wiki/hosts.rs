@@ -2,10 +2,10 @@ use super::{codes, repo_services, Wiki};
 use crate::closures::Closures;
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Host, NixosHost};
+use crate::human::{Bytes, Count};
 use crate::source::repo::Repo;
 use crate::text::fill;
 use crate::text::wiki::{hosts as t, NONE, NOT_MEASURED};
-use crate::util::{human_count, human_size};
 use anyhow::Result;
 
 fn join_or_dash(items: &[String]) -> String {
@@ -55,8 +55,8 @@ fn host_nixos(
             Some(c) => fill(
                 t::CLOSURE_SIZE,
                 &[
-                    ("size", &human_size(c.size)),
-                    ("paths", &human_count(c.paths)),
+                    ("size", &Bytes(c.size).to_string()),
+                    ("paths", &Count(c.paths).to_string()),
                 ],
             ),
             None => NOT_MEASURED.into(),

@@ -2,6 +2,7 @@ mod cli;
 mod closures;
 mod conf;
 mod facts;
+mod human;
 mod render;
 mod source;
 mod text;

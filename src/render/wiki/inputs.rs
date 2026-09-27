@@ -1,14 +1,14 @@
 use super::super::chart::{self, Mark};
 use super::{code, codes, table, Wiki};
 use crate::conf::files::{chart as svg, diagram, page};
+use crate::human::{Date, DAY};
 use crate::source::flakelock::{short, Dup, Lock, Locked};
 use crate::text::fill;
 use crate::text::wiki::{inputs as t, NONE};
-use crate::util::{human_date, DAY};
 use anyhow::Result;
 
 fn date(l: &Locked) -> String {
-    l.last_modified.map_or(NONE.into(), human_date)
+    l.last_modified.map_or(NONE.into(), |s| Date(s).to_string())
 }
 
 fn pulled_in_by(lock: &Lock, node: &str) -> String {
