@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ref: [master, nixos-unstable, nixos-25.05]
+        ref: [master, nixos-unstable, nixos-26.05]
     steps:
       - uses: actions/checkout@v4
 
