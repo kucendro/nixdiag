@@ -1,6 +1,7 @@
 use super::d2::{preamble, write_and_render};
 use super::out::Out;
 use super::style::Style;
+use crate::conf::files::diagram;
 use crate::source::flakelock::Lock;
 use crate::text::d2::inputs as t;
 use crate::text::fill;
@@ -67,5 +68,5 @@ pub fn generate(lock: &Lock, out: &Out, render_svg: bool, style: &Style) -> Resu
         o.extend(follows);
     }
 
-    write_and_render(out, "inputs", &o, render_svg, style)
+    write_and_render(out, diagram::INPUTS, &o, render_svg, style)
 }

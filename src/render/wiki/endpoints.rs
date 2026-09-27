@@ -1,11 +1,10 @@
-use super::super::out::Out;
-use super::page;
-use crate::facts::{Expose, Facts};
+use super::Wiki;
+use crate::conf::files::page;
+use crate::facts::Expose;
 use crate::text::fill;
 use crate::text::wiki::{endpoints as t, NONE};
-use crate::topology::{scope_at, Endpoint, Model};
+use crate::topology::{scope_at, Endpoint};
 use anyhow::Result;
-use std::path::Path;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Row {
@@ -59,9 +58,9 @@ impl Row {
     }
 }
 
-pub(super) fn page_endpoints(out: &Out, src: &Path, facts: &Facts, model: &Model) -> Result<()> {
+pub(super) fn page_endpoints(w: &Wiki) -> Result<()> {
     let mut rows = Vec::new();
-    for (host, h) in &facts.hosts {
+    for (host, h) in &w.facts.hosts {
         let topo = h.topology();
         let mut push = |unit: Option<&str>, e: &Expose| {
             let endpoint = e.name.clone().unwrap_or_else(|| {
@@ -91,14 +90,14 @@ pub(super) fn page_endpoints(out: &Out, src: &Path, facts: &Facts, model: &Model
             }
         }
     }
-    for ne in &model.named {
+    for ne in &w.model.named {
         let host = match &ne.node {
             Endpoint::Host(h) | Endpoint::Unit(h, _) => h.clone(),
             _ => continue,
         };
         let scope = ne
             .scope
-            .or_else(|| scope_at(facts, &ne.node))
+            .or_else(|| scope_at(w.facts, &ne.node))
             .map(|s| s.label().to_string())
             .unwrap_or_else(|| NONE.into());
         let service = match &ne.target {
@@ -122,9 +121,8 @@ pub(super) fn page_endpoints(out: &Out, src: &Path, facts: &Facts, model: &Model
     if lines.is_empty() {
         lines.push(t::EMPTY.into());
     }
-    page(
-        out,
-        &src.join("endpoints.md"),
+    w.page(
+        page::ENDPOINTS,
         &[
             t::TITLE.to_string(),
             fill(t::TABLE, &[("rows", &lines.join("\n"))]),

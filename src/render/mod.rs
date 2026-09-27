@@ -12,6 +12,7 @@ pub use out::Out;
 pub use wiki::WikiOpts;
 
 use crate::closures::Closures;
+use crate::conf::files;
 use crate::facts::Facts;
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
@@ -45,15 +46,16 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         inputs::generate(lock, &out, opts.svg, &opts.style)?;
     }
     wiki::generate(
-        &out,
-        &opts.wiki,
-        &opts.style,
-        &wiki::WikiData {
+        &wiki::Wiki {
+            out: &out,
+            src: out.sub(files::SRC),
+            style: &opts.style,
             facts,
             repo: &repo,
             model: &model,
             lock: lock.as_ref(),
             closures: opts.closures.as_ref(),
         },
+        &opts.wiki,
     )
 }

@@ -1,13 +1,12 @@
-use super::super::out::Out;
-use super::{page, repo_services};
+use super::{repo_services, Wiki};
 use crate::closures::Closures;
-use crate::facts::{DarwinHost, Facts, Host, NixosHost};
+use crate::conf::files::page;
+use crate::facts::{DarwinHost, Host, NixosHost};
 use crate::source::repo::Repo;
 use crate::text::fill;
 use crate::text::wiki::{hosts as t, NONE};
 use crate::util::{human_count, human_size};
 use anyhow::Result;
-use std::path::Path;
 
 fn join_or_dash(items: &[String]) -> String {
     if items.is_empty() {
@@ -17,21 +16,15 @@ fn join_or_dash(items: &[String]) -> String {
     }
 }
 
-pub(super) fn page_hosts(
-    out: &Out,
-    src: &Path,
-    facts: &Facts,
-    repo: &Repo,
-    closures: Option<&Closures>,
-) -> Result<()> {
+pub(super) fn page_hosts(w: &Wiki) -> Result<()> {
     let mut o = vec![t::TITLE.to_string()];
-    for (host, f) in &facts.hosts {
+    for (host, f) in &w.facts.hosts {
         match f {
-            Host::Nixos(n) => host_nixos(&mut o, host, n, repo, closures),
+            Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
             Host::Darwin(d) => host_darwin(&mut o, host, d),
         }
     }
-    page(out, &src.join("hosts.md"), &o)
+    w.page(page::HOSTS, &o)
 }
 
 fn host_nixos(

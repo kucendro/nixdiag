@@ -1,3 +1,4 @@
+use crate::conf::files::diagram;
 use crate::facts::{Expose, Facts, Host, Kind, Scope};
 use crate::render::d2::{preamble, write_and_render};
 use crate::render::out::Out;
@@ -217,5 +218,5 @@ pub fn generate(
         o.push(connection(&c.from, &c.to, &c.label));
     }
 
-    write_and_render(out, "topology", &o, render_svg, style)
+    write_and_render(out, diagram::TOPOLOGY, &o, render_svg, style)
 }

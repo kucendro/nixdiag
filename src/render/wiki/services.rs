@@ -1,18 +1,15 @@
-use super::super::out::Out;
-use super::{page, repo_services};
-use crate::facts::Facts;
-use crate::source::repo::Repo;
+use super::{repo_services, Wiki};
+use crate::conf::files::page;
 use crate::text::fill;
 use crate::text::wiki::services as t;
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
 
-pub(super) fn page_services(out: &Out, src: &Path, facts: &Facts, repo: &Repo) -> Result<()> {
+pub(super) fn page_services(w: &Wiki) -> Result<()> {
     let mut index: BTreeMap<String, (BTreeSet<String>, BTreeSet<String>)> = BTreeMap::new();
-    for (host, f) in &facts.hosts {
+    for (host, f) in &w.facts.hosts {
         let Some(n) = f.as_nixos() else { continue };
-        for (name, files) in repo_services(n, repo) {
+        for (name, files) in repo_services(n, w.repo) {
             let e = index.entry(name).or_default();
             e.0.insert(host.clone());
             e.1.extend(files);
@@ -44,7 +41,7 @@ pub(super) fn page_services(out: &Out, src: &Path, facts: &Facts, repo: &Repo) -
         fill(t::TABLE, &[("rows", &rows.join("\n"))]),
     ];
     let mut described: BTreeMap<&str, &str> = BTreeMap::new();
-    for f in facts.hosts.values() {
+    for f in w.facts.hosts.values() {
         for (name, u) in &f.topology().units {
             if let Some(d) = &u.description {
                 described.entry(name).or_insert(d);
@@ -57,5 +54,5 @@ pub(super) fn page_services(out: &Out, src: &Path, facts: &Facts, repo: &Repo) -
             &[("name", name), ("description", description)],
         ));
     }
-    page(out, &src.join("services.md"), &o)
+    w.page(page::SERVICES, &o)
 }

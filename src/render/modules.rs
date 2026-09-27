@@ -1,6 +1,7 @@
 use super::d2::{preamble, write_and_render};
 use super::out::Out;
 use super::style::Style;
+use crate::conf::files::diagram;
 use crate::facts::{Facts, Host};
 use crate::source::imports::{build_import_graph, host_entry_modules, rel_str};
 use crate::source::repo::{rel_from_store, Repo};
@@ -148,5 +149,5 @@ pub fn generate(
     o.push(t::IMPORT_EDGES.into());
     o.extend(import_edges.iter().map(edge));
 
-    write_and_render(out, "modules", &o, render_svg, style)
+    write_and_render(out, diagram::MODULES, &o, render_svg, style)
 }

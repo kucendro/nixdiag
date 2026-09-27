@@ -23,9 +23,12 @@ use crate::source::repo::Repo;
 use crate::topology::Model;
 use anyhow::Result;
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-pub struct WikiData<'a> {
+pub struct Wiki<'a> {
+    pub out: &'a Out,
+    pub src: Out,
+    pub style: &'a Style,
     pub facts: &'a Facts,
     pub repo: &'a Repo,
     pub model: &'a Model,
@@ -39,8 +42,10 @@ pub struct WikiOpts {
     pub extra_links: Vec<(String, String)>,
 }
 
-pub(super) fn page(out: &Out, rel: &Path, sections: &[String]) -> Result<()> {
-    out.write(rel, &sections.join("\n\n"))
+impl Wiki<'_> {
+    fn page(&self, name: &str, sections: &[String]) -> Result<()> {
+        self.src.write(name, &sections.join("\n\n"))
+    }
 }
 
 pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<String>> {
@@ -54,24 +59,21 @@ pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<
     svcs
 }
 
-pub fn generate(out: &Out, opts: &WikiOpts, style: &Style, d: &WikiData) -> Result<()> {
-    let wiki = PathBuf::from("wiki");
-    let src = wiki.join("src");
-
-    book_toml(out, &wiki, &opts.title, style.theme)?;
-    let mut extra = copy_extra_pages(out, &src, &opts.extra_pages)?;
+pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
+    book_toml(w, &opts.title)?;
+    let mut extra = copy_extra_pages(w, &opts.extra_pages)?;
     extra.extend(opts.extra_links.iter().cloned());
-    page_summary(out, &src, &extra, d.lock.is_some(), d.closures.is_some())?;
-    page_index(out, &src)?;
-    page_architecture(out, &src)?;
-    page_hosts(out, &src, d.facts, d.repo, d.closures)?;
-    page_services(out, &src, d.facts, d.repo)?;
-    page_endpoints(out, &src, d.facts, d.model)?;
-    if let Some(lock) = d.lock {
-        page_inputs(out, &src, lock, style)?;
+    page_summary(w, &extra)?;
+    page_index(w)?;
+    page_architecture(w)?;
+    page_hosts(w)?;
+    page_services(w)?;
+    page_endpoints(w)?;
+    if let Some(lock) = w.lock {
+        page_inputs(w, lock)?;
     }
-    if let Some(closures) = d.closures {
-        page_closures(out, &src, d.facts, closures, style)?;
+    if let Some(closures) = w.closures {
+        page_closures(w, closures)?;
     }
     Ok(())
 }

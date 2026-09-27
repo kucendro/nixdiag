@@ -6,8 +6,8 @@ use crate::render::out::Out;
 use crate::text::d2::DIRECTION;
 use crate::text::{fill, messages as m};
 use anyhow::{bail, Result};
+use std::fs;
 use std::io::ErrorKind;
-use std::path::PathBuf;
 use std::process::Command;
 
 pub fn preamble(style: &Style) -> Vec<String> {
@@ -31,22 +31,22 @@ pub fn write_and_render(
     render_svg: bool,
     style: &Style,
 ) -> Result<()> {
-    let d2_rel = PathBuf::from(format!("{stem}.d2"));
-    out.write(&d2_rel, &lines.join("\n"))?;
+    let (d2, svg) = (format!("{stem}.d2"), format!("{stem}.svg"));
+    out.write(&d2, &lines.join("\n"))?;
     if !render_svg {
         return Ok(());
     }
-    let svg_rel = PathBuf::from(format!("{stem}.svg"));
-    let d2_path = out.root.join(&d2_rel);
-    let svg_path = out.root.join(&svg_rel);
     let run = Command::new("d2")
         .args(D2_LAYOUT)
         .args(style.theme.d2())
-        .arg(&d2_path)
-        .arg(&svg_path)
+        .arg(out.root.join(&d2))
+        .arg(out.root.join(&svg))
         .output();
     match run {
-        Err(e) if e.kind() == ErrorKind::NotFound => println!("{}", m::NO_D2),
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            println!("{}", m::NO_D2);
+            Ok(())
+        }
         Err(e) => bail!(fill(
             m::D2_FAILED,
             &[("stem", stem), ("error", &e.to_string())]
@@ -58,14 +58,6 @@ pub fn write_and_render(
                 ("stderr", &String::from_utf8_lossy(&o.stderr))
             ]
         )),
-        Ok(_) => {
-            let svg = std::fs::read_to_string(&svg_path)?;
-            std::fs::write(&svg_path, unmask(&svg))?;
-            println!(
-                "{}",
-                fill(m::WROTE, &[("path", &svg_path.display().to_string())])
-            );
-        }
+        Ok(_) => out.put(&svg, |p| fs::write(p, unmask(&fs::read_to_string(p)?))),
     }
-    Ok(())
 }

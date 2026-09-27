@@ -1,13 +1,11 @@
 use super::super::chart::{self, Mark};
-use super::super::out::Out;
-use super::super::style::Style;
-use super::page;
+use super::Wiki;
+use crate::conf::files::{chart as svg, diagram, page};
 use crate::source::flakelock::{short, Dup, Lock};
 use crate::text::fill;
 use crate::text::wiki::{inputs as t, NONE};
 use crate::util::{human_date, DAY};
 use anyhow::Result;
-use std::path::Path;
 
 fn pulled_in_by(lock: &Lock, node: &str) -> String {
     let parents = lock.parents_of(node);
@@ -81,13 +79,7 @@ fn diamond(o: &mut Vec<String>, lock: &Lock, d: &Dup) {
     ));
 }
 
-fn lock_dates(
-    o: &mut Vec<String>,
-    out: &Out,
-    src: &Path,
-    lock: &Lock,
-    style: &Style,
-) -> Result<()> {
+fn lock_dates(o: &mut Vec<String>, w: &Wiki, lock: &Lock) -> Result<()> {
     let roots = lock.root_inputs();
     let marks: Vec<Mark> = lock
         .inputs()
@@ -106,8 +98,10 @@ fn lock_dates(
         return Ok(());
     };
 
-    let svg = chart::timeline(t::DATES_CAPTION, &marks, style);
-    out.write(&src.join("inputs-timeline.svg"), &svg)?;
+    w.src.write(
+        svg::TIMELINE,
+        &chart::timeline(t::DATES_CAPTION, &marks, w.style),
+    )?;
 
     o.push(t::DATES.into());
     let days = (hi - lo) / DAY;
@@ -117,13 +111,8 @@ fn lock_dates(
     Ok(())
 }
 
-pub(super) fn page_inputs(out: &Out, src: &Path, lock: &Lock, style: &Style) -> Result<()> {
-    let from = out.root.join("inputs.svg");
-    if from.exists() {
-        let rel = src.join("inputs.svg");
-        std::fs::create_dir_all(out.root.join(src))?;
-        std::fs::copy(&from, out.root.join(&rel))?;
-    }
+pub(super) fn page_inputs(w: &Wiki, lock: &Lock) -> Result<()> {
+    w.src.mirror(w.out, &format!("{}.svg", diagram::INPUTS))?;
 
     let mut rows: Vec<String> = lock
         .inputs()
@@ -153,7 +142,7 @@ pub(super) fn page_inputs(out: &Out, src: &Path, lock: &Lock, style: &Style) -> 
         fill(t::TABLE, &[("rows", &rows.join("\n"))]),
     ];
 
-    lock_dates(&mut o, out, src, lock, style)?;
+    lock_dates(&mut o, w, lock)?;
 
     let dups = lock.duplicates();
     let (diamonds, redundant): (Vec<&Dup>, Vec<&Dup>) = dups.iter().partition(|d| d.is_diamond());
@@ -183,5 +172,5 @@ pub(super) fn page_inputs(out: &Out, src: &Path, lock: &Lock, style: &Style) -> 
         o.push(fill(t::REDUNDANT, &[("rows", &rows.join("\n"))]));
     }
 
-    page(out, &src.join("inputs.md"), &o)
+    w.page(page::INPUTS, &o)
 }
