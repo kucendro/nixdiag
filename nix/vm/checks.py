@@ -3,8 +3,10 @@ def listens(node, port):
 
 
 def through(node, name, port):
+    scheme = "https" if port == 443 else "http"
     node.wait_until_succeeds(
-        f"curl -sf -o /dev/null -H 'Host: {name}' http://127.0.0.1:{port}/", timeout=120
+        f"curl -skf -o /dev/null --resolve {name}:{port}:127.0.0.1 {scheme}://{name}:{port}/",
+        timeout=120,
     )
 
 
@@ -24,6 +26,6 @@ def listens_only(node, claimed):
     for line in node.succeed("ss -tlnH").splitlines():
         host, port = line.split()[3].rsplit(":", 1)
         loopback = host.startswith(("127.", "[::1]"))
-        assert loopback or int(port) in claimed, f"{node.name} listens on {port}, no adapter claims it"
-
-
+        assert loopback or int(port) in claimed, (
+            f"{node.name} listens on {port}, no adapter claims it"
+        )

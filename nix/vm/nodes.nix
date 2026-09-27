@@ -39,13 +39,14 @@ let
 
   enableOf = name: a: a.enable or [ "services.${name}.enable" ];
 
-  hits =
-    reads: path:
-    lib.any (
-      r:
-      builtins.match "${lib.replaceStrings [ "<name>" ] [ "[^.]+" ] (lib.escapeRegex r)}(\\..*)?" path
-      != null
-    ) reads;
+  under =
+    read: path:
+    read == [ ]
+    || (
+      path != [ ] && (head read == "<name>" || head read == head path) && under (tail read) (tail path)
+    );
+
+  hits = reads: path: lib.any (r: under (lib.splitString "." r) path) reads;
 
   strings =
     v:
@@ -70,11 +71,11 @@ let
       reads = lib.concatLists (builtins.attrValues a.reads) ++ enableOf name a;
       minimum = a.tests.minimum or { };
       bad = builtins.filter (hits reads) (
-        lib.collect builtins.isString (lib.mapAttrsRecursive (p: _: concatStringsSep "." p) minimum)
+        lib.collect builtins.isList (lib.mapAttrsRecursive (p: _: p) minimum)
       );
     in
     if bad != [ ] then
-      fail "${name} minimum sets what it reads: ${concatStringsSep ", " bad}"
+      fail "${name} minimum sets what it reads: ${concatStringsSep ", " (map (concatStringsSep ".") bad)}"
     else
       {
         imports = [
@@ -116,13 +117,8 @@ else
     imports = [
       bases.${vm}.module
       ../module
-      (
-        { pkgs, ... }:
-        {
-          system.stateVersion = sv;
-          environment.systemPackages = [ pkgs.curl ];
-        }
-      )
+      ./kit.nix
+      { system.stateVersion = sv; }
     ]
     ++ lib.mapAttrsToList moduleOf (on vm);
   })
