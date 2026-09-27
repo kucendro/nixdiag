@@ -50,11 +50,13 @@ Premade base: `tests/vms/<name>.nix`. Boot, network, stateVersions. Knows no ada
 From each VM's own `nixdiag.facts`. Nix writes test lines. No JSON.
 
 - claimed port: listens.
-- unit listens on port: port claimed.
-- connection: through its entry, reaches `to`. Nginx: `Host: <name>` on its port.
+- VM listens where other VMs reach (wildcard, own LAN address): port claimed.
+- connection: through its entry, reaches `to`. Nginx: `Host: <name>`, https on 443.
+  No entry: `to` answers from the VM.
 - scope: other VM reaches exposed port or not, as scope says.
-- tailscale: logged in to claimed server.
-  `extraUpFlags` only runs with `authKeyFile`, so script makes headscale key first.
+
+No setup scripts. Adapter stays plain config: `vm`, `minimum`, `probe`.
+Maintainer never needs VM internals. Service working together is nixpkgs' test, not ours.
 
 Why both ways: claims-only lines miss a dropped claim.
 Rename, read null, no claim, no line, green. Listening port with no claim: red.
