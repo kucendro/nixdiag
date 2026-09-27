@@ -2,7 +2,7 @@ use super::d2::{preamble, write_and_render};
 use super::out::Out;
 use super::style::Style;
 use crate::conf::files::diagram;
-use crate::facts::{Facts, Host};
+use crate::facts::Facts;
 use crate::source::imports::{build_import_graph, host_entry_modules, rel_str};
 use crate::source::repo::{rel_from_store, Repo};
 use crate::text::d2::modules as t;
@@ -100,11 +100,8 @@ pub fn generate(
             host_edges.push((sanitize(host), d2_path(&rel_str(e, repo))));
         }
 
-        let (services, programs) = match f {
-            Host::Nixos(n) => (&n.services, &n.programs),
-            Host::Darwin(d) => (&d.services, &d.programs),
-        };
-        for (units, field) in [(services, 0), (programs, 1)] {
+        let b = f.base();
+        for (units, field) in [(&b.services, 0), (&b.programs, 1)] {
             for item in units {
                 for sf in &item.files {
                     let Some(rel) = rel_from_store(sf) else {

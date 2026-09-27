@@ -30,25 +30,34 @@ impl Host {
 
     pub fn svc_count(&self) -> usize {
         match self {
-            Host::Nixos(h) => h.services.len(),
+            Host::Nixos(h) => h.base.services.len(),
             Host::Darwin(h) => h.daemons.len() + h.user_agents.len(),
         }
     }
 
+    pub fn base(&self) -> &HostBase {
+        match self {
+            Host::Nixos(h) => &h.base,
+            Host::Darwin(h) => &h.base,
+        }
+    }
+
     pub fn units(&self) -> impl Iterator<Item = &EnabledUnit> {
-        let (services, programs) = match self {
-            Host::Nixos(h) => (&h.services, &h.programs),
-            Host::Darwin(h) => (&h.services, &h.programs),
-        };
-        services.iter().chain(programs)
+        self.base().services.iter().chain(&self.base().programs)
     }
 
     pub fn topology(&self) -> &Topology {
-        match self {
-            Host::Nixos(h) => &h.topology,
-            Host::Darwin(h) => &h.topology,
-        }
+        &self.base().topology
     }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HostBase {
+    pub services: Vec<EnabledUnit>,
+    pub programs: Vec<EnabledUnit>,
+    pub description: Option<String>,
+    pub topology: Topology,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -60,10 +69,8 @@ pub struct NixosHost {
     pub udp: Vec<u32>,
     pub users: Vec<String>,
     pub pkg_count: u64,
-    pub services: Vec<EnabledUnit>,
-    pub programs: Vec<EnabledUnit>,
-    pub description: Option<String>,
-    pub topology: Topology,
+    #[serde(flatten)]
+    pub base: HostBase,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -72,10 +79,8 @@ pub struct DarwinHost {
     pub casks: Vec<String>,
     pub daemons: Vec<String>,
     pub user_agents: Vec<String>,
-    pub services: Vec<EnabledUnit>,
-    pub programs: Vec<EnabledUnit>,
-    pub description: Option<String>,
-    pub topology: Topology,
+    #[serde(flatten)]
+    pub base: HostBase,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

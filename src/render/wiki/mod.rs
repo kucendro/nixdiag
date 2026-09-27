@@ -17,7 +17,7 @@ use services::page_services;
 use super::out::Out;
 use super::style::Style;
 use crate::closures::Closures;
-use crate::facts::{Facts, NixosHost};
+use crate::facts::{Facts, HostBase};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use crate::topology::Model;
@@ -48,9 +48,9 @@ impl Wiki<'_> {
     }
 }
 
-pub(super) fn repo_services(n: &NixosHost, repo: &Repo) -> BTreeMap<String, Vec<String>> {
+pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<String>> {
     let mut svcs = BTreeMap::new();
-    for item in &n.services {
+    for item in &b.services {
         let files = repo.repo_files(&item.files);
         if !files.is_empty() {
             svcs.insert(item.name.clone(), files);

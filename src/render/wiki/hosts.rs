@@ -34,10 +34,10 @@ fn host_nixos(
     repo: &Repo,
     closures: Option<&Closures>,
 ) {
-    let svcs = repo_services(f, repo);
+    let svcs = repo_services(&f.base, repo);
     let ports = |ps: &[u32]| join_or_dash(&ps.iter().map(u32::to_string).collect::<Vec<_>>());
     o.push(fill(t::NIXOS, &[("host", host)]));
-    o.extend(f.description.clone());
+    o.extend(f.base.description.clone());
 
     let platform = if f.platform.is_empty() {
         t::UNKNOWN_PLATFORM
@@ -89,7 +89,8 @@ fn host_nixos(
 fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
     o.push(fill(t::DARWIN, &[("host", host)]));
     o.push(
-        f.description
+        f.base
+            .description
             .clone()
             .unwrap_or_else(|| t::DARWIN_INTRO.into()),
     );

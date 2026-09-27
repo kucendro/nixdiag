@@ -9,7 +9,7 @@ pub(super) fn page_services(w: &Wiki) -> Result<()> {
     let mut index: BTreeMap<String, (BTreeSet<String>, BTreeSet<String>)> = BTreeMap::new();
     for (host, f) in &w.facts.hosts {
         let Some(n) = f.as_nixos() else { continue };
-        for (name, files) in repo_services(n, w.repo) {
+        for (name, files) in repo_services(&n.base, w.repo) {
             let e = index.entry(name).or_default();
             e.0.insert(host.clone());
             e.1.extend(files);
