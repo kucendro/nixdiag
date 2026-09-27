@@ -1,6 +1,4 @@
-use super::{
-    gutter, legend, legend_bands, paint, rect, svg_open, text, Band, Style, LEGEND_H, PAD, W,
-};
+use super::{legend_bands, paint, Band, Canvas, Frame, Style};
 
 const ROW_H: u64 = 26;
 const BAR_H: u64 = 14;
@@ -11,76 +9,54 @@ pub struct Row {
     pub note: String,
 }
 
+impl Row {
+    fn total(&self) -> u64 {
+        self.bands.iter().map(|(_, v)| v).sum()
+    }
+}
+
 pub fn bars(caption: &str, rows: &[Row], style: &Style) -> String {
-    let ink = style.color(&paint::INK);
-    let muted = style.color(&paint::MUTED);
     let track = style.color(&paint::TRACK);
-
-    let label_w = gutter(rows.iter().map(|r| r.label.as_str()));
-    let note_w = gutter(rows.iter().map(|r| r.note.as_str()));
-    let plot_w = W.saturating_sub(label_w + note_w + PAD).max(1);
-
     let keys = legend_bands(
         rows.iter()
             .flat_map(|r| &r.bands)
             .filter(|(_, v)| *v > 0)
             .map(|(b, _)| *b),
     );
+    let f = Frame::new(
+        rows.iter().map(|r| (r.label.as_str(), r.note.as_str())),
+        &keys,
+        ROW_H,
+    );
+    let max = rows.iter().map(Row::total).max().unwrap_or(0);
 
-    let top = if keys.is_empty() { PAD } else { PAD + LEGEND_H };
-    let h = top + ROW_H * rows.len() as u64 + PAD;
-    let max = rows
-        .iter()
-        .map(|r| r.bands.iter().map(|(_, v)| v).sum::<u64>())
-        .max()
-        .unwrap_or(0);
-
-    let mut o = svg_open(caption, h, style);
-
-    legend(&mut o, &keys, label_w, style);
-
+    let mut c = Canvas::new(caption, f.height(rows.len()), style);
+    c.legend(&keys, f.label_w);
     for (i, row) in rows.iter().enumerate() {
-        let cy = top + ROW_H * i as u64 + ROW_H / 2;
-        let total: u64 = row.bands.iter().map(|(_, v)| v).sum();
-        text(
-            &mut o,
-            label_w - PAD,
-            cy + 4,
-            13,
-            if total > 0 { ink } else { muted },
-            true,
-            &row.label,
-        );
-        if total > 0 && max > 0 {
-            rect(&mut o, label_w, cy - BAR_H / 2, plot_w, BAR_H, track);
+        let total = row.total();
+        c.row(&f, i, (&row.label, &row.note), total > 0, |c, cy| {
+            if total == 0 || max == 0 {
+                return;
+            }
+            c.rect(f.label_w, cy - BAR_H / 2, f.plot_w, BAR_H, track);
             let (mut acc, mut x0) = (0u64, 0u64);
             for (band, value) in &row.bands {
                 acc += value;
-                let x1 = acc * plot_w / max;
+                let x1 = acc * f.plot_w / max;
                 if x1 > x0 {
                     let fill = style.color(&band.color());
-                    rect(&mut o, label_w + x0, cy - BAR_H / 2, x1 - x0, BAR_H, fill);
+                    c.rect(f.label_w + x0, cy - BAR_H / 2, x1 - x0, BAR_H, fill);
                 }
                 x0 = x1;
             }
-        }
-        text(
-            &mut o,
-            W - 4,
-            cy + 4,
-            12,
-            if total > 0 { ink } else { muted },
-            true,
-            &row.note,
-        );
+        });
     }
-
-    o.push_str("</svg>");
-    o
+    c.finish()
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::canvas::attr;
     use super::*;
 
     fn row(label: &str, bands: Vec<(Band, u64)>, note: &str) -> Row {
@@ -92,14 +68,6 @@ mod tests {
     }
 
     fn widths(svg: &str) -> Vec<u64> {
-        let attr = |l: &str, k: &str| -> Option<u64> {
-            l.split(&format!("{k}=\""))
-                .nth(1)?
-                .split('"')
-                .next()?
-                .parse()
-                .ok()
-        };
         svg.lines()
             .filter(|l| l.contains("<rect"))
             .filter(|l| attr(l, "height") == Some(BAR_H))

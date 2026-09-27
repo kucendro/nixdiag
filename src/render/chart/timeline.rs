@@ -1,4 +1,4 @@
-use super::{gutter, legend, paint, rect, svg_open, text, Key, Style, LEGEND_H, PAD, W};
+use super::{paint, Canvas, Frame, Key, Style};
 use crate::text::chart as t;
 use std::cmp::Ordering;
 
@@ -33,10 +33,7 @@ impl Mark {
 }
 
 pub fn timeline(caption: &str, marks: &[Mark], style: &Style) -> String {
-    let ink = style.color(&paint::INK);
-    let muted = style.color(&paint::MUTED);
     let track = style.color(&paint::TRACK);
-
     let mut order: Vec<&Mark> = marks.iter().collect();
     order.sort_by(|a, b| match (a.at, b.at) {
         (Some(x), Some(y)) => x.cmp(&y).then(a.label.cmp(&b.label)),
@@ -44,10 +41,6 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &Style) -> String {
         (None, Some(_)) => Ordering::Greater,
         (None, None) => a.label.cmp(&b.label),
     });
-
-    let label_w = gutter(order.iter().map(|m| m.label.as_str()));
-    let note_w = gutter(order.iter().map(|m| m.note.as_str()));
-    let plot_w = W.saturating_sub(label_w + note_w + PAD).max(1);
 
     let mut keys: Vec<Key> = Vec::new();
     for direct in [true, false] {
@@ -59,53 +52,38 @@ pub fn timeline(caption: &str, marks: &[Mark], style: &Style) -> String {
         keys.clear();
     }
 
-    let top = if keys.is_empty() { PAD } else { PAD + LEGEND_H };
-    let h = top + ROW_H * order.len() as u64 + PAD;
+    let f = Frame::new(
+        order.iter().map(|m| (m.label.as_str(), m.note.as_str())),
+        &keys,
+        ROW_H,
+    );
     let lo = order.iter().filter_map(|m| m.at).min();
     let hi = order.iter().filter_map(|m| m.at).max();
 
-    let mut o = svg_open(caption, h, style);
-    legend(&mut o, &keys, label_w, style);
-
+    let mut c = Canvas::new(caption, f.height(order.len()), style);
+    c.legend(&keys, f.label_w);
     for (i, m) in order.iter().enumerate() {
-        let cy = top + ROW_H * i as u64 + ROW_H / 2;
-        text(
-            &mut o,
-            label_w - PAD,
-            cy + 4,
-            13,
-            if m.at.is_some() { ink } else { muted },
-            true,
-            &m.label,
-        );
-        if let (Some(at), Some(lo), Some(hi)) = (m.at, lo, hi) {
-            rect(&mut o, label_w, cy, plot_w, 1, track);
+        c.row(&f, i, (&m.label, &m.note), m.at.is_some(), |c, cy| {
+            let (Some(at), Some(lo), Some(hi)) = (m.at, lo, hi) else {
+                return;
+            };
+            c.rect(f.label_w, cy, f.plot_w, 1, track);
             let span = hi - lo;
             let x = if span > 0 {
-                (at - lo) as u64 * plot_w.saturating_sub(TICK_W) / span as u64
+                (at - lo) as u64 * f.plot_w.saturating_sub(TICK_W) / span as u64
             } else {
                 0
             };
             let fill = style.color(&m.key().color);
-            rect(&mut o, label_w + x, cy - TICK_H / 2, TICK_W, TICK_H, fill);
-        }
-        text(
-            &mut o,
-            W - 4,
-            cy + 4,
-            12,
-            if m.at.is_some() { ink } else { muted },
-            true,
-            &m.note,
-        );
+            c.rect(f.label_w + x, cy - TICK_H / 2, TICK_W, TICK_H, fill);
+        });
     }
-
-    o.push_str("</svg>");
-    o
+    c.finish()
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::canvas::attr;
     use super::*;
 
     fn mark(label: &str, at: Option<i64>, direct: bool) -> Mark {
@@ -118,14 +96,6 @@ mod tests {
     }
 
     fn ticks(svg: &str) -> Vec<u64> {
-        let attr = |l: &str, k: &str| -> Option<u64> {
-            l.split(&format!("{k}=\""))
-                .nth(1)?
-                .split('"')
-                .next()?
-                .parse()
-                .ok()
-        };
         svg.lines()
             .filter(|l| l.contains("<rect"))
             .filter(|l| attr(l, "width") == Some(TICK_W))

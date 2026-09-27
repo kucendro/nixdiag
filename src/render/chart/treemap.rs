@@ -1,4 +1,4 @@
-use super::{legend, legend_bands, paint, rect, svg_open, text, Band, Style, CH, LEGEND_H, PAD, W};
+use super::{legend_bands, paint, top, Band, Canvas, Style, CH, INSET, LABEL_PX, NOTE_PX, PAD, W};
 use crate::util::human_size;
 
 const TREE_H: u64 = 400;
@@ -85,11 +85,10 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
     order.sort_by(|a, b| b.value.cmp(&a.value).then(a.label.cmp(&b.label)));
 
     let keys = legend_bands(order.iter().map(|t| t.band));
-    let top = if keys.is_empty() { PAD } else { PAD + LEGEND_H };
-    let h = top + TREE_H + PAD;
+    let top = top(&keys);
 
-    let mut o = svg_open(caption, h, style);
-    legend(&mut o, &keys, 0, style);
+    let mut c = Canvas::new(caption, top + TREE_H + PAD, style);
+    c.legend(&keys, 0);
 
     let total: f64 = order.iter().map(|t| t.value as f64).sum();
     let (pw, ph) = (W as f64, TREE_H as f64);
@@ -110,25 +109,24 @@ pub fn treemap(caption: &str, tiles: &[Tile], style: &Style) -> String {
         if tw == 0 || th == 0 {
             continue;
         }
-        rect(&mut o, px, py, tw, th, style.color(&t.band.color()));
-        let cap = (tw.saturating_sub(8) / CH) as usize;
+        c.rect(px, py, tw, th, style.color(&t.band.color()));
+        let cap = (tw.saturating_sub(2 * INSET) / CH) as usize;
         if th >= 18 {
             if let Some(label) = fit_label(&t.label, cap) {
-                text(&mut o, px + 4, py + 15, 13, tile_ink, false, &label);
+                c.text(px + INSET, py + 15, LABEL_PX, tile_ink, false, &label);
             }
             let size = human_size(t.value);
             if th >= 34 && cap >= size.chars().count() {
-                text(&mut o, px + 4, py + 30, 12, tile_ink, false, &size);
+                c.text(px + INSET, py + 30, NOTE_PX, tile_ink, false, &size);
             }
         }
     }
-
-    o.push_str("</svg>");
-    o
+    c.finish()
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::canvas::attr;
     use super::*;
 
     fn tile(label: &str, value: u64, band: Band) -> Tile {
@@ -140,23 +138,10 @@ mod tests {
     }
 
     fn rects(svg: &str) -> Vec<(u64, u64, u64, u64)> {
-        let attr = |l: &str, k: &str| -> u64 {
-            l.split(&format!("{k}=\""))
-                .nth(1)
-                .and_then(|r| r.split('"').next())
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0)
-        };
+        let at = |l: &str, k: &str| attr(l, k).unwrap_or(0);
         svg.lines()
             .filter(|l| l.contains("<rect"))
-            .map(|l| {
-                (
-                    attr(l, "x"),
-                    attr(l, "y"),
-                    attr(l, "width"),
-                    attr(l, "height"),
-                )
-            })
+            .map(|l| (at(l, "x"), at(l, "y"), at(l, "width"), at(l, "height")))
             .collect()
     }
 
