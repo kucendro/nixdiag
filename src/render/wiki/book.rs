@@ -14,6 +14,7 @@ pub(super) fn book_toml(w: &Wiki, title: &str) -> Result<()> {
         "default-theme": b.default,
         "preferred-dark-theme": b.dark,
         "no-section-label": true,
+        "print": { "enable": false },
     });
     let book = json!({ "book": { "title": title, "src": "src" }, "output": { "html": html } });
     w.out.write(BOOK, &toml::to_string(&book)?)
