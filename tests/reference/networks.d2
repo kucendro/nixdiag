@@ -17,6 +17,7 @@ direction: down
 }
 ":internet": "🌐 Internet" {class: net-public}
 "net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
+"location home"."tom" -- "location home"."net lan": "routes via tailscale0" {class: route}
 "net hs.ts.example" -- "location home"."jerry": "tailscale0" {class: mesh}
 "net hs.ts.example" -- "location home"."tom": "tailscale0" {class: mesh}
 "location home"."gateway 192.168.1.1" -- "location home"."net lan" {class: lan}

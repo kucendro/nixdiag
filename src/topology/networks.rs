@@ -11,6 +11,7 @@ pub struct Member {
     pub host: String,
     pub interface: String,
     pub address: Option<IpAddr>,
+    pub routes: Vec<IpNet>,
 }
 
 #[derive(Debug)]
@@ -117,10 +118,17 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
     for (host, h) in &facts.hosts {
         let Some(n) = h.as_nixos() else { continue };
         for (name, i) in &n.network.interfaces {
+            let routes = i.routes.iter().map(|r| {
+                r.parse::<IpNet>()
+                    .map(|n| n.trunc())
+                    .map_err(|_| address(host, r))
+            });
+            let routes: Vec<IpNet> = routes.collect::<Result<_>>()?;
             let member = |address| Member {
                 host: host.clone(),
                 interface: name.clone(),
                 address,
+                routes: routes.clone(),
             };
             for a in &i.addresses {
                 let Some(scope) = a.scope else { continue };
@@ -150,15 +158,18 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
             }
         }
     }
-    let targets = facts
+    let units = facts
         .hosts
         .values()
         .flat_map(|h| h.topology().units.values());
-    for c in targets.flat_map(|u| &u.connections) {
-        if let Ok(net) = c.to.parse::<IpNet>() {
-            if !nets.iter().any(|n| n.contains(&net.addr())) {
-                nets.push(Network::new(None, vec![net.trunc()], None));
-            }
+    let targets = units
+        .flat_map(|u| &u.connections)
+        .filter_map(|c| c.to.parse::<IpNet>().ok());
+    let members = nets.iter().flat_map(|n| &n.members);
+    let routes: Vec<IpNet> = members.flat_map(|m| m.routes.iter().copied()).collect();
+    for net in targets.chain(routes).filter(|n| n.prefix_len() > 0) {
+        if !nets.iter().any(|n| n.contains(&net.addr())) {
+            nets.push(Network::new(None, vec![net.trunc()], None));
         }
     }
     Ok(nets)

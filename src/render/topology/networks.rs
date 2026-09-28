@@ -21,8 +21,24 @@ impl Diagram for Networks<'_, '_> {
             .collect();
         v.boxes(doc, hosts.iter().copied());
         let internet = Cloud::Net(Net::Internet);
-        if v.networks.iter().any(|n| !n.gateways.is_empty()) {
+        let routes = v
+            .networks
+            .iter()
+            .flat_map(|n| &n.members)
+            .flat_map(|m| m.routes.iter().map(move |r| (m, r)));
+        let exits = routes.clone().any(|(_, r)| r.prefix_len() == 0);
+        if exits || v.networks.iter().any(|n| !n.gateways.is_empty()) {
             internet.draw(doc, None);
+        }
+        for (m, r) in routes {
+            let via = Target::Net(Cloud::route(v.networks, r));
+            let host = v.placed(&Target::Node(&m.host, None));
+            doc.line(
+                &host,
+                &v.placed(&via),
+                Some(&t::route(&m.interface)),
+                Class::Route,
+            );
         }
         for n in v.networks {
             let cloud = Cloud::Network(n);

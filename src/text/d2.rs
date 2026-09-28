@@ -78,6 +78,16 @@ pub mod networks {
         }
     }
 
+    pub const SERVER: &str = "control server";
+
+    pub fn route(interface: &str) -> String {
+        format!("routes via {interface}")
+    }
+
+    pub fn server(label: &str) -> String {
+        format!("{label}\n{SERVER}")
+    }
+
     pub fn gateway(address: impl Display) -> String {
         format!("gateway {address}")
     }

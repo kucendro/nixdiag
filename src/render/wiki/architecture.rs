@@ -18,6 +18,7 @@ impl Page for Architecture {
         let sections = [
             (t::TOPOLOGY, diagram::TOPOLOGY),
             (t::NETWORKS, diagram::NETWORKS),
+            (t::OVERLAY, diagram::OVERLAY),
         ];
         let boards = sections
             .into_iter()

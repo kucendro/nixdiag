@@ -1,5 +1,6 @@
 docs      topology.d2
 docs      networks.d2
+docs      overlay.d2
 docs      topology-jerry.d2
 docs      topology-tom.d2
 docs      modules-tom.d2

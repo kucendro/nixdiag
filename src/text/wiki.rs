@@ -35,6 +35,7 @@ pub mod architecture {
     pub const TITLE: &str = "Architecture";
     pub const TOPOLOGY: &str = "## Data-flow topology";
     pub const NETWORKS: &str = "## Networks";
+    pub const OVERLAY: &str = "## Overlay";
 }
 
 pub mod summary {

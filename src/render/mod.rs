@@ -50,6 +50,10 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
     if !model.networks.is_empty() {
         d2.render(&topology::Networks(&view))?;
     }
+    let overlay = topology::Overlay(&view);
+    if overlay.drawn() {
+        d2.render(&overlay)?;
+    }
     for board in view.boards() {
         d2.render(&board)?;
     }

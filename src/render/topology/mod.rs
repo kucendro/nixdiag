@@ -1,11 +1,13 @@
 mod cloud;
 mod host;
 mod networks;
+mod overlay;
 mod overview;
 mod place;
 
 pub use host::HostBoard;
 pub use networks::Networks;
+pub use overlay::Overlay;
 pub use overview::Overview;
 
 pub use cloud::{Cloud, Net};

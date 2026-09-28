@@ -91,6 +91,7 @@ let
         ]
       );
       addresses = list types.str;
+      routes = list types.str;
       server = optional types.str;
     };
   };

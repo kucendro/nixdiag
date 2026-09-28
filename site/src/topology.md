@@ -24,7 +24,7 @@ on 443 to the internet, and the connection between them. Override with
 |---|---|---|
 | `nginx` | vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `proxyPass`; firewall | names, ports; a literal `proxyPass` is a connection, any other vhost an expose |
 | `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port, name; the tailnet, named after the server |
-| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a control connection to it, else `internet`; `--advertise-routes` to each advertised subnet; the interface on that server's tailnet |
+| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a control connection to it, else `internet`; the interface on that server's tailnet, routing `--advertise-routes` and, with `--advertise-exit-node`, the internet |
 | `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
 
 Scope from listen addresses: `100.64.0.0/10` is `mesh`, RFC 1918 is `lan`,
@@ -66,10 +66,16 @@ nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" "fd00:1::/64" ];
 | `nixdiag.networks.<name>.cidrs` | CIDRs | addresses inside join this network |
 | `nixdiag.networks.<name>.kind` | `public`, `mesh`, `lan` | cloud style; else from the addresses |
 | `nixdiag.networks.<name>.server` | host | control server; a `mesh` interface with it joins |
-| `nixdiag.interfaces.<name>` | `{ kind, addresses, server }` | an interface NixOS does not configure |
+| `nixdiag.interfaces.<name>` | `{ kind, addresses, routes, server }` | an interface NixOS does not configure; `routes` are prefixes it carries, `0.0.0.0/0` makes an exit node |
 
 The same name declared differently on two hosts, or two declared networks
 that overlap, fails the build.
+
+The overlay board draws every `mesh` network: its members by interface, the
+routes they carry, and the control server their `control` connections reach.
+Any mesh shows up once an adapter or your config declares the network, the
+member interfaces and the control connection; nothing on the board is
+specific to tailscale.
 
 ## Locations
 

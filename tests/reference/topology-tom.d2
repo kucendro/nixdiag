@@ -11,7 +11,6 @@ direction: down
   "tailscale": "tailscale\nmesh node" {class: infra}
 }
 "net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
-"net lan": "lan\n192.168.1.0/24" {class: net-lan}
 "jerry/nginx": "jerry / nginx" {
   class: ghost
   link: "./hosts.html#host-jerry"
@@ -20,4 +19,3 @@ direction: down
 "jerry/nginx" -> "tom"."grafana": "grafana :3000" {class: flow}
 "tom"."grafana" -> "tom"."exporter": "scrapes" {class: mgmt}
 "tom"."tailscale" -> "jerry/nginx": "mesh" {class: control}
-"tom"."tailscale" -> "net lan": "advertise" {class: lan}

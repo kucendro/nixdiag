@@ -23,6 +23,7 @@ pub enum Class {
     Local,
     Control,
     Mgmt,
+    Route,
     Location,
 }
 
@@ -50,6 +51,7 @@ impl Class {
             Class::Local => "local",
             Class::Control => "control",
             Class::Mgmt => "mgmt",
+            Class::Route => "route",
             Class::Location => "location",
         }
     }
@@ -341,6 +343,7 @@ mod tests {
             Class::Local,
             Class::Control,
             Class::Mgmt,
+            Class::Route,
             Class::Location,
         ];
         for c in all {

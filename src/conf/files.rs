@@ -10,6 +10,7 @@ pub mod diagram {
     pub const TOPOLOGY: &str = "topology";
     pub const INPUTS: &str = "inputs";
     pub const NETWORKS: &str = "networks";
+    pub const OVERLAY: &str = "overlay";
 
     pub fn modules(host: &str) -> String {
         format!("modules-{host}")

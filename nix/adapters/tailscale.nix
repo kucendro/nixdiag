@@ -2,6 +2,9 @@
 let
   flags = up: set: (if up == null then [ ] else up) ++ (if set == null then [ ] else set);
   login = up: set: helpers.flagValue "--login-server" (flags up set);
+  exit =
+    up: set:
+    lib.any (f: f == "--advertise-exit-node" || f == "--advertise-exit-node=true") (flags up set);
   saas = "controlplane.tailscale.com";
 in
 {
@@ -18,9 +21,6 @@ in
     { up, set, ... }:
     let
       server = login up set;
-      routes = lib.concatMap (lib.splitString ",") (
-        helpers.flagValues "--advertise-routes" (flags up set)
-      );
     in
     {
       connections = [
@@ -29,11 +29,7 @@ in
           label = "mesh";
           plane = "control";
         }
-      ]
-      ++ map (r: {
-        to = r;
-        label = "advertise";
-      }) routes;
+      ];
     };
 
   networks =
@@ -57,11 +53,20 @@ in
     }:
     let
       server = login up set;
+      routes = lib.concatMap (lib.splitString ",") (
+        helpers.flagValues "--advertise-routes" (flags up set)
+      );
     in
     lib.optionalAttrs (iface != null && iface != "userspace-networking") {
       ${iface} = {
         kind = "mesh";
         server = if server == null then saas else (helpers.url server).host;
+        routes =
+          routes
+          ++ lib.optionals (exit up set) [
+            "0.0.0.0/0"
+            "::/0"
+          ];
       };
     };
 

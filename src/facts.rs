@@ -102,6 +102,7 @@ pub struct Interface {
     pub vlan: Option<u32>,
     pub port: Option<u32>,
     pub server: Option<String>,
+    pub routes: Vec<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
