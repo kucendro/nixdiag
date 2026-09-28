@@ -26,7 +26,7 @@ rec {
         cp -r ${../site} book
         chmod -R u+w book
         cp ${../assets}/topology-light.svg book/src/topology.svg
-        cp ${../assets}/modules-sol-light.svg book/src/modules.svg
+        cp ${../assets}/modules-jerry-light.svg book/src/modules.svg
         cp ${../assets}/closures-light.svg book/src/closures.svg
         cp ${adapters-page}/adapters.md book/src/adapters.md
         mdbook build book --dest-dir $out

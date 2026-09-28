@@ -5,28 +5,28 @@ digraph {
   "internet" [label="🌐 Internet", shape=ellipse, fillcolor="#181825", color="#e74c3c"];
   "lan" [label="🏠 LAN", shape=ellipse, fillcolor="#181825", color="#2ecc71"];
   subgraph cluster_0 {
-    label=<<B>🖥️ luna</B>>;
+    label=<<B>🖥️ jerry</B>>;
     fillcolor="#181825";
     color="#a6adc8";
     style="rounded,filled";
-    "luna/exporter" [label="exporter", fillcolor="#1c2e4a", color="#7fa7e8"];
-    "luna/grafana" [label="grafana\n(monitor)", fillcolor="#4a3413", color="#d9995a"];
-    "luna/tailscale" [label="tailscale\n(mesh node)", fillcolor="#4a3413", color="#d9995a"];
-    "luna/+base" [label="+ 11 system services", fontsize=11];
+    "jerry/headscale" [label="headscale\n(mesh control)", fillcolor="#4a3413", color="#d9995a"];
+    "jerry/nginx" [label="nginx\n(proxy)", fillcolor="#4a3413", color="#d9995a"];
+    "jerry/+base" [label="+ 11 system services", fontsize=11];
   }
   subgraph cluster_1 {
-    label=<<B>🖥️ sol</B>>;
+    label=<<B>🖥️ tom</B>>;
     fillcolor="#181825";
     color="#a6adc8";
     style="rounded,filled";
-    "sol/headscale" [label="headscale\n(mesh control)", fillcolor="#4a3413", color="#d9995a"];
-    "sol/nginx" [label="nginx\n(proxy)", fillcolor="#4a3413", color="#d9995a"];
-    "sol/+base" [label="+ 11 system services", fontsize=11];
+    "tom/exporter" [label="exporter", fillcolor="#1c2e4a", color="#7fa7e8"];
+    "tom/grafana" [label="grafana\n(monitor)", fillcolor="#4a3413", color="#d9995a"];
+    "tom/tailscale" [label="tailscale\n(mesh node)", fillcolor="#4a3413", color="#d9995a"];
+    "tom/+base" [label="+ 11 system services", fontsize=11];
   }
-  "internet" -> "sol/nginx" [label="hs.ts.example :443", color="#e74c3c"];
-  "luna/grafana" -> "luna/exporter" [label="scrapes", color="#7fa7e8"];
-  "luna/tailscale" -> "sol/nginx" [label="mesh", color="#7fa7e8"];
-  "luna/tailscale" -> "lan" [label="advertise 192.168.1.0/24", color="#2ecc71"];
-  "sol/nginx" -> "luna/grafana" [label="grafana :3000", color="#7fa7e8"];
-  "sol/nginx" -> "sol/headscale" [label="hs :8080", color="#7fa7e8"];
+  "internet" -> "jerry/nginx" [label="hs.ts.example :443", color="#e74c3c"];
+  "jerry/nginx" -> "tom/grafana" [label="grafana :3000", color="#7fa7e8"];
+  "jerry/nginx" -> "jerry/headscale" [label="hs :8080", color="#7fa7e8"];
+  "tom/grafana" -> "tom/exporter" [label="scrapes", color="#7fa7e8"];
+  "tom/tailscale" -> "jerry/nginx" [label="mesh", color="#7fa7e8"];
+  "tom/tailscale" -> "lan" [label="advertise 192.168.1.0/24", color="#2ecc71"];
 }

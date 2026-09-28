@@ -42,7 +42,7 @@ the same for the current directory without touching the flake.
 |---|---|
 | `false` | nothing |
 | `true` | every NixOS host, minus `closuresExclude` |
-| `[ "nas" "luna" ]` | exactly those |
+| `[ "nas" "tom" ]` | exactly those |
 
 A host that serves the docs is measured with an empty directory in the docs'
 place, so a build may document the host that serves it. The Closures page

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "hosts": {
-    "luna": {
+    "tom": {
       "paths": [
         { "path": "/nix/store/1ka4vq9dnvxfw8yq3s0f6bpmxbxnbz7h-bash-5.2p37", "narSize": 8912896 },
         { "path": "/nix/store/3mfq9dqxvhbn0lw5c8rj2p7ktz6yavgd-coreutils-9.6", "narSize": 21495808 },
@@ -11,7 +11,7 @@
         { "path": "/nix/store/qz7wm2xhbvdn6ct9kf3rj5p8yl0aesgu-linux-6.12.9", "narSize": 149225472 }
       ]
     },
-    "sol": {
+    "jerry": {
       "paths": [
         { "path": "/nix/store/1ka4vq9dnvxfw8yq3s0f6bpmxbxnbz7h-bash-5.2p37", "narSize": 8912896 },
         { "path": "/nix/store/3mfq9dqxvhbn0lw5c8rj2p7ktz6yavgd-coreutils-9.6", "narSize": 21495808 },

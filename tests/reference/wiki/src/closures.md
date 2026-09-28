@@ -2,10 +2,10 @@
 
 ![System closure size by host](./closures.svg)
 
-| Host   | Closure   | Paths | Unique    |
-|--------|-----------|-------|-----------|
-| `luna` | 293.8 MiB | 6     | 4.0 MiB   |
-| `sol`  | 469.8 MiB | 7     | 180.0 MiB |
+| Host    | Closure   | Paths | Unique    |
+|---------|-----------|-------|-----------|
+| `jerry` | 469.8 MiB | 7     | 180.0 MiB |
+| `tom`   | 293.8 MiB | 6     | 4.0 MiB   |
 
 ## Fleet
 
@@ -16,24 +16,9 @@
 | Sum of per-host closures  | 763.5 MiB           |
 | Saved by sharing          | 289.8 MiB           |
 
-## luna
+## jerry
 
-![luna closure by package](./closures-luna.svg)
-
-Largest single paths:
-
-| Package         | Size      |
-|-----------------|-----------|
-| `linux-6.12.9`  | 142.3 MiB |
-| `systemd-257.2` | 85.0 MiB  |
-| `glibc-2.42-67` | 33.4 MiB  |
-| `coreutils-9.6` | 20.5 MiB  |
-| `bash-5.2p37`   | 8.5 MiB   |
-| `nginx-1.26.2`  | 4.0 MiB   |
-
-## sol
-
-![sol closure by package](./closures-sol.svg)
+![jerry closure by package](./closures-jerry.svg)
 
 Largest single paths:
 
@@ -46,3 +31,18 @@ Largest single paths:
 | `glibc-2.42-67`    | 33.4 MiB  |
 | `coreutils-9.6`    | 20.5 MiB  |
 | `bash-5.2p37`      | 8.5 MiB   |
+
+## tom
+
+![tom closure by package](./closures-tom.svg)
+
+Largest single paths:
+
+| Package         | Size      |
+|-----------------|-----------|
+| `linux-6.12.9`  | 142.3 MiB |
+| `systemd-257.2` | 85.0 MiB  |
+| `glibc-2.42-67` | 33.4 MiB  |
+| `coreutils-9.6` | 20.5 MiB  |
+| `bash-5.2p37`   | 8.5 MiB   |
+| `nginx-1.26.2`  | 4.0 MiB   |

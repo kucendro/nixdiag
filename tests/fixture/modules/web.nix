@@ -12,7 +12,7 @@
       sslCertificate = "/var/lib/certs/grafana.pem";
       sslCertificateKey = "/var/lib/certs/grafana.key";
       listenAddresses = [ "100.64.0.1" ];
-      locations."/".proxyPass = "http://luna.ts.example:3000";
+      locations."/".proxyPass = "http://tom.ts.example:3000";
     };
   };
 }

@@ -1,0 +1,17 @@
+...@theme
+
+"jerry": "jerry" {class: host}
+"hosts/jerry/default.nix": "hosts/jerry/default.nix" {class: file}
+"modules/common.nix": "modules/common.nix" {class: file}
+"modules/mesh.nix": "modules/mesh.nix" {
+  class: file
+  "headscale": "service"
+}
+"modules/web.nix": "modules/web.nix" {
+  class: file
+  "nginx": "service"
+}
+"jerry" -> "hosts/jerry/default.nix" {class: link}
+"hosts/jerry/default.nix" -> "modules/common.nix" {class: link}
+"hosts/jerry/default.nix" -> "modules/mesh.nix" {class: link}
+"hosts/jerry/default.nix" -> "modules/web.nix" {class: link}

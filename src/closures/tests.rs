@@ -2,8 +2,11 @@ use super::*;
 
 fn fixture() -> Closures {
     Closures::of(vec![
-        ("luna", vec![("libc", 100), ("bash", 50), ("nginx", 10)]),
-        ("sol", vec![("libc", 100), ("bash", 50), ("postgres", 400)]),
+        ("tom", vec![("libc", 100), ("bash", 50), ("nginx", 10)]),
+        (
+            "jerry",
+            vec![("libc", 100), ("bash", 50), ("postgres", 400)],
+        ),
     ])
 }
 
@@ -29,7 +32,7 @@ fn share(name: &str, size: u64, holders: usize) -> Share {
 
 #[test]
 fn totals_are_derived_from_the_path_list() {
-    assert_eq!(fixture().hosts["luna"].total(), total(3, 160));
+    assert_eq!(fixture().hosts["tom"].total(), total(3, 160));
 }
 
 #[test]
@@ -40,8 +43,8 @@ fn shared_is_what_every_host_carries() {
 #[test]
 fn unique_excludes_anything_another_host_also_has() {
     let c = fixture();
-    assert_eq!(c.unique("luna"), total(1, 10));
-    assert_eq!(c.unique("sol"), total(1, 400));
+    assert_eq!(c.unique("tom"), total(1, 10));
+    assert_eq!(c.unique("jerry"), total(1, 400));
     assert_eq!(c.unique("nope"), Total::default());
 }
 
@@ -55,7 +58,7 @@ fn deduplication_counts_a_shared_path_once() {
 #[test]
 fn largest_is_size_descending_and_bounded() {
     let c = fixture();
-    let top = c.hosts["sol"].largest(2);
+    let top = c.hosts["jerry"].largest(2);
     assert_eq!(top.len(), 2);
     assert_eq!(top[0].path, "postgres");
     assert_eq!(top[1].path, "libc");
@@ -64,12 +67,9 @@ fn largest_is_size_descending_and_bounded() {
 #[test]
 fn a_split_partitions_the_host_total() {
     let c = fixture();
-    let s = c.split("luna");
+    let s = c.split("tom");
     assert_eq!(s, split(150, 0, 10));
-    assert_eq!(
-        s.shared + s.partial + s.unique,
-        c.hosts["luna"].total().size
-    );
+    assert_eq!(s.shared + s.partial + s.unique, c.hosts["tom"].total().size);
     assert_eq!(c.split("nope"), Split::default());
 }
 
@@ -77,7 +77,7 @@ fn a_split_partitions_the_host_total() {
 fn path_shares_carries_the_holder_count_per_path() {
     let c = fixture();
     assert_eq!(
-        c.path_shares("luna"),
+        c.path_shares("tom"),
         vec![
             share("libc", 100, 2),
             share("bash", 50, 2),
@@ -91,17 +91,17 @@ fn path_shares_carries_the_holder_count_per_path() {
 fn package_shares_fold_outputs_and_keep_the_holder_count() {
     let c = Closures::of(vec![
         (
-            "luna",
+            "tom",
             vec![
                 ("/nix/store/a-glibc-2.42-67", 100),
                 ("/nix/store/b-glibc-2.42-67-bin", 40),
                 ("/nix/store/c-nginx-1.28", 10),
             ],
         ),
-        ("sol", vec![("/nix/store/a-glibc-2.42-67", 100)]),
+        ("jerry", vec![("/nix/store/a-glibc-2.42-67", 100)]),
     ]);
     assert_eq!(
-        c.package_shares("luna"),
+        c.package_shares("tom"),
         vec![
             share("glibc", 100, 2),
             share("glibc", 40, 1),
@@ -113,12 +113,15 @@ fn package_shares_fold_outputs_and_keep_the_holder_count() {
 #[test]
 fn a_third_host_makes_the_partial_band_possible() {
     let c = Closures::of(vec![
-        ("luna", vec![("libc", 100), ("bash", 50), ("nginx", 10)]),
-        ("sol", vec![("libc", 100), ("bash", 50), ("postgres", 400)]),
+        ("tom", vec![("libc", 100), ("bash", 50), ("nginx", 10)]),
+        (
+            "jerry",
+            vec![("libc", 100), ("bash", 50), ("postgres", 400)],
+        ),
         ("terra", vec![("libc", 100), ("bash", 50), ("nginx", 10)]),
     ]);
-    assert_eq!(c.split("luna"), split(150, 10, 0));
-    assert_eq!(c.split("sol"), split(150, 0, 400));
+    assert_eq!(c.split("tom"), split(150, 10, 0));
+    assert_eq!(c.split("jerry"), split(150, 0, 400));
 }
 
 #[test]

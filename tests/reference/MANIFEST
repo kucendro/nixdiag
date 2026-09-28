@@ -1,6 +1,6 @@
 docs      topology.dot
-docs      modules-luna.d2
-docs      modules-sol.d2
+docs      modules-tom.d2
+docs      modules-jerry.d2
 docs      inputs.d2
 docs      theme.d2
 
@@ -11,5 +11,5 @@ docs      wiki/src/inputs-timeline.svg
 
 closures  wiki/src/closures.md
 closures  wiki/src/closures.svg
-closures  wiki/src/closures-luna.svg
-closures  wiki/src/closures-sol.svg
+closures  wiki/src/closures-tom.svg
+closures  wiki/src/closures-jerry.svg
