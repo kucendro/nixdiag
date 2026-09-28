@@ -1,5 +1,5 @@
 use super::Wiki;
-use crate::conf::files::{page, BOOK, CSS, WIKI_CSS};
+use crate::conf::files::{page, BOOK, CSS, JS, WIKI_CSS, WIKI_JS};
 use crate::text::messages::Fail;
 use crate::text::wiki::{summary as t, INDEX};
 use anyhow::{bail, Result};
@@ -9,6 +9,7 @@ use std::iter::once;
 use std::path::PathBuf;
 
 const D2_CSS: &str = include_str!("d2.css");
+const D2_JS: &str = include_str!("d2.js");
 
 pub(super) fn book_toml(w: &Wiki, title: &str) -> Result<()> {
     let b = w.style.theme.book();
@@ -17,10 +18,12 @@ pub(super) fn book_toml(w: &Wiki, title: &str) -> Result<()> {
         "preferred-dark-theme": b.dark,
         "no-section-label": true,
         "additional-css": [CSS],
+        "additional-js": [JS],
         "print": { "enable": false },
     });
     let book = json!({ "book": { "title": title, "src": "src" }, "output": { "html": html } });
     w.out.write(WIKI_CSS, D2_CSS)?;
+    w.out.write(WIKI_JS, D2_JS)?;
     w.out.write(BOOK, &toml::to_string(&book)?)
 }
 

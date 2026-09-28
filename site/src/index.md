@@ -27,6 +27,7 @@ Both are the two-host fixture, the [live demo](./demo.md).
 | `modules-<host>.d2`, `modules-<host>.svg` | per host: entry file to the modules it imports, each listing its units |
 | `inputs.d2`, `inputs.svg` | flake input graph; `follows` edges dashed |
 | `theme.d2` | classes and palette every `.d2` imports |
+| `wiki/book.toml`, `wiki/d2.css`, `wiki/d2.js` | the book: diagrams fit the page, ⤢ opens one to pan and zoom |
 | `wiki/src/index.md` | a stub for your own overview, replaced by `indexPage` |
 | `wiki/src/architecture.md` | topology diagram, networks board |
 | `wiki/src/hosts.md` | per host: platform, users, ports, default gateway, interfaces, services and their files, topology, module tree |
