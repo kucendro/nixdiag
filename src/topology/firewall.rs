@@ -83,6 +83,9 @@ impl Audit<'_> {
             return Vec::new();
         };
         let fw = &n.network.firewall;
+        if !fw.enable {
+            return Vec::new();
+        }
         let mut out = self.unused(host, fw);
         out.extend(self.closed(host, n));
         out.extend(

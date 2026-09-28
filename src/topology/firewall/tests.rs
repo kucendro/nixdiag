@@ -76,11 +76,11 @@ fn a_closed_expose_and_a_blocked_path_are_reported() {
 }
 
 #[test]
-fn ranges_interface_rules_and_a_disabled_firewall_open_the_port() {
+fn ranges_interface_rules_and_a_disabled_firewall_leave_nothing_to_report() {
     for fw in [
         json!({ "enable": true, "tcpRanges": [[2000, 4000]] }),
         json!({ "enable": true, "interfaces": { "eth0": { "tcp": [3000] } } }),
-        json!({ "enable": false }),
+        json!({ "enable": false, "tcp": [22], "trusted": ["wg0"] }),
     ] {
         assert_eq!(findings(host(fw, web("lan"))), []);
     }
