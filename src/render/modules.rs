@@ -1,120 +1,77 @@
-use super::dot::{card, id, Diagram, Dot, Graph, Paint};
+use super::d2::{Class, Diagram, Doc};
 use crate::conf::files::diagram;
-use crate::conf::palette::{diagram as p, Color};
 use crate::facts::Facts;
 use crate::source::imports::{build_import_graph, host_entry_modules};
 use crate::source::repo::Repo;
+use crate::text::d2::modules as t;
 use anyhow::Result;
-use dot_writer::Attributes;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Shape {
+enum Kind {
     Service,
     Program,
 }
 
-impl Shape {
-    fn fill(self) -> Color {
+impl Kind {
+    fn label(self) -> &'static str {
         match self {
-            Shape::Service => p::APP_FILL,
-            Shape::Program => p::PROG_FILL,
-        }
-    }
-}
-
-#[derive(Default)]
-struct Tree {
-    dirs: BTreeMap<String, Tree>,
-    files: BTreeMap<String, BTreeSet<(Shape, String)>>,
-}
-
-impl Tree {
-    fn add_file(&mut self, rel: &str) -> &mut BTreeSet<(Shape, String)> {
-        let parts: Vec<&str> = rel.split('/').collect();
-        let mut node = self;
-        for d in &parts[..parts.len() - 1] {
-            node = node.dirs.entry(d.to_string()).or_default();
-        }
-        node.files
-            .entry(parts[parts.len() - 1].to_string())
-            .or_default()
-    }
-
-    fn emit(&self, g: &mut Graph, dot: &Dot, prefix: &str) {
-        for (name, sub) in &self.dirs {
-            let mut c = g.cluster();
-            c.text(&[name])
-                .stroke(dot.color(&p::BASE_STROKE))
-                .set("style", "rounded,dashed", true);
-            sub.emit(&mut c, dot, &format!("{prefix}{name}/"));
-        }
-        let (fill, stroke) = (dot.color(&p::BASE_FILL), dot.color(&p::BASE_STROKE));
-        for (name, units) in &self.files {
-            let rows: Vec<(&str, &str)> = units
-                .iter()
-                .map(|(shape, unit)| (dot.color(&shape.fill()), unit.as_str()))
-                .collect();
-            g.node_named(id(&format!("{prefix}{name}")))
-                .shape("plain")
-                .set_html(&card(name, fill, stroke, &rows));
+            Kind::Service => t::SERVICE,
+            Kind::Program => t::PROGRAM,
         }
     }
 }
 
 pub struct Modules {
-    hosts: Vec<String>,
-    tree: Tree,
-    edges: Vec<(String, String)>,
+    host: String,
+    files: BTreeMap<String, BTreeSet<(Kind, String)>>,
+    entries: BTreeSet<String>,
+    imports: BTreeSet<(String, String)>,
 }
 
 impl Modules {
-    pub fn new(facts: &Facts, repo: &Repo) -> Result<Self> {
-        let mut tree = Tree::default();
-        let mut edges: Vec<(String, String)> = Vec::new();
-        let mut imports: BTreeSet<(String, String)> = BTreeSet::new();
-        let flake_text = repo.flake()?;
-
-        for (host, f) in &facts.hosts {
-            let entries = host_entry_modules(host, &flake_text, repo);
-            let (nodes, found) = build_import_graph(&entries, repo);
-            for n in &nodes {
-                tree.add_file(n);
-            }
-            imports.extend(found);
-            edges.extend(entries.iter().map(|e| (host.clone(), repo.rel(e))));
-
+    pub fn per_host(facts: &Facts, repo: &Repo) -> Result<Vec<Self>> {
+        let flake = repo.flake()?;
+        let boards = facts.hosts.iter().map(|(host, f)| {
+            let entries = host_entry_modules(host, &flake, repo);
+            let (nodes, imports) = build_import_graph(&entries, repo);
+            let mut files: BTreeMap<String, BTreeSet<(Kind, String)>> =
+                nodes.into_iter().map(|n| (n, BTreeSet::new())).collect();
             let b = f.base();
-            for (shape, units) in [(Shape::Service, &b.services), (Shape::Program, &b.programs)] {
-                for item in units {
-                    for rel in item.files.iter().filter_map(|f| repo.file(f)) {
-                        tree.add_file(&rel).insert((shape, item.name.clone()));
+            for (kind, units) in [(Kind::Service, &b.services), (Kind::Program, &b.programs)] {
+                for u in units {
+                    for rel in u.files.iter().filter_map(|f| repo.file(f)) {
+                        files.entry(rel).or_default().insert((kind, u.name.clone()));
                     }
                 }
             }
-        }
-        edges.extend(imports);
-        let hosts = facts.hosts.keys().cloned().collect();
-        Ok(Modules { hosts, tree, edges })
+            Modules {
+                host: host.clone(),
+                files,
+                entries: entries.iter().map(|e| repo.rel(e)).collect(),
+                imports: imports.into_iter().collect(),
+            }
+        });
+        Ok(boards.collect())
     }
 }
 
 impl Diagram for Modules {
-    fn stem(&self) -> &'static str {
-        diagram::MODULES
+    fn stem(&self) -> String {
+        diagram::modules(&self.host)
     }
 
-    fn draw(&self, g: &mut Graph, dot: &Dot) {
-        for host in &self.hosts {
-            g.node_named(id(host))
-                .bold(host)
-                .shape("ellipse")
-                .fill(dot.color(&p::HOST_CLOUD))
-                .stroke(dot.color(&p::HOST_STROKE));
+    fn draw(&self, doc: &mut Doc) {
+        doc.shape(&self.host, &self.host, Class::Host);
+        for (file, units) in &self.files {
+            let rows = units.iter().map(|(k, u)| (u.as_str(), k.label()));
+            doc.table(file, file, Class::File, rows);
         }
-        self.tree.emit(g, dot, "");
-        for (from, to) in &self.edges {
-            g.edge(id(from), id(to));
+        for entry in &self.entries {
+            doc.edge(&self.host, entry, None, Class::Link);
+        }
+        for (from, to) in &self.imports {
+            doc.edge(from, to, None, Class::Link);
         }
     }
 }

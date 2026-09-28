@@ -17,6 +17,11 @@
 - **grafana** — `modules/monitoring.nix`
 - **tailscale** — `hosts/luna/default.nix`
 
+**Modules:**
+
+<div class="d2 d2-light">{{#include modules-luna-light.svg}}</div>
+<div class="d2 d2-dark">{{#include modules-luna-dark.svg}}</div>
+
 ## 🖥️ sol
 
 |                          |                |
@@ -33,3 +38,8 @@
 
 - **headscale** — `modules/mesh.nix`
 - **nginx** — `modules/web.nix`
+
+**Modules:**
+
+<div class="d2 d2-light">{{#include modules-sol-light.svg}}</div>
+<div class="d2 d2-dark">{{#include modules-sol-dark.svg}}</div>

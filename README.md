@@ -10,7 +10,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/topology.svg"><img alt="topology" src="assets/topology-light.svg"></picture>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/modules.svg"><img alt="modules" src="assets/modules-light.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/modules-sol.svg"><img alt="modules" src="assets/modules-sol-light.svg"></picture>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs.svg"><img alt="flake inputs" src="assets/inputs-light.svg"></picture>
 

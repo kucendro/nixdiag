@@ -56,7 +56,7 @@ in
                 --closures ${src}/closures.json --theme $theme --out $theme >/dev/null
               suffix=""
               [ $theme = dark ] || suffix=-light
-              for f in topology modules inputs wiki/src/inputs-timeline wiki/src/closures wiki/src/closures-sol; do
+              for f in topology modules-sol inputs wiki/src/inputs-timeline wiki/src/closures wiki/src/closures-sol; do
                 cp $theme/$f.svg $out/$(basename $f)$suffix.svg
               done
             done

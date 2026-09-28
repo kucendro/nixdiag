@@ -7,6 +7,8 @@ pub enum Class {
     Flagged,
     Link,
     Follows,
+    Host,
+    File,
 }
 
 impl Class {
@@ -17,6 +19,8 @@ impl Class {
             Class::Flagged => "flagged",
             Class::Link => "link",
             Class::Follows => "follows",
+            Class::Host => "host",
+            Class::File => "file",
         }
     }
 }
@@ -25,6 +29,7 @@ struct Shape {
     key: String,
     label: String,
     class: Class,
+    rows: Vec<(String, String)>,
 }
 
 struct Edge {
@@ -42,10 +47,24 @@ pub struct Doc {
 
 impl Doc {
     pub fn shape(&mut self, key: &str, label: &str, class: Class) {
+        self.table(key, label, class, []);
+    }
+
+    pub fn table<'r>(
+        &mut self,
+        key: &str,
+        label: &str,
+        class: Class,
+        rows: impl IntoIterator<Item = (&'r str, &'r str)>,
+    ) {
         self.shapes.push(Shape {
             key: key.into(),
             label: label.into(),
             class,
+            rows: rows
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect(),
         });
     }
 
@@ -83,8 +102,16 @@ impl Display for Quoted<'_> {
 impl Display for Doc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for s in &self.shapes {
-            let (key, label) = (Quoted(&s.key), Quoted(&s.label));
-            writeln!(f, "{key}: {label} {{class: {}}}", s.class.name())?;
+            let (key, label, class) = (Quoted(&s.key), Quoted(&s.label), s.class.name());
+            if s.rows.is_empty() {
+                writeln!(f, "{key}: {label} {{class: {class}}}")?;
+                continue;
+            }
+            writeln!(f, "{key}: {label} {{\n  class: {class}")?;
+            for (k, v) in &s.rows {
+                writeln!(f, "  {}: {}", Quoted(k), Quoted(v))?;
+            }
+            writeln!(f, "}}")?;
         }
         for e in &self.edges {
             write!(f, "{} -> {}", Quoted(&e.from), Quoted(&e.to))?;
@@ -116,6 +143,16 @@ mod tests {
     }
 
     #[test]
+    fn rows_nest_inside_their_table() {
+        let mut d = Doc::default();
+        d.table("m/a.nix", "m/a.nix", Class::File, [("nginx", "service")]);
+        assert_eq!(
+            d.to_string(),
+            "\"m/a.nix\": \"m/a.nix\" {\n  class: file\n  \"nginx\": \"service\"\n}\n"
+        );
+    }
+
+    #[test]
     fn theme_defines_every_class() {
         let theme = include_str!("theme.d2");
         let all = [
@@ -124,6 +161,8 @@ mod tests {
             Class::Flagged,
             Class::Link,
             Class::Follows,
+            Class::Host,
+            Class::File,
         ];
         for c in all {
             assert!(

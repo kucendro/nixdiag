@@ -20,17 +20,6 @@ pub fn id(s: &str) -> String {
     format!("\"{}\"", quote(s))
 }
 
-pub fn card(title: &str, fill: &str, stroke: &str, rows: &[(&str, &str)]) -> String {
-    let rows: String = rows
-        .iter()
-        .map(|(bg, s)| format!(r#"<TR><TD BGCOLOR="{bg}">{}</TD></TR>"#, escape(*s)))
-        .collect();
-    format!(
-        r#"<<TABLE STYLE="rounded" BORDER="1" COLOR="{stroke}" BGCOLOR="{fill}" CELLBORDER="0" CELLSPACING="3" CELLPADDING="4"><TR><TD>{}</TD></TR>{rows}</TABLE>>"#,
-        escape(title)
-    )
-}
-
 pub trait Paint: Attributes {
     fn fill(&mut self, c: &str) -> &mut Self {
         self.set("fillcolor", c, true)

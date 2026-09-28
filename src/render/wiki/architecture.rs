@@ -15,9 +15,7 @@ impl Page for Architecture {
     }
 
     fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
-        for stem in [diagram::TOPOLOGY, diagram::MODULES] {
-            w.src.mirror(w.out, &format!("{stem}.svg"))?;
-        }
+        w.src.mirror(w.out, &format!("{}.svg", diagram::TOPOLOGY))?;
         Ok(Some(vec![t::BODY.into()]))
     }
 }

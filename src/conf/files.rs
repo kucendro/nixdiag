@@ -6,8 +6,11 @@ pub const THEME: &str = "theme.d2";
 
 pub mod diagram {
     pub const TOPOLOGY: &str = "topology";
-    pub const MODULES: &str = "modules";
     pub const INPUTS: &str = "inputs";
+
+    pub fn modules(host: &str) -> String {
+        format!("modules-{host}")
+    }
 
     pub fn themed(stem: &str, theme: &str) -> String {
         format!("{stem}-{theme}.svg")

@@ -12,6 +12,11 @@ pub fn fill(color: &str) -> String {
     format!("style.fill: {color}")
 }
 
+pub mod modules {
+    pub const SERVICE: &str = "service";
+    pub const PROGRAM: &str = "program";
+}
+
 pub mod inputs {
     pub const ROOT: &str = "this flake";
 

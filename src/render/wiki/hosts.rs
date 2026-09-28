@@ -1,6 +1,6 @@
-use super::{code, codes, repo_services, size_paths, table, Page, Wiki};
+use super::{code, codes, diagram, repo_services, size_paths, table, Page, Wiki};
 use crate::closures::Closures;
-use crate::conf::files::page;
+use crate::conf::files::{diagram::modules, page};
 use crate::facts::{DarwinHost, Host, NixosHost};
 use crate::source::repo::Repo;
 use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
@@ -33,6 +33,9 @@ impl Page for Hosts {
             match f {
                 Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
                 Host::Darwin(d) => host_darwin(&mut o, host, d),
+            }
+            if let Some(board) = diagram(w, &modules(host)) {
+                o.extend([t::MODULES.into(), board]);
             }
         }
         Ok(Some(o))

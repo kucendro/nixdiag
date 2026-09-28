@@ -32,11 +32,7 @@ pub mod architecture {
     pub const BODY: &str = "\
 ## Data-flow topology
 
-![Data-flow topology](./topology.svg)
-
-## Module tree
-
-![Module tree](./modules.svg)";
+![Data-flow topology](./topology.svg)";
 }
 
 pub mod summary {
@@ -63,6 +59,7 @@ pub mod hosts {
     pub const DAEMONS: &str = "LaunchDaemons";
     pub const AGENTS: &str = "User agents";
     pub const CASKS: &str = "Homebrew casks";
+    pub const MODULES: &str = "**Modules:**";
 
     pub fn nixos(host: &str) -> String {
         format!("## 🖥️ {host}")

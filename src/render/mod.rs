@@ -52,7 +52,9 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
     };
     d2.write_theme()?;
     dot.render(&topology::Topology::new(facts, &model))?;
-    dot.render(&modules::Modules::new(facts, &repo)?)?;
+    for board in modules::Modules::per_host(facts, &repo)? {
+        d2.render(&board)?;
+    }
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
         d2.render(&inputs::Inputs(lock))?;
