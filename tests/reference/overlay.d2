@@ -1,0 +1,17 @@
+...@theme
+
+direction: down
+"net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
+"net lan @ home": "lan\n192.168.1.0/24" {class: net-lan}
+"jerry": "🖥️ jerry\ncontrol server" {
+  class: machine
+  link: "./hosts.html#host-jerry"
+}
+"tom": "🖥️ tom" {
+  class: machine
+  link: "./hosts.html#host-tom"
+}
+"net hs.ts.example" -- "jerry": "tailscale0" {class: mesh}
+"net hs.ts.example" -- "tom": "tailscale0" {class: mesh}
+"tom" -- "net lan @ home": "routes via tailscale0" {class: route}
+"tom" -> "jerry": "mesh" {class: control}

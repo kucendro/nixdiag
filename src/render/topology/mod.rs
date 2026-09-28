@@ -1,71 +1,39 @@
+mod cloud;
 mod host;
+mod networks;
+mod overlay;
 mod overview;
+mod place;
 
 pub use host::HostBoard;
+pub use networks::Networks;
+pub use overlay::Overlay;
 pub use overview::Overview;
 
-use super::d2::{Class, Doc};
-use crate::facts::{Facts, Host, Kind, Scope};
+pub use cloud::{Cloud, Net};
+
+use super::d2::Class;
+use crate::facts::{Facts, Host, Kind, Plane};
 use crate::text::d2::topology as t;
-use crate::topology::{Connection, Endpoint, Model};
+use crate::topology::{by_id, Connection, Endpoint, Model, Network};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use std::collections::BTreeSet;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Net {
-    Internet,
-    Lan,
-    Mesh,
-}
-
-impl Net {
-    fn of(scope: Option<Scope>) -> Option<Net> {
-        Some(match scope? {
-            Scope::Public => Net::Internet,
-            Scope::Lan => Net::Lan,
-            Scope::Mesh => Net::Mesh,
-        })
-    }
-
-    fn key(self) -> &'static str {
-        match self {
-            Net::Internet => ":internet",
-            Net::Lan => ":lan",
-            Net::Mesh => ":mesh",
-        }
-    }
-
-    fn edge(self) -> Class {
-        match self {
-            Net::Internet => Class::Public,
-            Net::Lan => Class::Lan,
-            Net::Mesh => Class::Mesh,
-        }
-    }
-
-    fn draw(self, doc: &mut Doc) {
-        let (label, class) = match self {
-            Net::Internet => (t::INTERNET, Class::NetPublic),
-            Net::Lan => (t::LAN, Class::NetLan),
-            Net::Mesh => (t::MESH, Class::NetMesh),
-        };
-        doc.shape(self.key(), label, class);
-    }
-}
-
 pub enum Target<'a> {
     Node(&'a str, Option<&'a str>),
-    Net(Net),
+    Net(Cloud<'a>),
 }
 
 impl<'a> Target<'a> {
-    fn of(e: &'a Endpoint) -> Self {
+    fn of(e: &'a Endpoint, nets: &'a [Network]) -> Self {
         match e {
             Endpoint::Unit(h, u) => Target::Node(h, Some(u)),
             Endpoint::Host(h) => Target::Node(h, None),
-            Endpoint::Internet => Target::Net(Net::Internet),
-            Endpoint::Lan => Target::Net(Net::Lan),
+            Endpoint::Internet => Target::Net(Cloud::Net(Net::Internet)),
+            Endpoint::Network(id) => {
+                Target::Net(by_id(nets, id).map_or(Cloud::Net(Net::Lan), Cloud::Network))
+            }
         }
     }
 
@@ -76,10 +44,14 @@ impl<'a> Target<'a> {
         }
     }
 
-    fn path(&self) -> Vec<&'a str> {
+    fn path(&self) -> Vec<String> {
         match self {
-            Target::Node(h, u) => [Some(*h), *u].into_iter().flatten().collect(),
-            Target::Net(n) => vec![n.key()],
+            Target::Node(h, u) => [Some(*h), *u]
+                .into_iter()
+                .flatten()
+                .map(String::from)
+                .collect(),
+            Target::Net(c) => vec![c.key()],
         }
     }
 }
@@ -119,10 +91,11 @@ pub struct Flow<'a> {
     pub from: Target<'a>,
     pub to: Target<'a>,
     pub label: &'a str,
+    pub plane: Plane,
 }
 
 pub struct Ingress<'a> {
-    pub net: Net,
+    pub net: Cloud<'a>,
     pub node: Target<'a>,
     pub label: String,
 }
@@ -131,6 +104,8 @@ pub struct View<'a> {
     pub facts: &'a Facts,
     pub hosts: IndexMap<&'a str, IndexMap<&'a str, Unit<'a>>>,
     pub ingress: Vec<Ingress<'a>>,
+    pub networks: &'a [Network],
+    locations: &'a IndexMap<String, String>,
     connections: &'a [Connection],
 }
 
@@ -179,33 +154,44 @@ impl<'a> View<'a> {
                 unit.ports.insert((x.port, x.udp));
             }
         }
-        let exposed = model.exposed.iter().filter_map(|x| {
-            Some(Ingress {
-                net: Net::of(x.scope)?,
+        let nets = &model.networks;
+        let exposed = model.exposed.iter().flat_map(|x| {
+            let clouds = match x.via.as_slice() {
+                [] => Cloud::around(nets, &x.host, x.scope),
+                via => Cloud::of(nets, via),
+            };
+            clouds.into_iter().map(|net| Ingress {
+                net,
                 node: Target::Node(&x.host, x.unit.as_deref()),
                 label: t::expose(x.name.as_deref(), Some(x.port), x.udp),
             })
         });
-        let named = model.named.iter().filter_map(|ne| {
-            Some(Ingress {
-                net: Net::of(ne.scope)?,
-                node: Target::of(&ne.node),
-                label: t::expose(Some(&ne.name), ne.port, false),
-            })
+        let named = model.named.iter().flat_map(|ne| {
+            let host = ne.node.host().unwrap_or_default();
+            Cloud::around(nets, host, ne.scope)
+                .into_iter()
+                .map(|net| Ingress {
+                    net,
+                    node: Target::of(&ne.node, nets),
+                    label: t::expose(Some(&ne.name), ne.port, false),
+                })
         });
         View {
             facts,
             hosts,
             ingress: exposed.chain(named).collect(),
+            networks: &model.networks,
+            locations: &model.locations,
             connections: &model.connections,
         }
     }
 
     pub fn flows(&self) -> impl Iterator<Item = Flow<'a>> {
         self.connections.iter().map(|c| Flow {
-            from: Target::of(&c.from),
-            to: Target::of(&c.to),
+            from: Target::of(&c.from, self.networks),
+            to: Target::of(&c.to, self.networks),
             label: &c.label,
+            plane: c.plane,
         })
     }
 
@@ -221,3 +207,6 @@ impl<'a> View<'a> {
             .map(|(host, _)| HostBoard { view: self, host })
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -10,14 +10,12 @@ direction: down
   }
   "tailscale": "tailscale\nmesh node" {class: infra}
 }
-":lan": "🏠 LAN" {class: net-lan}
-":mesh": "🔒 Mesh" {class: net-mesh}
+"net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
 "jerry/nginx": "jerry / nginx" {
   class: ghost
   link: "./hosts.html#host-jerry"
 }
-":mesh" -> "tom"."grafana": "grafana.ts.example :3000" {class: mesh}
+"net hs.ts.example" -> "tom"."grafana": "grafana.ts.example :3000" {class: mesh}
 "jerry/nginx" -> "tom"."grafana": "grafana :3000" {class: flow}
-"tom"."grafana" -> "tom"."exporter": "scrapes" {class: local}
-"tom"."tailscale" -> "jerry/nginx": "mesh" {class: flow}
-"tom"."tailscale" -> ":lan": "advertise 192.168.1.0/24" {class: lan}
+"tom"."grafana" -> "tom"."exporter": "scrapes" {class: mgmt}
+"tom"."tailscale" -> "jerry/nginx": "mesh" {class: control}

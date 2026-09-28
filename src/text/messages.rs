@@ -49,6 +49,18 @@ pub enum Fail {
         target: String,
         reason: Unresolved,
     },
+    #[error("network `{name}` is declared differently on {first} and {second}")]
+    NetworkConflict {
+        name: String,
+        first: String,
+        second: String,
+    },
+    #[error("networks `{0}` and `{1}` overlap")]
+    NetworkOverlap(String, String),
+    #[error("{host}: `{value}` is not an address")]
+    Address { host: String, value: String },
+    #[error("{host}: `{value}` is on networks at several locations; set nixdiag.location")]
+    Unlocated { host: String, value: String },
     #[error("{0} render of {1} failed: {2}")]
     Render(&'static str, String, std::io::Error),
     #[error("{0} render of {1} failed:\n{2}")]
@@ -67,7 +79,11 @@ pub enum Unresolved {
     AmbiguousName(String),
     #[error("nothing on `{0}` listens on port {1}")]
     NoPort(String, String),
-    #[error("not a host, a unit, a declared name, a URL, `internet` or `lan`")]
+    #[error("`lan` is no longer built in; declare nixdiag.networks.lan.cidrs, or name a network or a CIDR")]
+    Lan,
+    #[error("networks at several locations match; set nixdiag.location on this host")]
+    AmbiguousNetwork,
+    #[error("not a host, a unit, a declared name, a network, a CIDR, a URL or `internet`")]
     Unknown,
 }
 

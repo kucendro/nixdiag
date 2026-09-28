@@ -9,6 +9,8 @@ pub const THEME: &str = "theme.d2";
 pub mod diagram {
     pub const TOPOLOGY: &str = "topology";
     pub const INPUTS: &str = "inputs";
+    pub const NETWORKS: &str = "networks";
+    pub const OVERLAY: &str = "overlay";
 
     pub fn modules(host: &str) -> String {
         format!("modules-{host}")
@@ -32,13 +34,26 @@ pub mod page {
     pub const ENDPOINTS: &str = "endpoints.md";
     pub const INPUTS: &str = "inputs.md";
     pub const CLOSURES: &str = "closures.md";
+    pub const FIREWALL: &str = "firewall.md";
 
     pub fn anchor(host: &str) -> String {
         format!("host-{host}")
     }
 
     pub fn host(host: &str) -> String {
-        format!("./{}.html#{}", HOSTS.trim_end_matches(".md"), anchor(host))
+        link(HOSTS, &anchor(host))
+    }
+
+    pub fn wall(host: &str) -> String {
+        format!("firewall-{host}")
+    }
+
+    pub fn firewall(host: &str) -> String {
+        link(FIREWALL, &wall(host))
+    }
+
+    fn link(file: &str, anchor: &str) -> String {
+        format!("./{}.html#{anchor}", file.trim_end_matches(".md"))
     }
 }
 

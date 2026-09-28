@@ -21,6 +21,10 @@ pub enum Class {
     Mesh,
     Flow,
     Local,
+    Control,
+    Mgmt,
+    Route,
+    Location,
 }
 
 impl Class {
@@ -45,6 +49,10 @@ impl Class {
             Class::Mesh => "mesh",
             Class::Flow => "flow",
             Class::Local => "local",
+            Class::Control => "control",
+            Class::Mgmt => "mgmt",
+            Class::Route => "route",
+            Class::Location => "location",
         }
     }
 }
@@ -136,6 +144,7 @@ impl Shape {
 struct Edge {
     from: Vec<String>,
     to: Vec<String>,
+    directed: bool,
     label: Option<String>,
     class: Class,
 }
@@ -157,15 +166,59 @@ impl Doc {
         self.shapes.last_mut().expect("just pushed")
     }
 
-    pub fn edge(&mut self, from: &[&str], to: &[&str], label: Option<&str>, class: Class) {
-        let path = |p: &[&str]| p.iter().map(|s| s.to_string()).collect();
+    pub fn place(
+        &mut self,
+        parent: Option<&str>,
+        key: &str,
+        label: &str,
+        class: Class,
+    ) -> &mut Shape {
+        match parent.and_then(|p| self.shapes.iter().position(|s| s.key == p)) {
+            Some(i) => self.shapes[i].child(key, label, class),
+            None => self.shape(key, label, class),
+        }
+    }
+
+    pub fn edge(
+        &mut self,
+        from: &[impl AsRef<str>],
+        to: &[impl AsRef<str>],
+        label: Option<&str>,
+        class: Class,
+    ) {
+        self.push(path(from), path(to), true, label, class);
+    }
+
+    pub fn line(
+        &mut self,
+        from: &[impl AsRef<str>],
+        to: &[impl AsRef<str>],
+        label: Option<&str>,
+        class: Class,
+    ) {
+        self.push(path(from), path(to), false, label, class);
+    }
+
+    fn push(
+        &mut self,
+        from: Vec<String>,
+        to: Vec<String>,
+        directed: bool,
+        label: Option<&str>,
+        class: Class,
+    ) {
         self.edges.push(Edge {
-            from: path(from),
-            to: path(to),
+            from,
+            to,
+            directed,
             label: label.map(Into::into),
             class,
         });
     }
+}
+
+fn path(p: &[impl AsRef<str>]) -> Vec<String> {
+    p.iter().map(|s| s.as_ref().to_string()).collect()
 }
 
 pub fn quote(s: &str) -> String {
@@ -212,7 +265,8 @@ impl Display for Doc {
             s.write(f, "")?;
         }
         for e in &self.edges {
-            write!(f, "{} -> {}", Path(&e.from), Path(&e.to))?;
+            let arrow = if e.directed { "->" } else { "--" };
+            write!(f, "{} {arrow} {}", Path(&e.from), Path(&e.to))?;
             if let Some(l) = &e.label {
                 write!(f, ": {}", Quoted(l))?;
             }
@@ -252,13 +306,15 @@ mod tests {
             .child("nginx", "nginx", Class::Infra)
             .tooltip("proxy");
         d.edge(&["jerry", "nginx"], &["tom", "grafana"], None, Class::Flow);
+        d.line(&["tom"], &["lan"], Some("eth0"), Class::Lan);
         assert_eq!(
             d.to_string(),
             "direction: down\n\"tom\": \"tom\" {\n  class: table\n  link: \"./hosts.html#host-tom\"\n  \
              \"grafana\": \"3000/tcp\" {constraint: \"monitor\"}\n  \"exporter\": \"—\"\n}\n\
              \"jerry\": \"jerry\" {\n  class: machine\n  \
              \"nginx\": \"nginx\" {\n    class: infra\n    tooltip: \"proxy\"\n  }\n}\n\
-             \"jerry\".\"nginx\" -> \"tom\".\"grafana\" {class: flow}\n"
+             \"jerry\".\"nginx\" -> \"tom\".\"grafana\" {class: flow}\n\
+             \"tom\" -- \"lan\": \"eth0\" {class: lan}\n"
         );
     }
 
@@ -285,6 +341,10 @@ mod tests {
             Class::Mesh,
             Class::Flow,
             Class::Local,
+            Class::Control,
+            Class::Mgmt,
+            Class::Route,
+            Class::Location,
         ];
         for c in all {
             assert!(

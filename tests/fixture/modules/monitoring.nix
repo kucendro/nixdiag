@@ -10,7 +10,6 @@
 
   nixdiag.units.grafana = {
     description = "Dashboards over the exporter's metrics.";
-    scope = "mesh";
     expose = [
       {
         port = 3000;
@@ -21,6 +20,7 @@
       {
         to = "exporter";
         label = "scrapes";
+        plane = "mgmt";
       }
     ];
   };

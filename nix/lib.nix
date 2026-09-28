@@ -18,7 +18,7 @@ rec {
       project = cfgs: lib.genAttrs (pick (builtins.attrNames cfgs)) (n: factsOf cfgs.${n});
     in
     {
-      schema = 3;
+      schema = 4;
       hosts = project (flake.nixosConfigurations or { }) // project (flake.darwinConfigurations or { });
     };
 

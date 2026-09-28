@@ -1,4 +1,7 @@
-use crate::facts::Scope;
+use super::firewall::Finding;
+use super::networks::Network;
+use crate::facts::{Plane, Scope};
+use indexmap::IndexMap;
 
 pub const INTERNET: &str = "internet";
 pub const LAN: &str = "lan";
@@ -8,14 +11,14 @@ pub enum Endpoint {
     Host(String),
     Unit(String, String),
     Internet,
-    Lan,
+    Network(String),
 }
 
 impl Endpoint {
     pub fn host(&self) -> Option<&str> {
         match self {
             Endpoint::Host(h) | Endpoint::Unit(h, _) => Some(h),
-            Endpoint::Internet | Endpoint::Lan => None,
+            Endpoint::Internet | Endpoint::Network(_) => None,
         }
     }
 }
@@ -25,6 +28,8 @@ pub struct Connection {
     pub from: Endpoint,
     pub to: Endpoint,
     pub label: String,
+    pub plane: Plane,
+    pub port: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -44,6 +49,7 @@ pub struct Exposure {
     pub port: u32,
     pub udp: bool,
     pub scope: Option<Scope>,
+    pub via: Vec<String>,
 }
 
 impl Exposure {
@@ -60,4 +66,7 @@ pub struct Model {
     pub exposed: Vec<Exposure>,
     pub connections: Vec<Connection>,
     pub named: Vec<NamedEndpoint>,
+    pub networks: Vec<Network>,
+    pub locations: IndexMap<String, String>,
+    pub findings: IndexMap<String, Vec<Finding>>,
 }

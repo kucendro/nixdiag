@@ -58,12 +58,96 @@ pub struct HostBase {
 pub struct NixosHost {
     pub platform: String,
     pub state_version: String,
-    pub tcp: Vec<u32>,
-    pub udp: Vec<u32>,
     pub users: Vec<String>,
     pub pkg_count: u64,
+    pub network: Network,
     #[serde(flatten)]
     pub base: HostBase,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Network {
+    pub interfaces: IndexMap<String, Interface>,
+    pub gateways: Vec<Gateway>,
+    pub firewall: Firewall,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Firewall {
+    pub enable: bool,
+    #[serde(flatten)]
+    pub rules: Rules,
+    pub interfaces: IndexMap<String, Rules>,
+    pub trusted: Vec<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Rules {
+    pub tcp: Vec<u32>,
+    pub udp: Vec<u32>,
+    pub tcp_ranges: Vec<(u32, u32)>,
+    pub udp_ranges: Vec<(u32, u32)>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Interface {
+    pub kind: IfKind,
+    pub addresses: Vec<Address>,
+    pub dhcp: bool,
+    pub over: Vec<String>,
+    pub vlan: Option<u32>,
+    pub port: Option<u32>,
+    pub server: Option<String>,
+    pub routes: Vec<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Address {
+    pub cidr: String,
+    pub scope: Option<Scope>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IfKind {
+    #[default]
+    Physical,
+    Virtual,
+    Tun,
+    Tap,
+    Vlan,
+    Bridge,
+    Bond,
+    Wireguard,
+    Mesh,
+}
+
+impl IfKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            IfKind::Physical => "physical",
+            IfKind::Virtual => "virtual",
+            IfKind::Tun => "tun",
+            IfKind::Tap => "tap",
+            IfKind::Vlan => "vlan",
+            IfKind::Bridge => "bridge",
+            IfKind::Bond => "bond",
+            IfKind::Wireguard => "wireguard",
+            IfKind::Mesh => "mesh",
+        }
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Gateway {
+    pub address: String,
+    pub interface: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -91,6 +175,16 @@ pub struct Topology {
     pub names: Vec<String>,
     pub expose: Vec<Expose>,
     pub units: IndexMap<String, Unit>,
+    pub networks: IndexMap<String, Declared>,
+    pub location: Option<String>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Declared {
+    pub cidrs: Vec<String>,
+    pub kind: Option<Scope>,
+    pub server: Option<String>,
 }
 
 impl Topology {
@@ -137,6 +231,16 @@ pub struct Connection {
     pub name: Option<String>,
     pub port: Option<u32>,
     pub scope: Option<Scope>,
+    pub plane: Plane,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Plane {
+    #[default]
+    Data,
+    Control,
+    Mgmt,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

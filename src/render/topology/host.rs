@@ -1,8 +1,10 @@
-use super::{label, Flow, Net, Target, View};
+use super::{label, Cloud, Flow, Target, View};
 use crate::conf::files::{diagram, page};
+use crate::facts::Plane;
 use crate::render::d2::{Class, Diagram, Doc};
 use crate::text::d2::topology as t;
-use std::collections::{BTreeMap, BTreeSet};
+use indexmap::IndexMap;
+use std::collections::BTreeMap;
 use std::iter::once;
 
 pub struct HostBoard<'v, 'a> {
@@ -18,7 +20,7 @@ impl HostBoard<'_, '_> {
     fn path(&self, target: &Target) -> Vec<String> {
         match target {
             Target::Node(h, Some(u)) if *h != self.host => vec![format!("{h}/{u}")],
-            _ => target.path().into_iter().map(String::from).collect(),
+            _ => target.path(),
         }
     }
 }
@@ -45,23 +47,27 @@ impl Diagram for HostBoard<'_, '_> {
         }
 
         let ingress: Vec<_> = v.ingress.iter().filter(|i| self.local(&i.node)).collect();
-        let mut nets: BTreeSet<Net> = ingress.iter().map(|i| i.net).collect();
+        let mut clouds: IndexMap<String, Cloud> =
+            ingress.iter().map(|i| (i.net.key(), i.net)).collect();
         let mut ghosts: BTreeMap<String, (String, String)> = BTreeMap::new();
         let mut edges = Vec::new();
         for Flow {
             from,
             to,
             label: text,
+            plane,
         } in v.flows()
         {
             if !self.local(&from) && !self.local(&to) {
                 continue;
             }
-            let class = match (&from, &to) {
-                (_, Target::Net(n)) => {
-                    nets.insert(*n);
-                    n.edge()
-                }
+            if let Target::Net(c) = &to {
+                clouds.insert(c.key(), *c);
+            }
+            let class = match (plane, &to) {
+                (Plane::Control, _) => Class::Control,
+                (Plane::Mgmt, _) => Class::Mgmt,
+                (Plane::Data, Target::Net(c)) => c.edge(),
                 _ if self.local(&from) && self.local(&to) => Class::Local,
                 _ => Class::Flow,
             };
@@ -76,8 +82,8 @@ impl Diagram for HostBoard<'_, '_> {
             edges.push((self.path(&from), self.path(&to), text, class));
         }
 
-        for n in &nets {
-            n.draw(doc);
+        for c in clouds.values() {
+            c.draw(doc, None);
         }
         for (key, (text, link)) in &ghosts {
             doc.shape(key, text, Class::Ghost).link(link);
@@ -91,9 +97,7 @@ impl Diagram for HostBoard<'_, '_> {
             );
         }
         for (from, to, text, class) in &edges {
-            let from: Vec<&str> = from.iter().map(String::as_str).collect();
-            let to: Vec<&str> = to.iter().map(String::as_str).collect();
-            doc.edge(&from, &to, label(text), *class);
+            doc.edge(from, to, label(text), *class);
         }
     }
 }

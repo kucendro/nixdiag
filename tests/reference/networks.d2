@@ -1,0 +1,27 @@
+...@theme
+
+direction: down
+"location home": "📍 home" {
+  class: location
+  "net lan @ home": "lan\n192.168.1.0/24" {class: net-lan}
+  "gateway 192.168.1.1": "gateway 192.168.1.1" {class: ghost}
+  "net 192.168.20.0/24": "192.168.20.0/24" {class: net-lan}
+  "jerry": "🖥️ jerry" {
+    class: machine
+    link: "./hosts.html#host-jerry"
+  }
+  "tom": "🖥️ tom" {
+    class: machine
+    link: "./hosts.html#host-tom"
+  }
+}
+":internet": "🌐 Internet" {class: net-public}
+"net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
+"location home"."tom" -- "location home"."net lan @ home": "routes via tailscale0" {class: route}
+"net hs.ts.example" -- "location home"."jerry": "tailscale0" {class: mesh}
+"net hs.ts.example" -- "location home"."tom": "tailscale0" {class: mesh}
+"location home"."gateway 192.168.1.1" -- "location home"."net lan @ home" {class: lan}
+":internet" -- "location home"."gateway 192.168.1.1" {class: public}
+"location home"."net lan @ home" -- "location home"."jerry": "eth0 192.168.1.10" {class: lan}
+"location home"."net lan @ home" -- "location home"."tom": "eth0 192.168.1.20" {class: lan}
+"location home"."net 192.168.20.0/24" -- "location home"."jerry": "iot 192.168.20.1" {class: lan}

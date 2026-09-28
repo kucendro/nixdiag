@@ -43,6 +43,10 @@ pub mod topology {
         format!("{host} / {unit}")
     }
 
+    pub fn location(name: &str) -> String {
+        format!("📍 {name}")
+    }
+
     pub fn flows(count: usize) -> String {
         format!("{count} flows")
     }
@@ -54,6 +58,42 @@ pub mod topology {
             Some(n) => format!("{n} :{port}{proto}"),
             None => format!(":{port}{proto}"),
         }
+    }
+}
+
+pub mod networks {
+    use std::fmt::Display;
+
+    pub fn network(name: Option<&str>, cidrs: &str) -> String {
+        match name {
+            Some(n) => format!("{n}\n{cidrs}"),
+            None => cidrs.into(),
+        }
+    }
+
+    pub fn attach(interface: &str, address: Option<impl Display>) -> String {
+        match address {
+            Some(a) => format!("{interface} {a}"),
+            None => interface.into(),
+        }
+    }
+
+    pub const SERVER: &str = "control server";
+
+    pub fn route(interface: &str) -> String {
+        format!("routes via {interface}")
+    }
+
+    pub fn server(label: &str) -> String {
+        format!("{label}\n{SERVER}")
+    }
+
+    pub fn located(id: &str, location: &str) -> String {
+        format!("{id} @ {location}")
+    }
+
+    pub fn gateway(address: impl Display) -> String {
+        format!("gateway {address}")
     }
 }
 

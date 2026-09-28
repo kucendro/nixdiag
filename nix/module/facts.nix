@@ -1,4 +1,9 @@
-{ config, options, ... }:
+{
+  config,
+  options,
+  lib,
+  ...
+}:
 let
   str' = v: if v == null then "" else builtins.toString v;
 
@@ -33,6 +38,8 @@ let
         names
         expose
         units
+        networks
+        location
         ;
     };
   };
@@ -48,12 +55,11 @@ let
     kind = "nixos";
     platform = str' (config.nixpkgs.hostPlatform.system or "");
     stateVersion = str' (config.system.stateVersion or "");
-    tcp = config.networking.firewall.allowedTCPPorts or [ ];
-    udp = config.networking.firewall.allowedUDPPorts or [ ];
     users = builtins.filter (n: config.users.users.${n}.isNormalUser or false) (
       builtins.attrNames (config.users.users or { })
     );
     pkgCount = builtins.length (config.environment.systemPackages or [ ]);
+    network = import ./network.nix { inherit config lib; };
   };
 in
 {

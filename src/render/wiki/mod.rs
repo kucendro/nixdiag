@@ -2,6 +2,7 @@ mod architecture;
 mod book;
 mod closures;
 mod endpoints;
+mod firewall;
 mod hosts;
 mod inputs;
 mod services;
@@ -10,6 +11,7 @@ use architecture::Architecture;
 use book::{book_toml, copy_extra_pages, index, summary};
 use closures::ClosuresPage;
 use endpoints::Endpoints;
+use firewall::FirewallPage;
 use hosts::Hosts;
 use inputs::Inputs;
 use services::Services;
@@ -89,11 +91,12 @@ pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<S
 pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
     book_toml(w, &opts.title)?;
     index(w)?;
-    let pages: [&dyn Page; 6] = [
+    let pages: [&dyn Page; 7] = [
         &Architecture,
         &Hosts,
         &Services,
         &Endpoints,
+        &FirewallPage,
         &Inputs,
         &ClosuresPage,
     ];

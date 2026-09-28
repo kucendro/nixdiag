@@ -1,4 +1,12 @@
 { lib, helpers }:
+let
+  reachable =
+    url:
+    let
+      host = if url == null then null else (helpers.url url).host;
+    in
+    lib.optional (host != null && !helpers.loopback host) host;
+in
 {
   role = "mesh-control";
   kind = "infra";
@@ -9,23 +17,36 @@
       "services.headscale.settings.server_url"
       "services.headscale.serverUrl"
     ];
+    v4 = [ "services.headscale.settings.prefixes.v4" ];
+    v6 = [ "services.headscale.settings.prefixes.v6" ];
   };
 
   topology =
-    { port, url }:
-    let
-      host = if url == null then null else (helpers.url url).host;
-    in
+    { port, url, ... }:
     {
       ports = lib.optional (port != null) port;
-      names = lib.optional (host != null && !helpers.loopback host) host;
+      names = reachable url;
     };
 
-  # Required VM tests -------------------------------------------------
+  networks =
+    {
+      url,
+      v4,
+      v6,
+      ...
+    }:
+    lib.genAttrs (reachable url) (server: {
+      cidrs = builtins.filter (c: c != null) [
+        v4
+        v6
+      ];
+      kind = "mesh";
+      inherit server;
+    });
+
   tests = {
     vm = [ "hub" ];
 
-    # Minimum setup for successful bootstrap
     minimum.services.headscale = {
       address = "0.0.0.0";
       settings.dns = {
@@ -42,7 +63,6 @@
       };
     };
 
-    # Values for reads the defaults leave idle
     probe.url = "http://hub:8080";
   };
 }

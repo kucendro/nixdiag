@@ -11,6 +11,7 @@ bytesize = "2"
 charts-rs = "1"
 clap = { version = "4", features = ["derive"] }
 indexmap = { version = "2", features = ["serde"] }
+ipnet = "2"
 itertools = "0.15"
 jiff = { version = "0.2", default-features = false, features = ["std"] }
 num-format = "0.4"

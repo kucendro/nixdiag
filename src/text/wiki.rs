@@ -8,6 +8,10 @@ pub fn code(s: impl Display) -> String {
     format!("`{s}`")
 }
 
+pub fn link(text: &str, url: &str) -> String {
+    format!("[{text}]({url})")
+}
+
 pub fn size_paths(size: impl Display, paths: impl Display) -> String {
     format!("{size} ({paths} paths)")
 }
@@ -30,6 +34,8 @@ _Hand-written overview goes here_ — the big picture, and *why* things are the 
 pub mod architecture {
     pub const TITLE: &str = "Architecture";
     pub const TOPOLOGY: &str = "## Data-flow topology";
+    pub const NETWORKS: &str = "## Networks";
+    pub const OVERLAY: &str = "## Overlay";
 }
 
 pub mod summary {
@@ -44,14 +50,18 @@ pub mod summary {
 pub mod hosts {
     pub const TITLE: &str = "Hosts";
     pub const DARWIN_INTRO: &str = "_nix-darwin host._";
+    pub const LOCATION: &str = "Location";
     pub const PLATFORM: &str = "Platform";
     pub const UNKNOWN_PLATFORM: &str = "?";
     pub const STATE: &str = "State version";
     pub const USERS: &str = "Users";
     pub const PACKAGES: &str = "System packages";
     pub const CLOSURE: &str = "Closure";
-    pub const TCP: &str = "Open TCP ports";
-    pub const UDP: &str = "Open UDP ports";
+    pub const FIREWALL: &str = "Firewall";
+    pub const GATEWAY: &str = "Default gateway";
+    pub const INTERFACES: &str = "**Interfaces:**";
+    pub const INTERFACES_HEAD: [&str; 4] = ["Interface", "Kind", "Addresses", "Over"];
+    pub const DHCP: &str = "dhcp";
     pub const SERVICES_COUNT: &str = "Repo-configured services";
     pub const DAEMONS: &str = "LaunchDaemons";
     pub const AGENTS: &str = "User agents";
@@ -67,6 +77,21 @@ pub mod hosts {
         format!("## 🍏 {host} {{#{anchor}}}")
     }
 
+    pub fn via(address: &str, interface: &str) -> String {
+        format!("{address} via {interface}")
+    }
+
+    pub fn kind(kind: &str, detail: Option<String>) -> String {
+        match detail {
+            Some(d) => format!("{kind} {d}"),
+            None => kind.into(),
+        }
+    }
+
+    pub fn listen(port: u32) -> String {
+        format!("{port}/udp")
+    }
+
     pub fn services(rows: &str) -> String {
         format!("**Services:**\n\n{rows}")
     }
@@ -77,6 +102,57 @@ pub mod hosts {
 
     pub fn list(title: &str, items: &str) -> String {
         format!("**{title}:** {items}")
+    }
+}
+
+pub mod firewall {
+    pub const TITLE: &str = "Firewall";
+    pub const HEAD: [&str; 3] = ["Interface", "TCP", "UDP"];
+    pub const ALL: &str = "every interface";
+    pub const EVERY: &str = "every port";
+    pub const OFF: &str = "**Off:** every port is open on every interface.";
+    pub const FINDINGS: &str = "**Findings:**";
+    pub const CLEAN: &str = "No findings.";
+    pub const HOST: &str = "the host";
+
+    pub fn count(n: usize) -> String {
+        match n {
+            0 => "no findings".into(),
+            1 => "1 finding".into(),
+            n => format!("{n} findings"),
+        }
+    }
+
+    pub fn port(port: u32, udp: bool) -> String {
+        format!("`{port}/{}`", if udp { "udp" } else { "tcp" })
+    }
+
+    pub fn unused(port: &str, on: &str) -> String {
+        format!("- {port} is open on {on}, but nothing here uses it")
+    }
+
+    pub fn closed(unit: &str, port: &str, scope: &str, on: &str) -> String {
+        format!("- {unit} exposes {port} to {scope}, but it is closed on {on}")
+    }
+
+    pub fn open_all(interface: &str) -> String {
+        format!("- `{interface}` is trusted: every port on it is open")
+    }
+
+    pub fn blocked(from: &str, port: &str, on: &str) -> String {
+        format!("- `{from}` connects to {port}, but it is closed on {on}")
+    }
+
+    pub fn host(host: &str, anchor: &str) -> String {
+        format!("## {host} {{#{anchor}}}")
+    }
+
+    pub fn trusted(interface: &str) -> String {
+        format!("`{interface}` (trusted)")
+    }
+
+    pub fn range(from: u32, to: u32) -> String {
+        format!("{from}–{to}")
     }
 }
 
