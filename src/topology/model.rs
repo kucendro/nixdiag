@@ -9,14 +9,14 @@ pub enum Endpoint {
     Host(String),
     Unit(String, String),
     Internet,
-    Lan,
+    Network(String),
 }
 
 impl Endpoint {
     pub fn host(&self) -> Option<&str> {
         match self {
             Endpoint::Host(h) | Endpoint::Unit(h, _) => Some(h),
-            Endpoint::Internet | Endpoint::Lan => None,
+            Endpoint::Internet | Endpoint::Network(_) => None,
         }
     }
 }

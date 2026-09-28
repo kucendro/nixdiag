@@ -2,7 +2,7 @@ use super::{code, table, Page, Wiki};
 use crate::conf::files::page;
 use crate::facts::Scope;
 use crate::text::wiki::{endpoints as t, NONE};
-use crate::topology::{Endpoint, INTERNET, LAN};
+use crate::topology::{Endpoint, INTERNET};
 use anyhow::Result;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -80,9 +80,8 @@ fn rows(w: &Wiki) -> Vec<Row> {
             scope: scope(ne.scope),
             host: ne.node.host()?.into(),
             service: match &ne.target {
-                Endpoint::Unit(_, s) | Endpoint::Host(s) => s.clone(),
+                Endpoint::Unit(_, s) | Endpoint::Host(s) | Endpoint::Network(s) => s.clone(),
                 Endpoint::Internet => INTERNET.into(),
-                Endpoint::Lan => LAN.into(),
             },
             named: true,
         })

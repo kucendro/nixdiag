@@ -7,23 +7,25 @@
 | Platform                 | `x86_64-linux`           |
 | State version            | `24.05`                  |
 | Users                    | admin                    |
-| System packages          | 124                      |
+| System packages          | 125                      |
 | Open TCP ports           | 22, 443                  |
 | Open UDP ports           | —                        |
 | Default gateway          | `192.168.1.1` via `eth0` |
-| Repo-configured services | 2                        |
+| Repo-configured services | 3                        |
 
 **Interfaces:**
 
-| Interface | Kind     | Addresses         | Over   |
-|-----------|----------|-------------------|--------|
-| `eth0`    | physical | `192.168.1.10/24` | —      |
-| `iot`     | vlan 20  | `192.168.20.1/24` | `eth0` |
+| Interface    | Kind     | Addresses         | Over   |
+|--------------|----------|-------------------|--------|
+| `eth0`       | physical | `192.168.1.10/24` | —      |
+| `iot`        | vlan 20  | `192.168.20.1/24` | `eth0` |
+| `tailscale0` | mesh     | —                 | —      |
 
 **Services:**
 
 - **headscale** — `modules/mesh.nix`
 - **nginx** — `modules/web.nix`
+- **tailscale** — `hosts/jerry/default.nix`
 
 **Topology:**
 

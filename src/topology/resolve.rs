@@ -1,9 +1,13 @@
+use super::networks::{owner, Network};
 use super::target::Target;
 use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
 use crate::text::messages::Unresolved;
+use ipnet::IpNet;
 use itertools::Itertools;
 use std::collections::BTreeMap;
+use std::net::IpAddr;
+use url::Host;
 
 struct Entry {
     node: Endpoint,
@@ -63,6 +67,7 @@ impl Book {
 
 pub fn target(
     facts: &Facts,
+    nets: &[Network],
     book: &Book,
     from: &str,
     target: &str,
@@ -70,8 +75,8 @@ pub fn target(
     if target == INTERNET {
         return Ok(Endpoint::Internet);
     }
-    if target == LAN {
-        return Ok(Endpoint::Lan);
+    if let Ok(cidr) = target.parse::<IpNet>() {
+        return network(nets, &cidr.addr()).ok_or(Unresolved::Unknown);
     }
     if !target.contains("://") {
         if let Some((h, u)) = target.split_once('/') {
@@ -84,6 +89,12 @@ pub fn target(
     if let Some(e) = unique_unit(facts, target)? {
         return Ok(e);
     }
+    if let Some(n) = nets.iter().find(|n| n.name.as_deref() == Some(target)) {
+        return Ok(Endpoint::Network(n.id()));
+    }
+    if target == LAN {
+        return Err(Unresolved::Lan);
+    }
     let Some(t) = Target::parse(target) else {
         return Err(Unresolved::Unknown);
     };
@@ -91,15 +102,35 @@ pub fn target(
         let port = t.port.map(|p| p.to_string()).unwrap_or_default();
         return unit_on_port(facts, from, t.port).ok_or(Unresolved::NoPort(from.into(), port));
     }
+    let ip = match t.host {
+        Host::Ipv4(ip) => Some(IpAddr::V4(ip)),
+        Host::Ipv6(ip) => Some(IpAddr::V6(ip)),
+        Host::Domain(_) => None,
+    };
+    if let Some(ip) = ip {
+        return match owner(nets, &ip) {
+            Some(m) => Ok(on_host(facts, &m.host, t.port)),
+            None => network(nets, &ip).ok_or(Unresolved::Unknown),
+        };
+    }
     let name = t.host.to_string();
     if let Some(e) = book.lookup(&name, t.port)? {
         return Ok(e);
     }
     let first = name.split('.').next().unwrap_or(&name);
     if facts.hosts.contains_key(first) {
-        return Ok(unit_on_port(facts, first, t.port).unwrap_or(Endpoint::Host(first.into())));
+        return Ok(on_host(facts, first, t.port));
     }
     Err(Unresolved::Unknown)
+}
+
+fn network(nets: &[Network], ip: &IpAddr) -> Option<Endpoint> {
+    let n = nets.iter().find(|n| n.contains(ip))?;
+    Some(Endpoint::Network(n.id()))
+}
+
+fn on_host(facts: &Facts, host: &str, port: Option<u32>) -> Endpoint {
+    unit_on_port(facts, host, port).unwrap_or(Endpoint::Host(host.into()))
 }
 
 fn host_unit(facts: &Facts, host: &str, unit: &str) -> Result<Endpoint, Unresolved> {

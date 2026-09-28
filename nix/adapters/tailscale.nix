@@ -30,8 +30,8 @@ in
         }
       ]
       ++ map (r: {
-        to = "lan";
-        label = "advertise ${r}";
+        to = r;
+        label = "advertise";
       }) routes;
     };
 

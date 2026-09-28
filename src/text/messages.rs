@@ -77,7 +77,9 @@ pub enum Unresolved {
     AmbiguousName(String),
     #[error("nothing on `{0}` listens on port {1}")]
     NoPort(String, String),
-    #[error("not a host, a unit, a declared name, a URL, `internet` or `lan`")]
+    #[error("`lan` is no longer built in; declare nixdiag.networks.lan.cidrs, or name a network or a CIDR")]
+    Lan,
+    #[error("not a host, a unit, a declared name, a network, a CIDR, a URL or `internet`")]
     Unknown,
 }
 

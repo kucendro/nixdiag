@@ -5,9 +5,10 @@ direction: down
   class: machine
   "headscale": "headscale\nmesh control\n8080/tcp" {class: infra}
   "nginx": "nginx\nproxy\n80/tcp, 443/tcp" {class: infra}
+  "tailscale": "tailscale\nmesh node" {class: infra}
 }
+"net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
 ":internet": "🌐 Internet" {class: net-public}
-":mesh": "🔒 Mesh" {class: net-mesh}
 "tom/grafana": "tom / grafana" {
   class: ghost
   link: "./hosts.html#host-tom"
@@ -16,8 +17,9 @@ direction: down
   class: ghost
   link: "./hosts.html#host-tom"
 }
-":mesh" -> "jerry"."nginx": "grafana.ts.example :443" {class: mesh}
+"net hs.ts.example" -> "jerry"."nginx": "grafana.ts.example :443" {class: mesh}
 ":internet" -> "jerry"."nginx": "hs.ts.example :443" {class: public}
 "jerry"."nginx" -> "tom/grafana": "grafana :3000" {class: flow}
 "jerry"."nginx" -> "jerry"."headscale": "hs :8080" {class: local}
+"jerry"."tailscale" -> "jerry"."nginx": "mesh" {class: local}
 "tom/tailscale" -> "jerry"."nginx": "mesh" {class: flow}

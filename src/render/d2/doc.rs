@@ -158,31 +158,46 @@ impl Doc {
         self.shapes.last_mut().expect("just pushed")
     }
 
-    pub fn edge(&mut self, from: &[&str], to: &[&str], label: Option<&str>, class: Class) {
-        self.push(from, to, true, label, class);
+    pub fn edge(
+        &mut self,
+        from: &[impl AsRef<str>],
+        to: &[impl AsRef<str>],
+        label: Option<&str>,
+        class: Class,
+    ) {
+        self.push(path(from), path(to), true, label, class);
     }
 
-    pub fn line(&mut self, from: &[&str], to: &[&str], label: Option<&str>, class: Class) {
-        self.push(from, to, false, label, class);
+    pub fn line(
+        &mut self,
+        from: &[impl AsRef<str>],
+        to: &[impl AsRef<str>],
+        label: Option<&str>,
+        class: Class,
+    ) {
+        self.push(path(from), path(to), false, label, class);
     }
 
     fn push(
         &mut self,
-        from: &[&str],
-        to: &[&str],
+        from: Vec<String>,
+        to: Vec<String>,
         directed: bool,
         label: Option<&str>,
         class: Class,
     ) {
-        let path = |p: &[&str]| p.iter().map(|s| s.to_string()).collect();
         self.edges.push(Edge {
-            from: path(from),
-            to: path(to),
+            from,
+            to,
             directed,
             label: label.map(Into::into),
             class,
         });
     }
+}
+
+fn path(p: &[impl AsRef<str>]) -> Vec<String> {
+    p.iter().map(|s| s.as_ref().to_string()).collect()
 }
 
 pub fn quote(s: &str) -> String {

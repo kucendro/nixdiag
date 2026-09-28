@@ -12,9 +12,9 @@ use anyhow::Result;
 use std::iter::once;
 
 pub fn build(facts: &Facts) -> Result<Model> {
+    let nets = networks::build(facts)?;
     let mut model = Model {
         exposed: exposed(facts),
-        networks: networks::build(facts)?,
         ..Model::default()
     };
     let book = resolve::Book::new(facts, &model.exposed);
@@ -23,7 +23,7 @@ pub fn build(facts: &Facts) -> Result<Model> {
         for (unit, u) in &topo.units {
             let node = Endpoint::Unit(host.clone(), unit.clone());
             for c in &u.connections {
-                let to = resolve::target(facts, &book, host, &c.to).map_err(|reason| {
+                let to = resolve::target(facts, &nets, &book, host, &c.to).map_err(|reason| {
                     let (host, unit, target) = (host.clone(), unit.clone(), c.to.clone());
                     Fail::Connection {
                         host,
@@ -49,6 +49,7 @@ pub fn build(facts: &Facts) -> Result<Model> {
             }
         }
     }
+    model.networks = nets;
     Ok(model)
 }
 
@@ -73,3 +74,6 @@ fn exposed(facts: &Facts) -> Vec<Exposure> {
     }
     out
 }
+
+#[cfg(test)]
+mod tests;

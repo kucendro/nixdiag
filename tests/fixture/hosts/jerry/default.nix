@@ -21,4 +21,9 @@
       prefixLength = 24;
     }
   ];
+
+  services.tailscale = {
+    enable = true;
+    extraUpFlags = [ "--login-server=https://hs.ts.example" ];
+  };
 }

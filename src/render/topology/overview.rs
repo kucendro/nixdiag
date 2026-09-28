@@ -1,10 +1,9 @@
-use super::{label, Flow, Net, Target, View};
+use super::{label, Cloud, Flow, Target, View};
 use crate::conf::files::{diagram, page};
 use crate::render::d2::{Class, Diagram, Doc};
 use crate::text::d2::topology as t;
 use indexmap::IndexMap;
 use itertools::Itertools;
-use std::collections::BTreeSet;
 
 pub struct Overview<'v, 'a>(pub &'v View<'a>);
 
@@ -29,13 +28,14 @@ impl Diagram for Overview<'_, '_> {
     fn draw(&self, doc: &mut Doc) {
         let v = self.0;
         doc.vertical();
-        let mut nets: BTreeSet<Net> = v.ingress.iter().map(|i| i.net).collect();
+        let mut clouds: IndexMap<String, Cloud> =
+            v.ingress.iter().map(|i| (i.net.key(), i.net)).collect();
         let mut pairs: IndexMap<(&str, &str), Vec<Flow>> = IndexMap::new();
         let mut outbound = Vec::new();
         for f in v.flows() {
             match (f.from.host(), &f.to) {
-                (_, Target::Net(n)) => {
-                    nets.insert(*n);
+                (_, Target::Net(c)) => {
+                    clouds.insert(c.key(), *c);
                     outbound.push(f);
                 }
                 (Some(a), Target::Node(b, _)) if a != *b => {
@@ -44,8 +44,8 @@ impl Diagram for Overview<'_, '_> {
                 _ => {}
             }
         }
-        for n in &nets {
-            n.draw(doc);
+        for c in clouds.values() {
+            c.draw(doc);
         }
         for (host, units) in &v.hosts {
             let table = doc.shape(host, &v.label(host), Class::Table);
@@ -69,8 +69,8 @@ impl Diagram for Overview<'_, '_> {
             );
         }
         for f in &outbound {
-            if let Target::Net(n) = f.to {
-                doc.edge(&f.from.path(), &[n.key()], label(f.label), n.edge());
+            if let Target::Net(c) = &f.to {
+                doc.edge(&f.from.path(), &[c.key()], label(f.label), c.edge());
             }
         }
         for ((a, b), flows) in &pairs {

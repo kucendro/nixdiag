@@ -24,7 +24,7 @@ on 443 to the internet, and the connection between them. Override with
 |---|---|---|
 | `nginx` | vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `proxyPass`; firewall | names, ports; a literal `proxyPass` is a connection, any other vhost an expose |
 | `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port, name; the tailnet, named after the server |
-| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a connection to it, else `internet`; `--advertise-routes` to `lan`; the interface on that server's tailnet |
+| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a connection to it, else `internet`; `--advertise-routes` to each advertised subnet; the interface on that server's tailnet |
 | `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
 
 Scope from listen addresses: `100.64.0.0/10` is `mesh`, RFC 1918 is `lan`,
@@ -42,7 +42,7 @@ anything else `public` when the firewall opens the port.
 | `description` | lines | Services page section |
 | `names` | fqdns | what the unit answers to |
 | `ports` | ports | what it listens on |
-| `expose` | `{ port, udp, scope, name }` | Endpoints row; `public` and `lan` draw the cloud edge |
+| `expose` | `{ port, udp, scope, name }` | Endpoints row; an edge from the internet, or from the host's `lan` or `mesh` networks |
 | `connections` | `{ to, label, name, port, scope }` | outbound edges; `name` adds an Endpoints row |
 
 `nixdiag.description`, `scope`, `names`, `expose`: the same for the host.
@@ -89,15 +89,19 @@ attrset declares a unit no adapter knows.
 
 | `to` | Resolves to |
 |---|---|
-| `internet`, `lan` | that cloud |
+| `internet` | that cloud |
 | `nas` | host |
 | `nas/grafana` | unit on host |
 | `grafana` | unit, when one host has it |
 | `hs.ts.example` | unit with that fqdn in `names`, `expose` or `connections` |
 | `http://127.0.0.1:8080` | unit on the same host with that port |
 | `http://tom.ts.example:3000` | host `tom`, its unit on 3000 |
+| `lan` | network with that name, after hosts and units |
+| `192.168.1.0/24` | network holding it, a new one if none |
+| `http://192.168.1.20:3000` | host with that address, its unit on 3000; else its network |
 
-Unresolved fails the build.
+Unresolved fails the build. `lan` is no longer built in: declare
+`nixdiag.networks.lan.cidrs` and `to = "lan"` keeps working.
 
 ## Adding an adapter
 

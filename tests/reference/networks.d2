@@ -6,14 +6,15 @@ direction: down
 "net lan": "lan\n192.168.1.0/24" {class: net-lan}
 "gateway 192.168.1.1": "gateway 192.168.1.1" {class: ghost}
 "net 192.168.20.0/24": "192.168.20.0/24" {class: net-lan}
-"tom": "🖥️ tom" {
-  class: machine
-  link: "./hosts.html#host-tom"
-}
 "jerry": "🖥️ jerry" {
   class: machine
   link: "./hosts.html#host-jerry"
 }
+"tom": "🖥️ tom" {
+  class: machine
+  link: "./hosts.html#host-tom"
+}
+"net hs.ts.example" -- "jerry": "tailscale0" {class: mesh}
 "net hs.ts.example" -- "tom": "tailscale0" {class: mesh}
 "gateway 192.168.1.1" -- "net lan" {class: lan}
 ":internet" -- "gateway 192.168.1.1" {class: public}

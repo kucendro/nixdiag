@@ -41,7 +41,7 @@ impl Network {
             .unwrap_or_else(|| self.cidrs[0].to_string())
     }
 
-    fn contains(&self, ip: &IpAddr) -> bool {
+    pub fn contains(&self, ip: &IpAddr) -> bool {
         self.cidrs.iter().any(|c| c.contains(ip))
     }
 
@@ -50,6 +50,11 @@ impl Network {
             .iter()
             .any(|a| other.cidrs.iter().any(|b| a.contains(b) || b.contains(a)))
     }
+}
+
+pub fn owner<'a>(nets: &'a [Network], ip: &IpAddr) -> Option<&'a Member> {
+    let members = nets.iter().flat_map(|n| &n.members);
+    members.into_iter().find(|m| m.address.as_ref() == Some(ip))
 }
 
 fn address(host: &str, value: &str) -> Error {
@@ -132,6 +137,17 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
             let ip: IpAddr = g.address.parse().map_err(|_| address(host, &g.address))?;
             if let Some(n) = nets.iter_mut().find(|n| n.contains(&ip)) {
                 n.gateways.insert(ip);
+            }
+        }
+    }
+    let targets = facts
+        .hosts
+        .values()
+        .flat_map(|h| h.topology().units.values());
+    for c in targets.flat_map(|u| &u.connections) {
+        if let Ok(net) = c.to.parse::<IpNet>() {
+            if !nets.iter().any(|n| n.contains(&net.addr())) {
+                nets.push(Network::new(None, vec![net.trunc()], None));
             }
         }
     }
