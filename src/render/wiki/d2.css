@@ -11,26 +11,77 @@ html.ayu .d2-light {
   display: none;
 }
 
-.d2 svg .text,
-.d2 svg .md {
+:is(.d2, .d2-zoom) svg .text,
+:is(.d2, .d2-zoom) svg .md {
   font-family: "Open Sans", sans-serif;
 }
 
-.d2 svg .text-bold,
-.d2 svg .md b,
-.d2 svg .md strong {
+:is(.d2, .d2-zoom) svg .text-bold,
+:is(.d2, .d2-zoom) svg .md b,
+:is(.d2, .d2-zoom) svg .md strong {
   font-family: "Open Sans", sans-serif;
   font-weight: 700;
 }
 
-.d2 svg .text-italic,
-.d2 svg .md em {
+:is(.d2, .d2-zoom) svg .text-italic,
+:is(.d2, .d2-zoom) svg .md em {
   font-family: "Open Sans", sans-serif;
   font-style: italic;
 }
 
-.d2 svg .text-mono,
-.d2 svg .md code,
-.d2 svg .md pre {
+:is(.d2, .d2-zoom) svg .text-mono,
+:is(.d2, .d2-zoom) svg .md code,
+:is(.d2, .d2-zoom) svg .md pre {
   font-family: "Source Code Pro", monospace;
+}
+
+.d2 {
+  position: relative;
+}
+
+.d2 > button,
+.d2-zoom-bar > button {
+  font-size: 1.6rem;
+  line-height: 1;
+  padding: 0.2em 0.45em;
+  cursor: pointer;
+  color: var(--fg);
+  background: var(--theme-popup-bg);
+  border: 1px solid var(--theme-popup-border);
+  border-radius: 4px;
+}
+
+.d2 > button {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.d2-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+}
+
+.d2-zoom-pane {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  cursor: grab;
+  user-select: none;
+}
+
+.d2-zoom-pane > svg {
+  display: block;
+  height: auto;
+  margin: 2rem auto;
+}
+
+.d2-zoom-bar {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  display: flex;
+  gap: 0.5rem;
 }

@@ -2,6 +2,8 @@ pub const BOOK: &str = "wiki/book.toml";
 pub const SRC: &str = "wiki/src";
 pub const CSS: &str = "d2.css";
 pub const WIKI_CSS: &str = "wiki/d2.css";
+pub const JS: &str = "d2.js";
+pub const WIKI_JS: &str = "wiki/d2.js";
 pub const THEME: &str = "theme.d2";
 
 pub mod diagram {
