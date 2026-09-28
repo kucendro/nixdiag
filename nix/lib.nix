@@ -28,7 +28,6 @@ rec {
       flake,
       title ? "Infrastructure wiki",
       indexPage ? null,
-      bookToml ? null,
       extraPages ? { },
       extraLinks ? { },
       extraAssets ? { },
@@ -119,9 +118,6 @@ rec {
           ${lib.concatStringsSep " " (pageFlags ++ linkFlags ++ styleFlags)}
         ${lib.optionalString (indexPage != null) ''
           install -m 644 ${indexPage} $out/wiki/src/index.md
-        ''}
-        ${lib.optionalString (bookToml != null) ''
-          install -m 644 ${bookToml} $out/wiki/book.toml
         ''}
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (dest: src: ''
