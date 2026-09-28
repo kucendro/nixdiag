@@ -57,7 +57,6 @@ pub mod hosts {
     pub const PACKAGES: &str = "System packages";
     pub const CLOSURE: &str = "Closure";
     pub const FIREWALL: &str = "Firewall";
-    pub const RULES: &str = "rules";
     pub const GATEWAY: &str = "Default gateway";
     pub const INTERFACES: &str = "**Interfaces:**";
     pub const INTERFACES_HEAD: [&str; 4] = ["Interface", "Kind", "Addresses", "Over"];
@@ -111,6 +110,37 @@ pub mod firewall {
     pub const ALL: &str = "every interface";
     pub const EVERY: &str = "every port";
     pub const OFF: &str = "**Off:** every port is open on every interface.";
+    pub const FINDINGS: &str = "**Findings:**";
+    pub const CLEAN: &str = "No findings.";
+    pub const HOST: &str = "the host";
+
+    pub fn count(n: usize) -> String {
+        match n {
+            0 => "no findings".into(),
+            1 => "1 finding".into(),
+            n => format!("{n} findings"),
+        }
+    }
+
+    pub fn port(port: u32, udp: bool) -> String {
+        format!("`{port}/{}`", if udp { "udp" } else { "tcp" })
+    }
+
+    pub fn unused(port: &str, on: &str) -> String {
+        format!("- {port} is open on {on}, but nothing here uses it")
+    }
+
+    pub fn closed(unit: &str, port: &str, scope: &str, on: &str) -> String {
+        format!("- {unit} exposes {port} to {scope}, but it is closed on {on}")
+    }
+
+    pub fn open_all(interface: &str) -> String {
+        format!("- `{interface}` is trusted: every port on it is open")
+    }
+
+    pub fn blocked(from: &str, port: &str, on: &str) -> String {
+        format!("- `{from}` connects to {port}, but it is closed on {on}")
+    }
 
     pub fn host(host: &str, anchor: &str) -> String {
         format!("## {host} {{#{anchor}}}")

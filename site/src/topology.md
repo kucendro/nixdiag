@@ -83,6 +83,20 @@ one group leave its unnamed hosts out. The overview and the networks board
 draw each location as a box around its hosts and the networks inside it;
 mesh networks and the internet stay outside.
 
+## Firewall
+
+The firewall page lists, per host, what `networking.firewall` opens on every
+interface, on each one, and trusts, then what does not add up:
+
+- a port open that no unit, port or expose uses
+- an expose closed on every interface its scope reaches
+- a trusted interface other than `lo`: every port on it is open
+- a connection from another host to a port closed on every interface they share
+
+A port counts as used only when nixdiag knows it: a service with no adapter
+and no `nixdiag.units` entry shows as unused. Raw nftables or iptables rules
+are not read.
+
 ## Overriding
 
 ```nix

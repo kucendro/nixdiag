@@ -2,16 +2,16 @@
 
 ## 🖥️ jerry {#host-jerry}
 
-|                          |                                         |
-|--------------------------|-----------------------------------------|
-| Location                 | home                                    |
-| Platform                 | `x86_64-linux`                          |
-| State version            | `24.05`                                 |
-| Users                    | admin                                   |
-| System packages          | 125                                     |
-| Firewall                 | [rules](./firewall.html#firewall-jerry) |
-| Default gateway          | `192.168.1.1` via `eth0`                |
-| Repo-configured services | 3                                       |
+|                          |                                             |
+|--------------------------|---------------------------------------------|
+| Location                 | home                                        |
+| Platform                 | `x86_64-linux`                              |
+| State version            | `24.05`                                     |
+| Users                    | admin                                       |
+| System packages          | 125                                         |
+| Firewall                 | [1 finding](./firewall.html#firewall-jerry) |
+| Default gateway          | `192.168.1.1` via `eth0`                    |
+| Repo-configured services | 3                                           |
 
 **Interfaces:**
 
@@ -39,16 +39,16 @@
 
 ## 🖥️ tom {#host-tom}
 
-|                          |                                       |
-|--------------------------|---------------------------------------|
-| Location                 | home                                  |
-| Platform                 | `x86_64-linux`                        |
-| State version            | `24.05`                               |
-| Users                    | admin                                 |
-| System packages          | 124                                   |
-| Firewall                 | [rules](./firewall.html#firewall-tom) |
-| Default gateway          | `192.168.1.1` via `eth0`              |
-| Repo-configured services | 2                                     |
+|                          |                                            |
+|--------------------------|--------------------------------------------|
+| Location                 | home                                       |
+| Platform                 | `x86_64-linux`                             |
+| State version            | `24.05`                                    |
+| Users                    | admin                                      |
+| System packages          | 124                                        |
+| Firewall                 | [4 findings](./firewall.html#firewall-tom) |
+| Default gateway          | `192.168.1.1` via `eth0`                   |
+| Repo-configured services | 2                                          |
 
 **Interfaces:**
 

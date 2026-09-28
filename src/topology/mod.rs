@@ -1,9 +1,11 @@
+mod firewall;
 mod locations;
 mod model;
 mod networks;
 mod resolve;
 pub mod target;
 
+pub use firewall::Finding;
 pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
 pub use networks::Network;
 
@@ -42,18 +44,51 @@ pub fn build(facts: &Facts) -> Result<Model> {
                         target: to.clone(),
                     });
                 }
+                let port = target::Target::parse(&c.to).and_then(|t| t.port);
+                let port = port.or_else(|| sole_port(facts, &to));
                 model.connections.push(Connection {
                     from: node.clone(),
                     to,
                     label: c.label.clone(),
                     plane: c.plane,
+                    port,
                 });
             }
         }
     }
+    let audit = firewall::Audit {
+        facts,
+        nets: &nets,
+        exposed: &model.exposed,
+        connections: &model.connections,
+    };
+    let findings = facts
+        .hosts
+        .keys()
+        .map(|h| (h.clone(), audit.of(h)))
+        .collect();
+    model.findings = findings;
     model.locations = locations::build(facts, &nets);
     model.networks = nets;
     Ok(model)
+}
+
+fn sole_port(facts: &Facts, to: &Endpoint) -> Option<u32> {
+    let Endpoint::Unit(h, u) = to else {
+        return None;
+    };
+    match facts
+        .hosts
+        .get(h)?
+        .topology()
+        .units
+        .get(u)?
+        .ports
+        .as_slice()
+    {
+        [p] => Some(*p),
+        _ => None,
+    }
 }
 
 fn exposed(facts: &Facts) -> Vec<Exposure> {

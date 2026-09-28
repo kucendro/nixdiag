@@ -4,6 +4,7 @@ use crate::conf::files::diagram::{modules, topology};
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Gateway, Host, Interface, Network, NixosHost};
 use crate::source::repo::Repo;
+use crate::text::wiki::firewall::count;
 use crate::text::wiki::{hosts as t, link, KV, NONE, NOT_MEASURED};
 use anyhow::Result;
 use itertools::Itertools;
@@ -32,8 +33,11 @@ impl Page for Hosts {
         let mut o = Vec::new();
         for (host, f) in &w.facts.hosts {
             let location = w.model.locations.get(host).map_or(NONE, String::as_str);
+            let findings = w.model.findings.get(host).map_or(0, Vec::len);
             match f {
-                Host::Nixos(n) => host_nixos(&mut o, host, n, location, w.repo, w.closures),
+                Host::Nixos(n) => {
+                    host_nixos(&mut o, host, n, location, findings, w.repo, w.closures)
+                }
                 Host::Darwin(d) => host_darwin(&mut o, host, d, location),
             }
             for (title, stem) in [(t::TOPOLOGY, topology(host)), (t::MODULES, modules(host))] {
@@ -51,6 +55,7 @@ fn host_nixos(
     host: &str,
     f: &NixosHost,
     location: &str,
+    findings: usize,
     repo: &Repo,
     closures: Option<&Closures>,
 ) {
@@ -76,7 +81,10 @@ fn host_nixos(
         let closure = cs.hosts.get(host).map(|c| size_paths(&c.total()));
         rows.push([t::CLOSURE.into(), closure.unwrap_or(NOT_MEASURED.into())]);
     }
-    rows.push([t::FIREWALL.into(), link(t::RULES, &page::firewall(host))]);
+    rows.push([
+        t::FIREWALL.into(),
+        link(&count(findings), &page::firewall(host)),
+    ]);
     rows.push([t::GATEWAY.into(), gateways(&f.network)]);
     rows.push([t::SERVICES_COUNT.into(), svcs.len().to_string()]);
     o.push(table(KV, rows));
