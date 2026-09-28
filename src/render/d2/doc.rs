@@ -5,7 +5,7 @@ pub enum Class {
     Root,
     Node,
     Flagged,
-    Link,
+    Arrow,
     Follows,
     Host,
     File,
@@ -17,7 +17,7 @@ impl Class {
             Class::Root => "root",
             Class::Node => "node",
             Class::Flagged => "flagged",
-            Class::Link => "link",
+            Class::Arrow => "arrow",
             Class::Follows => "follows",
             Class::Host => "host",
             Class::File => "file",
@@ -132,13 +132,13 @@ mod tests {
     fn keys_and_labels_are_quoted_and_escaped() {
         let mut d = Doc::default();
         d.shape("a.b", "say \"hi\"\n\\o/", Class::Node);
-        d.edge("a.b", "style", Some("x"), Class::Link);
-        d.edge("style", "a.b", None, Class::Link);
+        d.edge("a.b", "style", Some("x"), Class::Arrow);
+        d.edge("style", "a.b", None, Class::Arrow);
         assert_eq!(
             d.to_string(),
             "\"a.b\": \"say \\\"hi\\\"\\n\\\\o/\" {class: node}\n\
-             \"a.b\" -> \"style\": \"x\" {class: link}\n\
-             \"style\" -> \"a.b\" {class: link}\n"
+             \"a.b\" -> \"style\": \"x\" {class: arrow}\n\
+             \"style\" -> \"a.b\" {class: arrow}\n"
         );
     }
 
@@ -159,7 +159,7 @@ mod tests {
             Class::Root,
             Class::Node,
             Class::Flagged,
-            Class::Link,
+            Class::Arrow,
             Class::Follows,
             Class::Host,
             Class::File,

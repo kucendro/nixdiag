@@ -6,9 +6,9 @@
 "stylix": "stylix" {class: node}
 "utils": "utils" {class: node}
 "utils_2": "utils_2" {class: node}
-"root" -> "nixpkgs" {class: link}
-"root" -> "stylix" {class: link}
-"root" -> "utils" {class: link}
-"stylix" -> "nixpkgs_2": "nixpkgs" {class: link}
+"root" -> "nixpkgs" {class: arrow}
+"root" -> "stylix" {class: arrow}
+"root" -> "utils" {class: arrow}
+"stylix" -> "nixpkgs_2": "nixpkgs" {class: arrow}
 "stylix" -> "utils": "systems" {class: follows}
-"stylix" -> "utils_2": "utils" {class: link}
+"stylix" -> "utils_2": "utils" {class: arrow}

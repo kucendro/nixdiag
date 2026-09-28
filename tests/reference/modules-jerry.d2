@@ -11,7 +11,7 @@
   class: file
   "nginx": "service"
 }
-"jerry" -> "hosts/jerry/default.nix" {class: link}
-"hosts/jerry/default.nix" -> "modules/common.nix" {class: link}
-"hosts/jerry/default.nix" -> "modules/mesh.nix" {class: link}
-"hosts/jerry/default.nix" -> "modules/web.nix" {class: link}
+"jerry" -> "hosts/jerry/default.nix" {class: arrow}
+"hosts/jerry/default.nix" -> "modules/common.nix" {class: arrow}
+"hosts/jerry/default.nix" -> "modules/mesh.nix" {class: arrow}
+"hosts/jerry/default.nix" -> "modules/web.nix" {class: arrow}

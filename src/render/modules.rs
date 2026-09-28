@@ -68,10 +68,10 @@ impl Diagram for Modules {
             doc.table(file, file, Class::File, rows);
         }
         for entry in &self.entries {
-            doc.edge(&self.host, entry, None, Class::Link);
+            doc.edge(&self.host, entry, None, Class::Arrow);
         }
         for (from, to) in &self.imports {
-            doc.edge(from, to, None, Class::Link);
+            doc.edge(from, to, None, Class::Arrow);
         }
     }
 }

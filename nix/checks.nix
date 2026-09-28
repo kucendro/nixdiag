@@ -15,10 +15,20 @@ let
 
   check =
     name: env:
-    pkgs.runCommand "nixdiag-${name}" ({ nativeBuildInputs = [ pkgs.jq ]; } // env) ''
-      bash ${../tests/checks}/${name}.sh
-      touch $out
-    '';
+    pkgs.runCommand "nixdiag-${name}"
+      (
+        {
+          nativeBuildInputs = [
+            pkgs.jq
+            (pkgs.callPackage ./d2.nix { })
+          ];
+        }
+        // env
+      )
+      ''
+        bash ${../tests/checks}/${name}.sh
+        touch $out
+      '';
 in
 {
   build = packages.nixdiag;

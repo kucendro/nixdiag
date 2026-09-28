@@ -31,3 +31,17 @@ no_store_paths() {
     exit 1
   fi
 }
+
+d2_compiles() {
+  local seen=0
+  for f in "$1"/*.d2; do
+    [ "$(basename "$f")" = theme.d2 ] && continue
+    d2 "$f" "$TMPDIR/compiled.svg" >/dev/null 2>"$TMPDIR/d2.log" || {
+      echo "$(basename "$f") does not compile on its own:"
+      cat "$TMPDIR/d2.log"
+      exit 1
+    }
+    seen=$((seen + 1))
+  done
+  echo "d2: $seen sources compile on their own"
+}

@@ -32,7 +32,7 @@ impl Diagram for Inputs<'_> {
             let class = if e.follows {
                 Class::Follows
             } else {
-                Class::Link
+                Class::Arrow
             };
             doc.edge(&e.parent, &e.child, label, class);
         }
