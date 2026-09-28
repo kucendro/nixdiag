@@ -23,7 +23,7 @@ on 443 to the internet, and the connection between them. Override with
 | Adapter | Reads | Gives |
 |---|---|---|
 | `nginx` | vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `proxyPass`; firewall | names, ports; a literal `proxyPass` is a connection, any other vhost an expose |
-| `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port, name; the tailnet, named after the server |
+| `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port; name and tailnet from a non-loopback `server_url`, the tailnet named after it |
 | `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a control connection to it, else `internet`; the interface on that server's tailnet, routing `--advertise-routes` and, with `--advertise-exit-node`, the internet |
 | `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
 

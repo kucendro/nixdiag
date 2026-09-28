@@ -1,4 +1,12 @@
 { lib, helpers }:
+let
+  reachable =
+    url:
+    let
+      host = if url == null then null else (helpers.url url).host;
+    in
+    lib.optional (host != null && !helpers.loopback host) host;
+in
 {
   role = "mesh-control";
   kind = "infra";
@@ -15,12 +23,9 @@
 
   topology =
     { port, url, ... }:
-    let
-      host = if url == null then null else (helpers.url url).host;
-    in
     {
       ports = lib.optional (port != null) port;
-      names = lib.optional (host != null && !helpers.loopback host) host;
+      names = reachable url;
     };
 
   networks =
@@ -30,19 +35,14 @@
       v6,
       ...
     }:
-    let
-      server = if url == null then null else (helpers.url url).host;
-    in
-    {
-      ${if server == null then "tailnet" else server} = {
-        cidrs = builtins.filter (c: c != null) [
-          v4
-          v6
-        ];
-        kind = "mesh";
-        inherit server;
-      };
-    };
+    lib.genAttrs (reachable url) (server: {
+      cidrs = builtins.filter (c: c != null) [
+        v4
+        v6
+      ];
+      kind = "mesh";
+      inherit server;
+    });
 
   tests = {
     vm = [ "hub" ];
