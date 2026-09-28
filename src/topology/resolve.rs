@@ -1,4 +1,4 @@
-use super::networks::{owner, Network};
+use super::networks::{longest, owner, Network};
 use super::target::Target;
 use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
@@ -76,7 +76,7 @@ pub fn target(
         return Ok(Endpoint::Internet);
     }
     if let Ok(cidr) = target.parse::<IpNet>() {
-        return network(nets, &cidr.addr()).ok_or(Unresolved::Unknown);
+        return network(nets, &cidr).ok_or(Unresolved::Unknown);
     }
     if !target.contains("://") {
         if let Some((h, u)) = target.split_once('/') {
@@ -110,7 +110,7 @@ pub fn target(
     if let Some(ip) = ip {
         return match owner(nets, &ip) {
             Some(m) => Ok(on_host(facts, &m.host, t.port)),
-            None => network(nets, &ip).ok_or(Unresolved::Unknown),
+            None => network(nets, &ip.into()).ok_or(Unresolved::Unknown),
         };
     }
     let name = t.host.to_string();
@@ -124,9 +124,8 @@ pub fn target(
     Err(Unresolved::Unknown)
 }
 
-fn network(nets: &[Network], ip: &IpAddr) -> Option<Endpoint> {
-    let n = nets.iter().find(|n| n.contains(ip))?;
-    Some(Endpoint::Network(n.id()))
+fn network(nets: &[Network], prefix: &IpNet) -> Option<Endpoint> {
+    longest(nets, prefix).map(|n| Endpoint::Network(n.id()))
 }
 
 fn on_host(facts: &Facts, host: &str, port: Option<u32>) -> Endpoint {

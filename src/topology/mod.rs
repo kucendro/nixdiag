@@ -7,7 +7,7 @@ pub mod target;
 
 pub use firewall::Finding;
 pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
-pub use networks::Network;
+pub use networks::{longest, Network};
 
 use crate::facts::Facts;
 use crate::text::messages::Fail;

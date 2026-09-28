@@ -42,8 +42,9 @@ impl Network {
             .unwrap_or_else(|| self.cidrs[0].to_string())
     }
 
-    pub fn contains(&self, ip: &IpAddr) -> bool {
-        self.cidrs.iter().any(|c| c.contains(ip))
+    fn covers(&self, prefix: &IpNet) -> Option<u8> {
+        let within = self.cidrs.iter().filter(|c| c.contains(prefix));
+        within.map(IpNet::prefix_len).max()
     }
 
     fn overlaps(&self, other: &Network) -> bool {
@@ -61,6 +62,16 @@ pub fn widest(nets: &[Network], ids: &[String]) -> Option<Scope> {
     };
     let kinds = nets.iter().filter(|n| ids.contains(&n.id()));
     kinds.filter_map(|n| n.kind).max_by_key(rank)
+}
+
+fn at(nets: &[Network], prefix: &IpNet) -> Option<usize> {
+    let covering = nets.iter().enumerate();
+    let covering = covering.filter_map(|(i, n)| Some((n.covers(prefix)?, i)));
+    covering.max_by_key(|(len, _)| *len).map(|(_, i)| i)
+}
+
+pub fn longest<'a>(nets: &'a [Network], prefix: &IpNet) -> Option<&'a Network> {
+    at(nets, prefix).map(|i| &nets[i])
 }
 
 pub fn owner<'a>(nets: &'a [Network], ip: &IpAddr) -> Option<&'a Member> {
@@ -133,16 +144,16 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
             for a in &i.addresses {
                 let Some(scope) = a.scope else { continue };
                 let net: IpNet = a.cidr.parse().map_err(|_| address(host, &a.cidr))?;
-                let at = match nets.iter().position(|n| n.contains(&net.addr())) {
-                    Some(at) => at,
+                let slot = match at(&nets, &net.addr().into()) {
+                    Some(slot) => slot,
                     None if net.prefix_len() == net.max_prefix_len() => continue,
                     None => {
                         nets.push(Network::new(None, vec![net.trunc()], Some(scope)));
                         nets.len() - 1
                     }
                 };
-                nets[at].kind.get_or_insert(scope);
-                nets[at].members.push(member(Some(net.addr())));
+                nets[slot].kind.get_or_insert(scope);
+                nets[slot].members.push(member(Some(net.addr())));
             }
             let by_server = i.server.as_ref().filter(|_| i.addresses.is_empty());
             if let Some(n) =
@@ -153,8 +164,8 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
         }
         for g in &n.network.gateways {
             let ip: IpAddr = g.address.parse().map_err(|_| address(host, &g.address))?;
-            if let Some(n) = nets.iter_mut().find(|n| n.contains(&ip)) {
-                n.gateways.insert(ip);
+            if let Some(i) = at(&nets, &ip.into()) {
+                nets[i].gateways.insert(ip);
             }
         }
     }
@@ -168,7 +179,7 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
     let members = nets.iter().flat_map(|n| &n.members);
     let routes: Vec<IpNet> = members.flat_map(|m| m.routes.iter().copied()).collect();
     for net in targets.chain(routes).filter(|n| n.prefix_len() > 0) {
-        if !nets.iter().any(|n| n.contains(&net.addr())) {
+        if at(&nets, &net).is_none() {
             nets.push(Network::new(None, vec![net.trunc()], None));
         }
     }

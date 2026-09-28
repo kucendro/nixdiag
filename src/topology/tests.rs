@@ -42,6 +42,10 @@ fn networks_resolve_by_name_and_cidr() {
         net("192.168.1.0/24")
     );
     assert_eq!(to("10.20.0.0/16", json!({})).unwrap(), net("10.20.0.0/16"));
+    assert_eq!(
+        to("192.168.0.0/16", json!({})).unwrap(),
+        net("192.168.0.0/16")
+    );
 }
 
 #[test]

@@ -83,6 +83,25 @@ fn mesh_interface_joins_by_control_server() {
 }
 
 #[test]
+fn route_wider_than_a_subnet_is_its_own_network() {
+    let mut ifaces = eth0("10.0.0.5/24");
+    ifaces["eth0"]["routes"] = json!(["10.0.0.0/8"]);
+    let nets = build(&facts(json!({ "a": host(ifaces, json!({})) }))).unwrap();
+    let ids: Vec<_> = nets.iter().map(Network::id).collect();
+    assert_eq!(ids, ["10.0.0.0/24", "10.0.0.0/8"]);
+    let wide = "10.0.0.0/8".parse().unwrap();
+    assert_eq!(
+        longest(&nets, &wide).map(Network::id).unwrap(),
+        "10.0.0.0/8"
+    );
+    let one = "10.0.0.7/32".parse().unwrap();
+    assert_eq!(
+        longest(&nets, &one).map(Network::id).unwrap(),
+        "10.0.0.0/24"
+    );
+}
+
+#[test]
 fn conflicting_and_overlapping_declarations_fail() {
     let one = json!({ "lan": { "cidrs": ["192.168.1.0/24"] } });
     let other = json!({ "lan": { "cidrs": ["192.168.2.0/24"] } });

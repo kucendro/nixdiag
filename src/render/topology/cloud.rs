@@ -1,7 +1,7 @@
 use crate::facts::Scope;
 use crate::render::d2::{Class, Doc};
 use crate::text::d2::{networks as n, topology as t};
-use crate::topology::Network;
+use crate::topology::{longest, Network};
 use ipnet::IpNet;
 use itertools::Itertools;
 
@@ -88,10 +88,7 @@ impl<'a> Cloud<'a> {
     }
 
     pub fn route(nets: &'a [Network], prefix: &IpNet) -> Cloud<'a> {
-        let within = nets
-            .iter()
-            .find(|n| prefix.prefix_len() > 0 && n.contains(&prefix.addr()));
-        within.map_or(Cloud::Net(Net::Internet), Cloud::Network)
+        longest(nets, prefix).map_or(Cloud::Net(Net::Internet), Cloud::Network)
     }
 
     fn net(&self) -> Net {
