@@ -212,6 +212,16 @@ pub struct Connection {
     pub name: Option<String>,
     pub port: Option<u32>,
     pub scope: Option<Scope>,
+    pub plane: Plane,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Plane {
+    #[default]
+    Data,
+    Control,
+    Mgmt,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

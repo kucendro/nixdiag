@@ -18,6 +18,6 @@ direction: down
 }
 "net hs.ts.example" -> "tom"."grafana": "grafana.ts.example :3000" {class: mesh}
 "jerry/nginx" -> "tom"."grafana": "grafana :3000" {class: flow}
-"tom"."grafana" -> "tom"."exporter": "scrapes" {class: local}
-"tom"."tailscale" -> "jerry/nginx": "mesh" {class: flow}
+"tom"."grafana" -> "tom"."exporter": "scrapes" {class: mgmt}
+"tom"."tailscale" -> "jerry/nginx": "mesh" {class: control}
 "tom"."tailscale" -> "net lan": "advertise" {class: lan}

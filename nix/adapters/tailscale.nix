@@ -27,6 +27,7 @@ in
         {
           to = if server == null then "internet" else server;
           label = "mesh";
+          plane = "control";
         }
       ]
       ++ map (r: {

@@ -1,5 +1,6 @@
 use super::{label, Cloud, Flow, Target, View};
 use crate::conf::files::{diagram, page};
+use crate::facts::Plane;
 use crate::render::d2::{Class, Diagram, Doc};
 use crate::text::d2::topology as t;
 use indexmap::IndexMap;
@@ -54,16 +55,19 @@ impl Diagram for HostBoard<'_, '_> {
             from,
             to,
             label: text,
+            plane,
         } in v.flows()
         {
             if !self.local(&from) && !self.local(&to) {
                 continue;
             }
-            let class = match (&from, &to) {
-                (_, Target::Net(c)) => {
-                    clouds.insert(c.key(), *c);
-                    c.edge()
-                }
+            if let Target::Net(c) = &to {
+                clouds.insert(c.key(), *c);
+            }
+            let class = match (plane, &to) {
+                (Plane::Control, _) => Class::Control,
+                (Plane::Mgmt, _) => Class::Mgmt,
+                (Plane::Data, Target::Net(c)) => c.edge(),
                 _ if self.local(&from) && self.local(&to) => Class::Local,
                 _ => Class::Flow,
             };

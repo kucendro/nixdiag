@@ -1,5 +1,6 @@
 use super::{label, Cloud, Flow, Target, View};
 use crate::conf::files::{diagram, page};
+use crate::facts::Plane;
 use crate::render::d2::{Class, Diagram, Doc};
 use crate::text::d2::topology as t;
 use indexmap::IndexMap;
@@ -32,7 +33,7 @@ impl Diagram for Overview<'_, '_> {
             v.ingress.iter().map(|i| (i.net.key(), i.net)).collect();
         let mut pairs: IndexMap<(&str, &str), Vec<Flow>> = IndexMap::new();
         let mut outbound = Vec::new();
-        for f in v.flows() {
+        for f in v.flows().filter(|f| f.plane == Plane::Data) {
             match (f.from.host(), &f.to) {
                 (_, Target::Net(c)) => {
                     clouds.insert(c.key(), *c);

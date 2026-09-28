@@ -1,5 +1,5 @@
 use super::networks::Network;
-use crate::facts::Scope;
+use crate::facts::{Plane, Scope};
 use indexmap::IndexMap;
 
 pub const INTERNET: &str = "internet";
@@ -27,6 +27,7 @@ pub struct Connection {
     pub from: Endpoint,
     pub to: Endpoint,
     pub label: String,
+    pub plane: Plane,
 }
 
 #[derive(Debug)]

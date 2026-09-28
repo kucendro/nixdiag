@@ -21,6 +21,7 @@
       {
         to = "exporter";
         label = "scrapes";
+        plane = "mgmt";
       }
     ];
   };

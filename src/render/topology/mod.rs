@@ -11,7 +11,7 @@ pub use overview::Overview;
 pub use cloud::{Cloud, Net};
 
 use super::d2::Class;
-use crate::facts::{Facts, Host, Kind};
+use crate::facts::{Facts, Host, Kind, Plane};
 use crate::text::d2::topology as t;
 use crate::topology::{Connection, Endpoint, Model, Network};
 use indexmap::IndexMap;
@@ -91,6 +91,7 @@ pub struct Flow<'a> {
     pub from: Target<'a>,
     pub to: Target<'a>,
     pub label: &'a str,
+    pub plane: Plane,
 }
 
 pub struct Ingress<'a> {
@@ -188,6 +189,7 @@ impl<'a> View<'a> {
             from: Target::of(&c.from, self.networks),
             to: Target::of(&c.to, self.networks),
             label: &c.label,
+            plane: c.plane,
         })
     }
 
@@ -203,3 +205,6 @@ impl<'a> View<'a> {
             .map(|(host, _)| HostBoard { view: self, host })
     }
 }
+
+#[cfg(test)]
+mod tests;

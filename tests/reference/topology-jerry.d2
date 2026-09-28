@@ -21,5 +21,5 @@ direction: down
 ":internet" -> "jerry"."nginx": "hs.ts.example :443" {class: public}
 "jerry"."nginx" -> "tom/grafana": "grafana :3000" {class: flow}
 "jerry"."nginx" -> "jerry"."headscale": "hs :8080" {class: local}
-"jerry"."tailscale" -> "jerry"."nginx": "mesh" {class: local}
-"tom/tailscale" -> "jerry"."nginx": "mesh" {class: flow}
+"jerry"."tailscale" -> "jerry"."nginx": "mesh" {class: control}
+"tom/tailscale" -> "jerry"."nginx": "mesh" {class: control}

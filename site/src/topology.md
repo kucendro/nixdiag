@@ -24,7 +24,7 @@ on 443 to the internet, and the connection between them. Override with
 |---|---|---|
 | `nginx` | vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `proxyPass`; firewall | names, ports; a literal `proxyPass` is a connection, any other vhost an expose |
 | `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port, name; the tailnet, named after the server |
-| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a connection to it, else `internet`; `--advertise-routes` to each advertised subnet; the interface on that server's tailnet |
+| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a control connection to it, else `internet`; `--advertise-routes` to each advertised subnet; the interface on that server's tailnet |
 | `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
 
 Scope from listen addresses: `100.64.0.0/10` is `mesh`, RFC 1918 is `lan`,
@@ -43,9 +43,14 @@ anything else `public` when the firewall opens the port.
 | `names` | fqdns | what the unit answers to |
 | `ports` | ports | what it listens on |
 | `expose` | `{ port, udp, scope, name }` | Endpoints row; an edge from the internet, or from the host's `lan` or `mesh` networks |
-| `connections` | `{ to, label, name, port, scope }` | outbound edges; `name` adds an Endpoints row |
+| `connections` | `{ to, label, name, port, scope, plane }` | outbound edges; `name` adds an Endpoints row |
 
 `nixdiag.description`, `scope`, `names`, `expose`: the same for the host.
+
+`plane` is `data` (default), `control` or `mgmt`: control is infrastructure
+coordinating itself, a mesh node talking to its server; mgmt is you operating
+it, scrapes, backups, deploys. The overview draws only data; host boards draw
+every plane, control and mgmt thin and dashed.
 
 ## Networks
 

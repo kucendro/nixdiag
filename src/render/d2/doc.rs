@@ -21,6 +21,8 @@ pub enum Class {
     Mesh,
     Flow,
     Local,
+    Control,
+    Mgmt,
     Location,
 }
 
@@ -46,6 +48,8 @@ impl Class {
             Class::Mesh => "mesh",
             Class::Flow => "flow",
             Class::Local => "local",
+            Class::Control => "control",
+            Class::Mgmt => "mgmt",
             Class::Location => "location",
         }
     }
@@ -335,6 +339,8 @@ mod tests {
             Class::Mesh,
             Class::Flow,
             Class::Local,
+            Class::Control,
+            Class::Mgmt,
             Class::Location,
         ];
         for c in all {

@@ -46,6 +46,7 @@ pub fn build(facts: &Facts) -> Result<Model> {
                     from: node.clone(),
                     to,
                     label: c.label.clone(),
+                    plane: c.plane,
                 });
             }
         }

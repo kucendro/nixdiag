@@ -41,6 +41,14 @@ let
       name = optional types.str;
       port = optional types.port;
       inherit scope;
+      plane = mkOption {
+        type = types.enum [
+          "data"
+          "control"
+          "mgmt"
+        ];
+        default = "data";
+      };
     };
   };
   unit = types.submodule {
