@@ -1,6 +1,6 @@
 # Hosts
 
-## 🖥️ jerry
+## 🖥️ jerry {#host-jerry}
 
 |                          |                |
 |--------------------------|----------------|
@@ -17,12 +17,17 @@
 - **headscale** — `modules/mesh.nix`
 - **nginx** — `modules/web.nix`
 
+**Topology:**
+
+<div class="d2 d2-light">{{#include topology-jerry-light.svg}}</div>
+<div class="d2 d2-dark">{{#include topology-jerry-dark.svg}}</div>
+
 **Modules:**
 
 <div class="d2 d2-light">{{#include modules-jerry-light.svg}}</div>
 <div class="d2 d2-dark">{{#include modules-jerry-dark.svg}}</div>
 
-## 🖥️ tom
+## 🖥️ tom {#host-tom}
 
 |                          |                |
 |--------------------------|----------------|
@@ -38,6 +43,11 @@
 
 - **grafana** — `modules/monitoring.nix`
 - **tailscale** — `hosts/tom/default.nix`
+
+**Topology:**
+
+<div class="d2 d2-light">{{#include topology-tom-light.svg}}</div>
+<div class="d2 d2-dark">{{#include topology-tom-dark.svg}}</div>
 
 **Modules:**
 

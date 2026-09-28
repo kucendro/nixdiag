@@ -1,6 +1,7 @@
 use super::{code, codes, diagram, repo_services, size_paths, table, Page, Wiki};
 use crate::closures::Closures;
-use crate::conf::files::{diagram::modules, page};
+use crate::conf::files::diagram::{modules, topology};
+use crate::conf::files::page;
 use crate::facts::{DarwinHost, Host, NixosHost};
 use crate::source::repo::Repo;
 use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
@@ -34,8 +35,10 @@ impl Page for Hosts {
                 Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
                 Host::Darwin(d) => host_darwin(&mut o, host, d),
             }
-            if let Some(board) = diagram(w, &modules(host)) {
-                o.extend([t::MODULES.into(), board]);
+            for (title, stem) in [(t::TOPOLOGY, topology(host)), (t::MODULES, modules(host))] {
+                if let Some(board) = diagram(w, &stem) {
+                    o.extend([title.into(), board]);
+                }
             }
         }
         Ok(Some(o))
@@ -50,7 +53,7 @@ fn host_nixos(
     closures: Option<&Closures>,
 ) {
     let svcs = repo_services(&f.base, repo);
-    o.push(t::nixos(host));
+    o.push(t::nixos(host, &page::anchor(host)));
     o.extend(f.base.description.clone());
 
     let platform = if f.platform.is_empty() {
@@ -82,7 +85,7 @@ fn host_nixos(
 }
 
 fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
-    o.push(t::darwin(host));
+    o.push(t::darwin(host, &page::anchor(host)));
     o.push(
         f.base
             .description

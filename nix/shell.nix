@@ -7,7 +7,6 @@ pkgs.mkShell {
     clippy
     rust-analyzer
     (callPackage ./d2.nix { })
-    graphviz
     mdbook
     just
     lefthook

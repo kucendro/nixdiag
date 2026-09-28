@@ -1,6 +1,5 @@
 pub mod chart;
 pub mod d2;
-pub mod dot;
 mod inputs;
 mod modules;
 pub mod out;
@@ -40,18 +39,17 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         eprintln!("{}", m::NO_TOPOLOGY);
     }
 
-    let dot = dot::Dot {
-        out: &out,
-        style: &opts.style,
-        svg: opts.svg,
-    };
     let d2 = d2::D2 {
         out: &out,
         style: &opts.style,
         svg: opts.svg,
     };
     d2.write_theme()?;
-    dot.render(&topology::Topology::new(facts, &model))?;
+    let view = topology::View::new(facts, &model);
+    d2.render(&topology::Overview(&view))?;
+    for board in view.boards() {
+        d2.render(&board)?;
+    }
     for board in modules::Modules::per_host(facts, &repo)? {
         d2.render(&board)?;
     }

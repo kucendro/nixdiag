@@ -29,10 +29,7 @@ _Hand-written overview goes here_ — the big picture, and *why* things are the 
 
 pub mod architecture {
     pub const TITLE: &str = "Architecture";
-    pub const BODY: &str = "\
-## Data-flow topology
-
-![Data-flow topology](./topology.svg)";
+    pub const TOPOLOGY: &str = "## Data-flow topology";
 }
 
 pub mod summary {
@@ -59,14 +56,15 @@ pub mod hosts {
     pub const DAEMONS: &str = "LaunchDaemons";
     pub const AGENTS: &str = "User agents";
     pub const CASKS: &str = "Homebrew casks";
+    pub const TOPOLOGY: &str = "**Topology:**";
     pub const MODULES: &str = "**Modules:**";
 
-    pub fn nixos(host: &str) -> String {
-        format!("## 🖥️ {host}")
+    pub fn nixos(host: &str, anchor: &str) -> String {
+        format!("## 🖥️ {host} {{#{anchor}}}")
     }
 
-    pub fn darwin(host: &str) -> String {
-        format!("## 🍏 {host}")
+    pub fn darwin(host: &str, anchor: &str) -> String {
+        format!("## 🍏 {host} {{#{anchor}}}")
     }
 
     pub fn services(rows: &str) -> String {

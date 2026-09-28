@@ -34,7 +34,7 @@ impl Diagram for Inputs<'_> {
             } else {
                 Class::Arrow
             };
-            doc.edge(&e.parent, &e.child, label, class);
+            doc.edge(&[&e.parent], &[&e.child], label, class);
         }
     }
 }

@@ -27,7 +27,7 @@ the same for the current directory without touching the flake.
 | `extraAssets` | `{ }` | `{ "img/rack.png" = ./rack.png; }`, copied into `wiki/src` before mdbook |
 | `buildWiki` | `true` | set `false` for diagrams and markdown only, no mdbook |
 | `theme` | `"dark"` | `"light"` or `"dark"`; wiki diagrams carry both |
-| `background` | `"transparent"` | diagram canvas fill, any color graphviz and d2 read |
+| `background` | `"transparent"` | diagram canvas fill, any color d2 reads |
 | `colors` | `{ }` | palette overrides, see below |
 | `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **builds those systems** |
 | `closuresExclude` | `[ ]` | hosts to leave out of `closures = true` |

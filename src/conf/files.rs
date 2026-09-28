@@ -12,6 +12,10 @@ pub mod diagram {
         format!("modules-{host}")
     }
 
+    pub fn topology(host: &str) -> String {
+        format!("{TOPOLOGY}-{host}")
+    }
+
     pub fn themed(stem: &str, theme: &str) -> String {
         format!("{stem}-{theme}.svg")
     }
@@ -26,6 +30,14 @@ pub mod page {
     pub const ENDPOINTS: &str = "endpoints.md";
     pub const INPUTS: &str = "inputs.md";
     pub const CLOSURES: &str = "closures.md";
+
+    pub fn anchor(host: &str) -> String {
+        format!("host-{host}")
+    }
+
+    pub fn host(host: &str) -> String {
+        format!("./{}.html#{}", HOSTS.trim_end_matches(".md"), anchor(host))
+    }
 }
 
 pub mod chart {

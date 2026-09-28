@@ -64,14 +64,16 @@ impl Diagram for Modules {
     fn draw(&self, doc: &mut Doc) {
         doc.shape(&self.host, &self.host, Class::Host);
         for (file, units) in &self.files {
-            let rows = units.iter().map(|(k, u)| (u.as_str(), k.label()));
-            doc.table(file, file, Class::File, rows);
+            let table = doc.shape(file, file, Class::Table);
+            for (kind, unit) in units {
+                table.row(unit, kind.label(), None);
+            }
         }
         for entry in &self.entries {
-            doc.edge(&self.host, entry, None, Class::Arrow);
+            doc.edge(&[&self.host], &[entry], None, Class::Arrow);
         }
         for (from, to) in &self.imports {
-            doc.edge(from, to, None, Class::Arrow);
+            doc.edge(&[from], &[to], None, Class::Arrow);
         }
     }
 }

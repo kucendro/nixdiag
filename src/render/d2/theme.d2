@@ -7,5 +7,17 @@ classes: {
   arrow: {style: {stroke: ${line}; font-color: ${ink}}}
   follows: {style: {stroke: ${mesh}; stroke-dash: 4; font-color: ${ink}}}
   host: {shape: oval; style: {fill: ${hostCloud}; stroke: ${hostStroke}; font-color: ${ink}; bold: true}}
-  file: {shape: sql_table; style: {fill: ${hostStroke}; stroke: ${baseFill}; font-color: ${hostFill}}}
+  table: {shape: sql_table; style: {fill: ${hostStroke}; stroke: ${baseFill}; font-color: ${hostFill}}}
+  machine: {style: {fill: ${hostFill}; stroke: ${hostStroke}; stroke-width: 2; font-color: ${ink}; bold: true; border-radius: 8}}
+  infra: {style: {fill: ${infraFill}; stroke: ${infraStroke}; font-color: ${ink}; bold: false; border-radius: 6}}
+  app: {style: {fill: ${appFill}; stroke: ${appStroke}; font-color: ${ink}; bold: false; border-radius: 6}}
+  ghost: {style: {fill: ${baseFill}; stroke: ${baseStroke}; stroke-dash: 3; font-color: ${ink}; bold: false; border-radius: 6}}
+  net-public: {shape: cloud; style: {fill: ${hostFill}; stroke: ${public}; stroke-width: 2; font-color: ${ink}; bold: true}}
+  net-lan: {shape: cloud; style: {fill: ${hostFill}; stroke: ${lan}; stroke-width: 2; font-color: ${ink}; bold: true}}
+  net-mesh: {shape: cloud; style: {fill: ${hostFill}; stroke: ${mesh}; stroke-width: 2; stroke-dash: 4; font-color: ${ink}; bold: true}}
+  public: {style: {stroke: ${public}; stroke-width: 2; font-color: ${ink}}}
+  lan: {style: {stroke: ${lan}; stroke-width: 2; font-color: ${ink}}}
+  mesh: {style: {stroke: ${mesh}; stroke-width: 2; stroke-dash: 5; font-color: ${ink}}}
+  flow: {style: {stroke: ${ink}; stroke-width: 2; font-color: ${ink}}}
+  local: {style: {stroke: ${line}; stroke-dash: 2; font-color: ${ink}}}
 }

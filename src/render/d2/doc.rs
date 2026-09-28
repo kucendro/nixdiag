@@ -8,7 +8,19 @@ pub enum Class {
     Arrow,
     Follows,
     Host,
-    File,
+    Table,
+    Machine,
+    Infra,
+    App,
+    Ghost,
+    NetPublic,
+    NetLan,
+    NetMesh,
+    Public,
+    Lan,
+    Mesh,
+    Flow,
+    Local,
 }
 
 impl Class {
@@ -20,58 +32,136 @@ impl Class {
             Class::Arrow => "arrow",
             Class::Follows => "follows",
             Class::Host => "host",
-            Class::File => "file",
+            Class::Table => "table",
+            Class::Machine => "machine",
+            Class::Infra => "infra",
+            Class::App => "app",
+            Class::Ghost => "ghost",
+            Class::NetPublic => "net-public",
+            Class::NetLan => "net-lan",
+            Class::NetMesh => "net-mesh",
+            Class::Public => "public",
+            Class::Lan => "lan",
+            Class::Mesh => "mesh",
+            Class::Flow => "flow",
+            Class::Local => "local",
         }
     }
 }
 
-struct Shape {
+struct Row {
+    key: String,
+    kind: String,
+    constraint: Option<String>,
+}
+
+pub struct Shape {
     key: String,
     label: String,
     class: Class,
-    rows: Vec<(String, String)>,
+    link: Option<String>,
+    tooltip: Option<String>,
+    rows: Vec<Row>,
+    children: Vec<Shape>,
+}
+
+impl Shape {
+    fn new(key: &str, label: &str, class: Class) -> Self {
+        Shape {
+            key: key.into(),
+            label: label.into(),
+            class,
+            link: None,
+            tooltip: None,
+            rows: Vec::new(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn row(&mut self, key: &str, kind: &str, constraint: Option<&str>) -> &mut Self {
+        self.rows.push(Row {
+            key: key.into(),
+            kind: kind.into(),
+            constraint: constraint.map(Into::into),
+        });
+        self
+    }
+
+    pub fn child(&mut self, key: &str, label: &str, class: Class) -> &mut Shape {
+        self.children.push(Shape::new(key, label, class));
+        self.children.last_mut().expect("just pushed")
+    }
+
+    pub fn link(&mut self, url: &str) -> &mut Self {
+        self.link = Some(url.into());
+        self
+    }
+
+    pub fn tooltip(&mut self, text: &str) -> &mut Self {
+        self.tooltip = Some(text.into());
+        self
+    }
+
+    fn write(&self, f: &mut fmt::Formatter, pad: &str) -> fmt::Result {
+        let (key, label, class) = (Quoted(&self.key), Quoted(&self.label), self.class.name());
+        let plain = self.link.is_none()
+            && self.tooltip.is_none()
+            && self.rows.is_empty()
+            && self.children.is_empty();
+        if plain {
+            return writeln!(f, "{pad}{key}: {label} {{class: {class}}}");
+        }
+        writeln!(f, "{pad}{key}: {label} {{\n{pad}  class: {class}")?;
+        if let Some(l) = &self.link {
+            writeln!(f, "{pad}  link: {}", Quoted(l))?;
+        }
+        if let Some(t) = &self.tooltip {
+            writeln!(f, "{pad}  tooltip: {}", Quoted(t))?;
+        }
+        for r in &self.rows {
+            write!(f, "{pad}  {}: {}", Quoted(&r.key), Quoted(&r.kind))?;
+            match &r.constraint {
+                Some(c) => writeln!(f, " {{constraint: {}}}", Quoted(c))?,
+                None => writeln!(f)?,
+            }
+        }
+        let inner = format!("{pad}  ");
+        for c in &self.children {
+            c.write(f, &inner)?;
+        }
+        writeln!(f, "{pad}}}")
+    }
 }
 
 struct Edge {
-    from: String,
-    to: String,
+    from: Vec<String>,
+    to: Vec<String>,
     label: Option<String>,
     class: Class,
 }
 
 #[derive(Default)]
 pub struct Doc {
+    vertical: bool,
     shapes: Vec<Shape>,
     edges: Vec<Edge>,
 }
 
 impl Doc {
-    pub fn shape(&mut self, key: &str, label: &str, class: Class) {
-        self.table(key, label, class, []);
+    pub fn vertical(&mut self) {
+        self.vertical = true;
     }
 
-    pub fn table<'r>(
-        &mut self,
-        key: &str,
-        label: &str,
-        class: Class,
-        rows: impl IntoIterator<Item = (&'r str, &'r str)>,
-    ) {
-        self.shapes.push(Shape {
-            key: key.into(),
-            label: label.into(),
-            class,
-            rows: rows
-                .into_iter()
-                .map(|(k, v)| (k.into(), v.into()))
-                .collect(),
-        });
+    pub fn shape(&mut self, key: &str, label: &str, class: Class) -> &mut Shape {
+        self.shapes.push(Shape::new(key, label, class));
+        self.shapes.last_mut().expect("just pushed")
     }
 
-    pub fn edge(&mut self, from: &str, to: &str, label: Option<&str>, class: Class) {
+    pub fn edge(&mut self, from: &[&str], to: &[&str], label: Option<&str>, class: Class) {
+        let path = |p: &[&str]| p.iter().map(|s| s.to_string()).collect();
         self.edges.push(Edge {
-            from: from.into(),
-            to: to.into(),
+            from: path(from),
+            to: path(to),
             label: label.map(Into::into),
             class,
         });
@@ -99,22 +189,30 @@ impl Display for Quoted<'_> {
     }
 }
 
+struct Path<'a>(&'a [String]);
+
+impl Display for Path<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, seg) in self.0.iter().enumerate() {
+            if i > 0 {
+                f.write_char('.')?;
+            }
+            write!(f, "{}", Quoted(seg))?;
+        }
+        Ok(())
+    }
+}
+
 impl Display for Doc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.vertical {
+            writeln!(f, "direction: down")?;
+        }
         for s in &self.shapes {
-            let (key, label, class) = (Quoted(&s.key), Quoted(&s.label), s.class.name());
-            if s.rows.is_empty() {
-                writeln!(f, "{key}: {label} {{class: {class}}}")?;
-                continue;
-            }
-            writeln!(f, "{key}: {label} {{\n  class: {class}")?;
-            for (k, v) in &s.rows {
-                writeln!(f, "  {}: {}", Quoted(k), Quoted(v))?;
-            }
-            writeln!(f, "}}")?;
+            s.write(f, "")?;
         }
         for e in &self.edges {
-            write!(f, "{} -> {}", Quoted(&e.from), Quoted(&e.to))?;
+            write!(f, "{} -> {}", Path(&e.from), Path(&e.to))?;
             if let Some(l) = &e.label {
                 write!(f, ": {}", Quoted(l))?;
             }
@@ -132,8 +230,8 @@ mod tests {
     fn keys_and_labels_are_quoted_and_escaped() {
         let mut d = Doc::default();
         d.shape("a.b", "say \"hi\"\n\\o/", Class::Node);
-        d.edge("a.b", "style", Some("x"), Class::Arrow);
-        d.edge("style", "a.b", None, Class::Arrow);
+        d.edge(&["a.b"], &["style"], Some("x"), Class::Arrow);
+        d.edge(&["style"], &["a.b"], None, Class::Arrow);
         assert_eq!(
             d.to_string(),
             "\"a.b\": \"say \\\"hi\\\"\\n\\\\o/\" {class: node}\n\
@@ -143,12 +241,24 @@ mod tests {
     }
 
     #[test]
-    fn rows_nest_inside_their_table() {
+    fn blocks_nest_rows_children_links_and_paths() {
         let mut d = Doc::default();
-        d.table("m/a.nix", "m/a.nix", Class::File, [("nginx", "service")]);
+        d.vertical();
+        d.shape("tom", "tom", Class::Table)
+            .link("./hosts.html#host-tom")
+            .row("grafana", "3000/tcp", Some("monitor"))
+            .row("exporter", "—", None);
+        d.shape("jerry", "jerry", Class::Machine)
+            .child("nginx", "nginx", Class::Infra)
+            .tooltip("proxy");
+        d.edge(&["jerry", "nginx"], &["tom", "grafana"], None, Class::Flow);
         assert_eq!(
             d.to_string(),
-            "\"m/a.nix\": \"m/a.nix\" {\n  class: file\n  \"nginx\": \"service\"\n}\n"
+            "direction: down\n\"tom\": \"tom\" {\n  class: table\n  link: \"./hosts.html#host-tom\"\n  \
+             \"grafana\": \"3000/tcp\" {constraint: \"monitor\"}\n  \"exporter\": \"—\"\n}\n\
+             \"jerry\": \"jerry\" {\n  class: machine\n  \
+             \"nginx\": \"nginx\" {\n    class: infra\n    tooltip: \"proxy\"\n  }\n}\n\
+             \"jerry\".\"nginx\" -> \"tom\".\"grafana\" {class: flow}\n"
         );
     }
 
@@ -162,7 +272,19 @@ mod tests {
             Class::Arrow,
             Class::Follows,
             Class::Host,
-            Class::File,
+            Class::Table,
+            Class::Machine,
+            Class::Infra,
+            Class::App,
+            Class::Ghost,
+            Class::NetPublic,
+            Class::NetLan,
+            Class::NetMesh,
+            Class::Public,
+            Class::Lan,
+            Class::Mesh,
+            Class::Flow,
+            Class::Local,
         ];
         for c in all {
             assert!(

@@ -216,12 +216,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dot-writer"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f7a508d3f95b7cb559acf2231c7efad02fe04061d3165b12513c2dbcc77af0"
-
-[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -493,7 +487,6 @@ dependencies = [
  "bytesize",
  "charts-rs",
  "clap",
- "dot-writer",
  "indexmap",
  "itertools",
  "jiff",
