@@ -16,6 +16,12 @@ pub fn heading(title: &str) -> String {
     format!("# {title}")
 }
 
+pub fn diagram(light: &str, dark: &str) -> String {
+    format!(
+        "<div class=\"d2 d2-light\">{{{{#include {light}}}}}</div>\n<div class=\"d2 d2-dark\">{{{{#include {dark}}}}}</div>"
+    )
+}
+
 pub const INDEX: &str = "\
 # Infrastructure wiki
 
@@ -110,10 +116,7 @@ pub mod endpoints {
 
 pub mod inputs {
     pub const TITLE: &str = "Inputs";
-    pub const INTRO: &str = "\
-Dashed edges are `follows`, which *removes* a duplicate.
-
-![Input graph](./inputs.svg)";
+    pub const INTRO: &str = "Dashed edges are `follows`, which *removes* a duplicate.";
     pub const HEAD: [&str; 4] = ["Input", "Source", "Rev", "Locked"];
     pub const DATES: &str = "\
 ## Lock dates

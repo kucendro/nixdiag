@@ -1,0 +1,27 @@
+vars: {
+  appFill: "#1c2e4a"
+  appStroke: "#7fa7e8"
+  infraFill: "#4a3413"
+  infraStroke: "#d9995a"
+  baseFill: "#2a2a2e"
+  baseStroke: "#666"
+  hostFill: "#181825"
+  hostStroke: "#a6adc8"
+  progFill: "#1e3a24"
+  hostCloud: "#3d3517"
+  public: "#e74c3c"
+  lan: "#2ecc71"
+  mesh: "#7fa7e8"
+  ink: "#cdd6f4"
+  line: "#a6adc8"
+}
+style.fill: "transparent"
+direction: right
+
+classes: {
+  root: {style: {fill: ${hostCloud}; stroke: ${hostStroke}; font-color: ${ink}; bold: true; border-radius: 6}}
+  node: {style: {fill: ${baseFill}; stroke: ${baseStroke}; font-color: ${ink}; bold: false; border-radius: 6}}
+  flagged: {style: {fill: ${baseFill}; stroke: ${public}; stroke-width: 3; font-color: ${ink}; bold: false; border-radius: 6}}
+  link: {style: {stroke: ${line}; font-color: ${ink}}}
+  follows: {style: {stroke: ${mesh}; stroke-dash: 4; font-color: ${ink}}}
+}

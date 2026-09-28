@@ -1,0 +1,36 @@
+.d2 > svg {
+  max-width: 100%;
+  height: auto;
+}
+
+html.light .d2-dark,
+html.rust .d2-dark,
+html.coal .d2-light,
+html.navy .d2-light,
+html.ayu .d2-light {
+  display: none;
+}
+
+.d2 svg .text,
+.d2 svg .md {
+  font-family: "Open Sans", sans-serif;
+}
+
+.d2 svg .text-bold,
+.d2 svg .md b,
+.d2 svg .md strong {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 700;
+}
+
+.d2 svg .text-italic,
+.d2 svg .md em {
+  font-family: "Open Sans", sans-serif;
+  font-style: italic;
+}
+
+.d2 svg .text-mono,
+.d2 svg .md code,
+.d2 svg .md pre {
+  font-family: "Source Code Pro", monospace;
+}

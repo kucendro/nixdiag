@@ -1,4 +1,5 @@
 pub mod chart;
+pub mod d2;
 pub mod dot;
 mod inputs;
 mod modules;
@@ -44,11 +45,17 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         style: &opts.style,
         svg: opts.svg,
     };
+    let d2 = d2::D2 {
+        out: &out,
+        style: &opts.style,
+        svg: opts.svg,
+    };
+    d2.write_theme()?;
     dot.render(&topology::Topology::new(facts, &model))?;
     dot.render(&modules::Modules::new(facts, &repo)?)?;
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
-        dot.render(&inputs::Inputs(lock))?;
+        d2.render(&inputs::Inputs(lock))?;
     }
     wiki::generate(
         &wiki::Wiki {

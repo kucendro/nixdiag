@@ -23,7 +23,8 @@ Both are the two-host fixture, the [live demo](./demo.md).
 |---|---|
 | `topology.dot`, `topology.svg` | who talks to what, by scope: public, mesh, lan |
 | `modules.dot`, `modules.svg` | host to module file tree |
-| `inputs.dot`, `inputs.svg` | flake input graph; `follows` edges dashed |
+| `inputs.d2`, `inputs.svg` | flake input graph; `follows` edges dashed |
+| `theme.d2` | classes and palette every `.d2` imports |
 | `wiki/src/index.md` | a stub for your own overview, replaced by `indexPage` |
 | `wiki/src/architecture.md` | both diagrams |
 | `wiki/src/hosts.md` | per host: platform, users, ports, services and their files |

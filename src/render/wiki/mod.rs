@@ -15,8 +15,9 @@ use inputs::Inputs;
 use services::Services;
 
 use super::out::Out;
-use super::style::Style;
+use super::style::{Style, Theme};
 use crate::closures::{Closures, Total};
+use crate::conf::files::diagram::themed;
 use crate::facts::{Facts, HostBase};
 use crate::human::{Bytes, Count};
 use crate::source::flakelock::Lock;
@@ -69,6 +70,12 @@ fn size_paths(t: &Total) -> String {
 
 fn codes<S: AsRef<str>>(items: impl IntoIterator<Item = S>, sep: &str) -> String {
     items.into_iter().map(|s| code(s.as_ref())).join(sep)
+}
+
+fn diagram(w: &Wiki, stem: &str) -> Option<String> {
+    let [light, dark] = [Theme::Light, Theme::Dark].map(|t| themed(stem, t.name()));
+    let exists = |f: &String| w.src.root.join(f).exists();
+    (exists(&light) && exists(&dark)).then(|| text::diagram(&light, &dark))
 }
 
 pub(super) fn repo_services(b: &HostBase, repo: &Repo) -> BTreeMap<String, Vec<String>> {

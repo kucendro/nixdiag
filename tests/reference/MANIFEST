@@ -1,6 +1,7 @@
 docs      topology.dot
 docs      modules.dot
-docs      inputs.dot
+docs      inputs.d2
+docs      theme.d2
 
 docs      wiki/src/hosts.md
 docs      wiki/src/endpoints.md

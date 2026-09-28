@@ -1,5 +1,5 @@
 use super::super::chart::{self, Mark};
-use super::{code, codes, table, Page, Wiki};
+use super::{code, codes, diagram as inline, table, Page, Wiki};
 use crate::conf::files::{chart as svg, diagram, page};
 use crate::human::{Date, DAY};
 use crate::source::flakelock::{short, Dup, Lock, Locked};
@@ -100,13 +100,13 @@ impl Page for Inputs {
 }
 
 fn body(w: &Wiki, lock: &Lock) -> Result<Vec<String>> {
-    w.src.mirror(w.out, &format!("{}.svg", diagram::INPUTS))?;
-
     let rows = lock
         .inputs()
         .into_iter()
         .map(|(name, l)| [code(name), code(l.source()), code(l.short_rev()), date(l)]);
-    let mut o = vec![t::INTRO.to_string(), table(t::HEAD, rows)];
+    let mut o = vec![t::INTRO.to_string()];
+    o.extend(inline(w, diagram::INPUTS));
+    o.push(table(t::HEAD, rows));
 
     lock_dates(&mut o, w, lock)?;
 

@@ -6,6 +6,7 @@ pkgs.mkShell {
     rustfmt
     clippy
     rust-analyzer
+    (callPackage ./d2.nix { })
     graphviz
     mdbook
     just

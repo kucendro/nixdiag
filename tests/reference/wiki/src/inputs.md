@@ -2,7 +2,8 @@
 
 Dashed edges are `follows`, which *removes* a duplicate.
 
-![Input graph](./inputs.svg)
+<div class="d2 d2-light">{{#include inputs-light.svg}}</div>
+<div class="d2 d2-dark">{{#include inputs-dark.svg}}</div>
 
 | Input       | Source                       | Rev       | Locked     |
 |-------------|------------------------------|-----------|------------|

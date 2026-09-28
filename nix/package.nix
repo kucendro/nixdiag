@@ -2,6 +2,7 @@
   lib,
   rustPlatform,
   makeWrapper,
+  callPackage,
   graphviz,
 }:
 
@@ -20,7 +21,12 @@ rustPlatform.buildRustPackage {
 
   nativeBuildInputs = [ makeWrapper ];
   postInstall = ''
-    wrapProgram $out/bin/nixdiag --suffix PATH : ${lib.makeBinPath [ graphviz ]}
+    wrapProgram $out/bin/nixdiag --suffix PATH : ${
+      lib.makeBinPath [
+        (callPackage ./d2.nix { })
+        graphviz
+      ]
+    }
   '';
 
   meta = {
