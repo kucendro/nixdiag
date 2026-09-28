@@ -85,3 +85,22 @@ fn ranges_interface_rules_and_a_disabled_firewall_open_the_port() {
         assert_eq!(findings(host(fw, web("lan"))), []);
     }
 }
+
+#[test]
+fn a_scopeless_expose_is_reached_from_the_networks_whose_interface_opens_it() {
+    let reached = |fw: Value| {
+        let facts: Facts = serde_json::from_value(json!({
+            "schema": 4,
+            "hosts": { "b": host(fw, json!({ "web": { "expose": [{ "port": 3000 }] } })) }
+        }))
+        .unwrap();
+        let x = build(&facts).unwrap().exposed.remove(0);
+        (x.scope, x.via)
+    };
+    let open = json!({ "enable": true, "interfaces": { "eth0": { "tcp": [3000] } } });
+    assert_eq!(
+        reached(open),
+        (Some(Scope::Lan), vec!["192.168.1.0/24".to_string()])
+    );
+    assert_eq!(reached(json!({ "enable": true })), (None, vec![]));
+}

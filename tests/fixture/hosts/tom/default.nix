@@ -13,6 +13,7 @@
 
   nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" ];
   nixdiag.location = "home";
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 3000 ];
 
   services.tailscale = {
     enable = true;

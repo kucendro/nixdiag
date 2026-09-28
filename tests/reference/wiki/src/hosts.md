@@ -46,7 +46,7 @@
 | State version            | `24.05`                                    |
 | Users                    | admin                                      |
 | System packages          | 124                                        |
-| Firewall                 | [4 findings](./firewall.html#firewall-tom) |
+| Firewall                 | [2 findings](./firewall.html#firewall-tom) |
 | Default gateway          | `192.168.1.1` via `eth0`                   |
 | Repo-configured services | 2                                          |
 

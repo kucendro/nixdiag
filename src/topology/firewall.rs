@@ -52,6 +52,24 @@ impl Firewall {
     }
 }
 
+pub(super) fn reach(
+    facts: &Facts,
+    nets: &[Network],
+    host: &str,
+    port: u32,
+    udp: bool,
+) -> Vec<String> {
+    let Some(n) = facts.hosts.get(host).and_then(|h| h.as_nixos()) else {
+        return Vec::new();
+    };
+    let fw = &n.network.firewall;
+    let open = |net: &&Network| {
+        let on = net.members.iter().filter(|m| m.host == host);
+        on.into_iter().any(|m| fw.opens(&m.interface, port, udp))
+    };
+    nets.iter().filter(open).map(Network::id).collect()
+}
+
 pub(super) struct Audit<'a> {
     pub facts: &'a Facts,
     pub nets: &'a [Network],

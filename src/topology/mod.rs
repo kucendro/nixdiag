@@ -20,6 +20,10 @@ pub fn build(facts: &Facts) -> Result<Model> {
         exposed: exposed(facts),
         ..Model::default()
     };
+    for x in model.exposed.iter_mut().filter(|x| x.scope.is_none()) {
+        x.via = firewall::reach(facts, &nets, &x.host, x.port, x.udp);
+        x.scope = networks::widest(&nets, &x.via);
+    }
     let book = resolve::Book::new(facts, &model.exposed);
     for (host, h) in &facts.hosts {
         let topo = h.topology();
@@ -107,6 +111,7 @@ fn exposed(facts: &Facts) -> Vec<Exposure> {
                 port: e.port,
                 udp: e.udp,
                 scope: e.scope.or_else(|| topo.scope_of(unit)),
+                via: Vec::new(),
             }));
         }
     }

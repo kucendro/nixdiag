@@ -38,7 +38,7 @@ anything else `public` when the firewall opens the port.
 |---|---|---|
 | `role` | string | node label, `proxy` say |
 | `kind` | `infra`, `app` | node style, adapters set `infra` |
-| `scope` | `public`, `mesh`, `lan` | default for exposes and connections |
+| `scope` | `public`, `mesh`, `lan` | default for exposes and connections; unset on an expose, the firewall decides |
 | `description` | lines | Services page section |
 | `names` | fqdns | what the unit answers to |
 | `ports` | ports | what it listens on |
@@ -96,6 +96,9 @@ interface, on each one, and trusts, then what does not add up:
 A port counts as used only when nixdiag knows it: a service with no adapter
 and no `nixdiag.units` entry shows as unused. Raw nftables or iptables rules
 are not read.
+
+An expose with no `scope` is reached from the networks behind every interface
+the firewall opens its port on, and takes the widest of their kinds.
 
 ## Overriding
 

@@ -52,6 +52,16 @@ impl Network {
     }
 }
 
+pub fn widest(nets: &[Network], ids: &[String]) -> Option<Scope> {
+    let rank = |s: &Scope| match s {
+        Scope::Mesh => 0,
+        Scope::Lan => 1,
+        Scope::Public => 2,
+    };
+    let kinds = nets.iter().filter(|n| ids.contains(&n.id()));
+    kinds.filter_map(|n| n.kind).max_by_key(rank)
+}
+
 pub fn owner<'a>(nets: &'a [Network], ip: &IpAddr) -> Option<&'a Member> {
     let members = nets.iter().flat_map(|n| &n.members);
     members.into_iter().find(|m| m.address.as_ref() == Some(ip))

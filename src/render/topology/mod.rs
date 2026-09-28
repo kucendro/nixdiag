@@ -156,13 +156,15 @@ impl<'a> View<'a> {
         }
         let nets = &model.networks;
         let exposed = model.exposed.iter().flat_map(|x| {
-            Cloud::around(nets, &x.host, x.scope)
-                .into_iter()
-                .map(|net| Ingress {
-                    net,
-                    node: Target::Node(&x.host, x.unit.as_deref()),
-                    label: t::expose(x.name.as_deref(), Some(x.port), x.udp),
-                })
+            let clouds = match x.via.as_slice() {
+                [] => Cloud::around(nets, &x.host, x.scope),
+                via => Cloud::of(nets, via),
+            };
+            clouds.into_iter().map(|net| Ingress {
+                net,
+                node: Target::Node(&x.host, x.unit.as_deref()),
+                label: t::expose(x.name.as_deref(), Some(x.port), x.udp),
+            })
         });
         let named = model.named.iter().flat_map(|ne| {
             let host = ne.node.host().unwrap_or_default();

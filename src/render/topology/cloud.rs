@@ -77,6 +77,15 @@ impl<'a> Cloud<'a> {
         }
     }
 
+    pub fn of(nets: &'a [Network], ids: &[String]) -> Vec<Cloud<'a>> {
+        let reached = nets.iter().filter(|n| ids.contains(&n.id()));
+        let clouds = reached.map(|n| match n.kind {
+            Some(Scope::Public) => Cloud::Net(Net::Internet),
+            _ => Cloud::Network(n),
+        });
+        clouds.unique_by(Cloud::key).collect()
+    }
+
     fn net(&self) -> Net {
         match self {
             Cloud::Net(net) => *net,

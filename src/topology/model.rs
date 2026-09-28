@@ -49,6 +49,7 @@ pub struct Exposure {
     pub port: u32,
     pub udp: bool,
     pub scope: Option<Scope>,
+    pub via: Vec<String>,
 }
 
 impl Exposure {
