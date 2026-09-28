@@ -78,11 +78,19 @@ pub struct Network {
 #[serde(default)]
 pub struct Interface {
     pub kind: IfKind,
-    pub addresses: Vec<String>,
+    pub addresses: Vec<Address>,
     pub dhcp: bool,
     pub over: Vec<String>,
     pub vlan: Option<u32>,
     pub port: Option<u32>,
+    pub server: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Address {
+    pub cidr: String,
+    pub scope: Option<Scope>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,6 +105,7 @@ pub enum IfKind {
     Bridge,
     Bond,
     Wireguard,
+    Mesh,
 }
 
 impl IfKind {
@@ -110,6 +119,7 @@ impl IfKind {
             IfKind::Bridge => "bridge",
             IfKind::Bond => "bond",
             IfKind::Wireguard => "wireguard",
+            IfKind::Mesh => "mesh",
         }
     }
 }
@@ -146,6 +156,15 @@ pub struct Topology {
     pub names: Vec<String>,
     pub expose: Vec<Expose>,
     pub units: IndexMap<String, Unit>,
+    pub networks: IndexMap<String, Declared>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Declared {
+    pub cidrs: Vec<String>,
+    pub kind: Option<Scope>,
+    pub server: Option<String>,
 }
 
 impl Topology {

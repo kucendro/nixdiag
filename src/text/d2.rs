@@ -57,6 +57,28 @@ pub mod topology {
     }
 }
 
+pub mod networks {
+    use std::fmt::Display;
+
+    pub fn network(name: Option<&str>, cidrs: &str) -> String {
+        match name {
+            Some(n) => format!("{n}\n{cidrs}"),
+            None => cidrs.into(),
+        }
+    }
+
+    pub fn attach(interface: &str, address: Option<impl Display>) -> String {
+        match address {
+            Some(a) => format!("{interface} {a}"),
+            None => interface.into(),
+        }
+    }
+
+    pub fn gateway(address: impl Display) -> String {
+        format!("gateway {address}")
+    }
+}
+
 pub mod modules {
     pub const SERVICE: &str = "service";
     pub const PROGRAM: &str = "program";

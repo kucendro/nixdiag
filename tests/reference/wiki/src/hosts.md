@@ -50,9 +50,10 @@
 
 **Interfaces:**
 
-| Interface | Kind     | Addresses         | Over |
-|-----------|----------|-------------------|------|
-| `eth0`    | physical | `192.168.1.20/24` | —    |
+| Interface    | Kind     | Addresses         | Over |
+|--------------|----------|-------------------|------|
+| `eth0`       | physical | `192.168.1.20/24` | —    |
+| `tailscale0` | mesh     | —                 | —    |
 
 **Services:**
 

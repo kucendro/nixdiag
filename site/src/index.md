@@ -22,12 +22,13 @@ Both are the two-host fixture, the [live demo](./demo.md).
 | File | Contents |
 |---|---|
 | `topology.d2`, `topology.svg` | fleet overview: hosts as tables of units and ports, ingress from Internet, LAN and mesh, flows between hosts |
+| `networks.d2`, `networks.svg` | L3: every network, derived from interface addresses or declared, the hosts on it by interface and address, default gateways |
 | `topology-<host>.d2`, `topology-<host>.svg` | per host: its units, local flows, and the hosts it talks to |
 | `modules-<host>.d2`, `modules-<host>.svg` | per host: entry file to the modules it imports, each listing its units |
 | `inputs.d2`, `inputs.svg` | flake input graph; `follows` edges dashed |
 | `theme.d2` | classes and palette every `.d2` imports |
 | `wiki/src/index.md` | a stub for your own overview, replaced by `indexPage` |
-| `wiki/src/architecture.md` | topology diagram |
+| `wiki/src/architecture.md` | topology diagram, networks board |
 | `wiki/src/hosts.md` | per host: platform, users, ports, default gateway, interfaces, services and their files, topology, module tree |
 | `wiki/src/services.md` | every service, the hosts running it, the file defining it |
 | `wiki/src/endpoints.md` | fqdn, port, scope, host, service |

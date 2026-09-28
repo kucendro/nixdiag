@@ -49,6 +49,16 @@ pub enum Fail {
         target: String,
         reason: Unresolved,
     },
+    #[error("network `{name}` is declared differently on {first} and {second}")]
+    NetworkConflict {
+        name: String,
+        first: String,
+        second: String,
+    },
+    #[error("networks `{0}` and `{1}` overlap")]
+    NetworkOverlap(String, String),
+    #[error("{host}: `{value}` is not an address")]
+    Address { host: String, value: String },
     #[error("{0} render of {1} failed: {2}")]
     Render(&'static str, String, std::io::Error),
     #[error("{0} render of {1} failed:\n{2}")]

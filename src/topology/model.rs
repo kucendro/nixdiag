@@ -1,3 +1,4 @@
+use super::networks::Network;
 use crate::facts::Scope;
 
 pub const INTERNET: &str = "internet";
@@ -60,4 +61,5 @@ pub struct Model {
     pub exposed: Vec<Exposure>,
     pub connections: Vec<Connection>,
     pub named: Vec<NamedEndpoint>,
+    pub networks: Vec<Network>,
 }

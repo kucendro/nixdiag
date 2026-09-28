@@ -1,13 +1,15 @@
 mod host;
+mod networks;
 mod overview;
 
 pub use host::HostBoard;
+pub use networks::Networks;
 pub use overview::Overview;
 
 use super::d2::{Class, Doc};
 use crate::facts::{Facts, Host, Kind, Scope};
 use crate::text::d2::topology as t;
-use crate::topology::{Connection, Endpoint, Model};
+use crate::topology::{Connection, Endpoint, Model, Network};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use std::collections::BTreeSet;
@@ -44,13 +46,21 @@ impl Net {
         }
     }
 
+    fn cloud(self) -> Class {
+        match self {
+            Net::Internet => Class::NetPublic,
+            Net::Lan => Class::NetLan,
+            Net::Mesh => Class::NetMesh,
+        }
+    }
+
     fn draw(self, doc: &mut Doc) {
-        let (label, class) = match self {
-            Net::Internet => (t::INTERNET, Class::NetPublic),
-            Net::Lan => (t::LAN, Class::NetLan),
-            Net::Mesh => (t::MESH, Class::NetMesh),
+        let label = match self {
+            Net::Internet => t::INTERNET,
+            Net::Lan => t::LAN,
+            Net::Mesh => t::MESH,
         };
-        doc.shape(self.key(), label, class);
+        doc.shape(self.key(), label, self.cloud());
     }
 }
 
@@ -131,6 +141,7 @@ pub struct View<'a> {
     pub facts: &'a Facts,
     pub hosts: IndexMap<&'a str, IndexMap<&'a str, Unit<'a>>>,
     pub ingress: Vec<Ingress<'a>>,
+    pub networks: &'a [Network],
     connections: &'a [Connection],
 }
 
@@ -197,6 +208,7 @@ impl<'a> View<'a> {
             facts,
             hosts,
             ingress: exposed.chain(named).collect(),
+            networks: &model.networks,
             connections: &model.connections,
         }
     }

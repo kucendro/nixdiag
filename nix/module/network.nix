@@ -1,5 +1,6 @@
 { config, lib }:
 let
+  helpers = import ../adapters/lib.nix { inherit lib; };
   net = config.networking;
   over =
     kind:
@@ -50,9 +51,22 @@ let
         && !builtins.elem name enslaved
         && (if explicit != null then explicit else net.useDHCP && v4 == [ ]);
     };
+  derived = lib.mapAttrs (name: k: k // addressing name) kinds;
+  merge =
+    name: d:
+    let
+      found = derived.${name} or { addresses = [ ]; };
+    in
+    found // lib.filterAttrs (_: v: v != null) d // { addresses = found.addresses ++ d.addresses; };
+  address = cidr: {
+    inherit cidr;
+    scope = helpers.addrScope true (builtins.head (lib.splitString "/" cidr));
+  };
 in
 {
-  interfaces = lib.mapAttrs (name: k: k // addressing name) kinds;
+  interfaces = lib.mapAttrs (_: i: i // { addresses = map address i.addresses; }) (
+    derived // lib.mapAttrs merge config.nixdiag.interfaces
+  );
   gateways = map (g: { inherit (g) address interface; }) (
     builtins.filter (g: g != null) [
       net.defaultGateway

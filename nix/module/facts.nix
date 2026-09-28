@@ -38,6 +38,7 @@ let
         names
         expose
         units
+        networks
         ;
     };
   };

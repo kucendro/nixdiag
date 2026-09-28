@@ -11,6 +11,8 @@
     }
   ];
 
+  nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" ];
+
   services.tailscale = {
     enable = true;
     extraUpFlags = [ "--login-server=https://hs.ts.example" ];

@@ -60,6 +60,32 @@ let
       connections = list connection;
     };
   };
+  network = types.submodule {
+    options = {
+      cidrs = list types.str;
+      kind = scope;
+      server = optional types.str;
+    };
+  };
+  interface = types.submodule {
+    options = {
+      kind = optional (
+        types.enum [
+          "physical"
+          "virtual"
+          "tun"
+          "tap"
+          "vlan"
+          "bridge"
+          "bond"
+          "wireguard"
+          "mesh"
+        ]
+      );
+      addresses = list types.str;
+      server = optional types.str;
+    };
+  };
 in
 {
   options.nixdiag = {
@@ -70,6 +96,14 @@ in
     expose = list expose;
     units = mkOption {
       type = types.attrsOf unit;
+      default = { };
+    };
+    networks = mkOption {
+      type = types.attrsOf network;
+      default = { };
+    };
+    interfaces = mkOption {
+      type = types.attrsOf interface;
       default = { };
     };
     facts = mkOption {

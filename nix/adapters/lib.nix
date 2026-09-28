@@ -53,7 +53,9 @@ rec {
       o2 = if v4 == null then -1 else lib.toInt (builtins.elemAt v4 1);
       guarded = if open then "public" else null;
     in
-    if lib.hasPrefix "127." a || a == "::1" then
+    if
+      lib.hasPrefix "127." a || a == "::1" || lib.hasPrefix "169.254." a || lib.hasPrefix "fe80:" a
+    then
       null
     else if (o1 == 100 && o2 >= 64 && o2 <= 127) || lib.hasPrefix "fd7a:115c:a1e0" a then
       "mesh"

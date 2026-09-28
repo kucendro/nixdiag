@@ -15,7 +15,13 @@ impl Page for Architecture {
     }
 
     fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
-        let body = [t::TOPOLOGY.into()].into_iter();
-        Ok(Some(body.chain(inline(w, diagram::TOPOLOGY)).collect()))
+        let sections = [
+            (t::TOPOLOGY, diagram::TOPOLOGY),
+            (t::NETWORKS, diagram::NETWORKS),
+        ];
+        let boards = sections
+            .into_iter()
+            .filter_map(|(title, stem)| Some([title.into(), inline(w, stem)?]));
+        Ok(Some(boards.flatten().collect()))
     }
 }

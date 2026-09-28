@@ -36,18 +36,34 @@ let
     "scope"
   ];
 
+  enabled = name: adapter: readAny (adapter.enable or [ "services.${name}.enable" ]) == true;
+
+  values = adapter: lib.mapAttrs (_: readAny) adapter.reads;
+
   unitOf =
     name: adapter:
-    lib.mkIf (readAny (adapter.enable or [ "services.${name}.enable" ]) == true) (
+    lib.mkIf (enabled name adapter) (
       lib.mapAttrs (k: v: if builtins.elem k scalars then lib.mkDefault v else v) (
         {
           inherit (adapter) role;
           kind = adapter.kind or null;
         }
-        // adapter.topology (lib.mapAttrs (_: readAny) adapter.reads)
+        // adapter.topology (values adapter)
       )
+    );
+
+  declared =
+    key:
+    lib.mkMerge (
+      lib.mapAttrsToList (
+        name: adapter: lib.mkIf (adapter ? ${key} && enabled name adapter) (adapter.${key} (values adapter))
+      ) adapters
     );
 in
 {
-  config.nixdiag.units = lib.mapAttrs unitOf adapters;
+  config.nixdiag = {
+    units = lib.mapAttrs unitOf adapters;
+    networks = declared "networks";
+    interfaces = declared "interfaces";
+  };
 }

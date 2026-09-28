@@ -23,8 +23,8 @@ on 443 to the internet, and the connection between them. Override with
 | Adapter | Reads | Gives |
 |---|---|---|
 | `nginx` | vhost `forceSSL`, `addSSL`, `onlySSL`, `listen`, `listenAddresses`, `proxyPass`; firewall | names, ports; a literal `proxyPass` is a connection, any other vhost an expose |
-| `headscale` | `port`, `settings.server_url` | port, name |
-| `tailscale` | `extraUpFlags`, `extraSetFlags` | `--login-server` is a connection to it, else `internet`; `--advertise-routes` to `lan` |
+| `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port, name; the tailnet, named after the server |
+| `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a connection to it, else `internet`; `--advertise-routes` to `lan`; the interface on that server's tailnet |
 | `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
 
 Scope from listen addresses: `100.64.0.0/10` is `mesh`, RFC 1918 is `lan`,
@@ -46,6 +46,25 @@ anything else `public` when the firewall opens the port.
 | `connections` | `{ to, label, name, port, scope }` | outbound edges; `name` adds an Endpoints row |
 
 `nixdiag.description`, `scope`, `names`, `expose`: the same for the host.
+
+## Networks
+
+Every static interface address puts its host on the subnet it belongs to.
+Name a subnet, or join more under one name, on any host:
+
+```nix
+nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" "fd00:1::/64" ];
+```
+
+| Option | Type | Effect |
+|---|---|---|
+| `nixdiag.networks.<name>.cidrs` | CIDRs | addresses inside join this network |
+| `nixdiag.networks.<name>.kind` | `public`, `mesh`, `lan` | cloud style; else from the addresses |
+| `nixdiag.networks.<name>.server` | host | control server; a `mesh` interface with it joins |
+| `nixdiag.interfaces.<name>` | `{ kind, addresses, server }` | an interface NixOS does not configure |
+
+The same name declared differently on two hosts, or two declared networks
+that overlap, fails the build.
 
 ## Overriding
 
@@ -83,7 +102,8 @@ Unresolved fails the build.
 ## Adding an adapter
 
 Copy `nix/adapters/example.nix` to `nix/adapters/foo.nix`. Every field is
-explained there. `tests` is required: `nix flake check` boots the VMs it names
+explained there. Besides `topology`, an adapter may define `networks` and
+`interfaces`: reads in, `nixdiag.networks` and `nixdiag.interfaces` out. `tests` is required: `nix flake check` boots the VMs it names
 and compares the adapter's claims to what runs.
 
 ## Audit

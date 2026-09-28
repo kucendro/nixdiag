@@ -47,6 +47,9 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
     d2.write_theme()?;
     let view = topology::View::new(facts, &model);
     d2.render(&topology::Overview(&view))?;
+    if !model.networks.is_empty() {
+        d2.render(&topology::Networks(&view))?;
+    }
     for board in view.boards() {
         d2.render(&board)?;
     }

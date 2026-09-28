@@ -107,7 +107,7 @@ fn interface((name, i): (&String, &Interface)) -> [String; 4] {
         .dhcp
         .then_some(t::DHCP.to_string())
         .into_iter()
-        .chain(i.addresses.iter().map(code))
+        .chain(i.addresses.iter().map(|a| code(&a.cidr)))
         .collect_vec();
     [
         code(name),

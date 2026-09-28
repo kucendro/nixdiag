@@ -1,8 +1,10 @@
 mod model;
+mod networks;
 mod resolve;
 pub mod target;
 
 pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
+pub use networks::Network;
 
 use crate::facts::Facts;
 use crate::text::messages::Fail;
@@ -12,6 +14,7 @@ use std::iter::once;
 pub fn build(facts: &Facts) -> Result<Model> {
     let mut model = Model {
         exposed: exposed(facts),
+        networks: networks::build(facts)?,
         ..Model::default()
     };
     let book = resolve::Book::new(facts, &model.exposed);

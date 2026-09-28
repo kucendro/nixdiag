@@ -30,6 +30,7 @@ _Hand-written overview goes here_ — the big picture, and *why* things are the 
 pub mod architecture {
     pub const TITLE: &str = "Architecture";
     pub const TOPOLOGY: &str = "## Data-flow topology";
+    pub const NETWORKS: &str = "## Networks";
 }
 
 pub mod summary {
