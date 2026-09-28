@@ -21,13 +21,13 @@ the same for the current directory without touching the flake.
 | `title` | `"Infrastructure wiki"` | book title |
 | `hosts` | all | list of host names to restrict to |
 | `indexPage` | seeded stub | your own `wiki/src/index.md` |
-| `bookToml` | seeded default | your own `wiki/book.toml` |
+| `bookToml` | seeded default | your own `wiki/book.toml`; keep `additional-css = ["d2.css"]` so each diagram shows once |
 | `extraPages` | `{ }` | `{ Runbooks = ./runbooks.md; }`, copied in and linked |
 | `extraLinks` | `{ }` | `{ Termux = "termux.md"; }`, SUMMARY entry for a page another tool writes |
 | `extraAssets` | `{ }` | `{ "img/rack.png" = ./rack.png; }`, copied into `wiki/src` before mdbook |
 | `buildWiki` | `true` | set `false` for diagrams and markdown only, no mdbook |
-| `theme` | `"dark"` | `"light"` or `"dark"` |
-| `background` | `"transparent"` | diagram canvas fill, any graphviz color |
+| `theme` | `"dark"` | `"light"` or `"dark"`; wiki diagrams carry both |
+| `background` | `"transparent"` | diagram canvas fill, any color d2 reads |
 | `colors` | `{ }` | palette overrides, see below |
 | `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **builds those systems** |
 | `closuresExclude` | `[ ]` | hosts to leave out of `closures = true` |
@@ -42,7 +42,7 @@ the same for the current directory without touching the flake.
 |---|---|
 | `false` | nothing |
 | `true` | every NixOS host, minus `closuresExclude` |
-| `[ "nas" "luna" ]` | exactly those |
+| `[ "nas" "tom" ]` | exactly those |
 
 A host that serves the docs is measured with an empty directory in the docs'
 place, so a build may document the host that serves it. The Closures page

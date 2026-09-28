@@ -16,6 +16,12 @@ pub fn heading(title: &str) -> String {
     format!("# {title}")
 }
 
+pub fn diagram(light: &str, dark: &str) -> String {
+    format!(
+        "<div class=\"d2 d2-light\">{{{{#include {light}}}}}</div>\n<div class=\"d2 d2-dark\">{{{{#include {dark}}}}}</div>"
+    )
+}
+
 pub const INDEX: &str = "\
 # Infrastructure wiki
 
@@ -23,14 +29,7 @@ _Hand-written overview goes here_ — the big picture, and *why* things are the 
 
 pub mod architecture {
     pub const TITLE: &str = "Architecture";
-    pub const BODY: &str = "\
-## Data-flow topology
-
-![Data-flow topology](./topology.svg)
-
-## Module tree
-
-![Module tree](./modules.svg)";
+    pub const TOPOLOGY: &str = "## Data-flow topology";
 }
 
 pub mod summary {
@@ -57,13 +56,15 @@ pub mod hosts {
     pub const DAEMONS: &str = "LaunchDaemons";
     pub const AGENTS: &str = "User agents";
     pub const CASKS: &str = "Homebrew casks";
+    pub const TOPOLOGY: &str = "**Topology:**";
+    pub const MODULES: &str = "**Modules:**";
 
-    pub fn nixos(host: &str) -> String {
-        format!("## 🖥️ {host}")
+    pub fn nixos(host: &str, anchor: &str) -> String {
+        format!("## 🖥️ {host} {{#{anchor}}}")
     }
 
-    pub fn darwin(host: &str) -> String {
-        format!("## 🍏 {host}")
+    pub fn darwin(host: &str, anchor: &str) -> String {
+        format!("## 🍏 {host} {{#{anchor}}}")
     }
 
     pub fn services(rows: &str) -> String {
@@ -110,10 +111,7 @@ pub mod endpoints {
 
 pub mod inputs {
     pub const TITLE: &str = "Inputs";
-    pub const INTRO: &str = "\
-Dashed edges are `follows`, which *removes* a duplicate.
-
-![Input graph](./inputs.svg)";
+    pub const INTRO: &str = "Dashed edges are `follows`, which *removes* a duplicate.";
     pub const HEAD: [&str; 4] = ["Input", "Source", "Rev", "Locked"];
     pub const DATES: &str = "\
 ## Lock dates

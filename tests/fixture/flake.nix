@@ -1,10 +1,10 @@
 {
   hosts = {
-    luna = {
-      targetModule = ./hosts/luna;
+    tom = {
+      targetModule = ./hosts/tom;
     };
-    sol = {
-      targetModule = ./hosts/sol;
+    jerry = {
+      targetModule = ./hosts/jerry;
     };
   };
 }

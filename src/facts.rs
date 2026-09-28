@@ -28,13 +28,6 @@ impl Host {
         }
     }
 
-    pub fn svc_count(&self) -> usize {
-        match self {
-            Host::Nixos(h) => h.base.services.len(),
-            Host::Darwin(h) => h.daemons.len() + h.user_agents.len(),
-        }
-    }
-
     pub fn base(&self) -> &HostBase {
         match self {
             Host::Nixos(h) => &h.base,

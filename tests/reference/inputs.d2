@@ -1,0 +1,14 @@
+...@theme
+
+"root": "this flake" {class: root}
+"nixpkgs": "nixpkgs\n56c02bc" {class: flagged}
+"nixpkgs_2": "nixpkgs_2\n89570f2" {class: flagged}
+"stylix": "stylix" {class: node}
+"utils": "utils" {class: node}
+"utils_2": "utils_2" {class: node}
+"root" -> "nixpkgs" {class: arrow}
+"root" -> "stylix" {class: arrow}
+"root" -> "utils" {class: arrow}
+"stylix" -> "nixpkgs_2": "nixpkgs" {class: arrow}
+"stylix" -> "utils": "systems" {class: follows}
+"stylix" -> "utils_2": "utils" {class: arrow}

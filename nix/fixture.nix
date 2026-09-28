@@ -7,14 +7,14 @@ let
 
   flake = {
     outPath = src;
-    nixosConfigurations = nixpkgs.lib.genAttrs [ "luna" "sol" ] (
+    nixosConfigurations = nixpkgs.lib.genAttrs [ "tom" "jerry" ] (
       name:
       nixpkgs.lib.nixosSystem {
         modules = [
           "${src}/hosts/${name}"
           { nixpkgs.hostPlatform = "x86_64-linux"; }
         ]
-        ++ nixpkgs.lib.optional (name == "luna") ../nix/module;
+        ++ nixpkgs.lib.optional (name == "tom") ../nix/module;
       }
     );
   };
@@ -56,7 +56,7 @@ in
                 --closures ${src}/closures.json --theme $theme --out $theme >/dev/null
               suffix=""
               [ $theme = dark ] || suffix=-light
-              for f in topology modules inputs wiki/src/inputs-timeline wiki/src/closures wiki/src/closures-sol; do
+              for f in topology modules-jerry inputs wiki/src/inputs-timeline wiki/src/closures wiki/src/closures-jerry; do
                 cp $theme/$f.svg $out/$(basename $f)$suffix.svg
               done
             done

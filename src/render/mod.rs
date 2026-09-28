@@ -1,5 +1,5 @@
 pub mod chart;
-pub mod dot;
+pub mod d2;
 mod inputs;
 mod modules;
 pub mod out;
@@ -39,16 +39,23 @@ pub fn render_all(facts: &Facts, opts: &RenderOpts) -> Result<()> {
         eprintln!("{}", m::NO_TOPOLOGY);
     }
 
-    let dot = dot::Dot {
+    let d2 = d2::D2 {
         out: &out,
         style: &opts.style,
         svg: opts.svg,
     };
-    dot.render(&topology::Topology::new(facts, &model))?;
-    dot.render(&modules::Modules::new(facts, &repo)?)?;
+    d2.write_theme()?;
+    let view = topology::View::new(facts, &model);
+    d2.render(&topology::Overview(&view))?;
+    for board in view.boards() {
+        d2.render(&board)?;
+    }
+    for board in modules::Modules::per_host(facts, &repo)? {
+        d2.render(&board)?;
+    }
     let lock = Lock::read(&repo.root);
     if let Some(lock) = &lock {
-        dot.render(&inputs::Inputs(lock))?;
+        d2.render(&inputs::Inputs(lock))?;
     }
     wiki::generate(
         &wiki::Wiki {

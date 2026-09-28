@@ -17,12 +17,12 @@ github:kucendro/nixdiag` builds it for the flake in the current directory.
 | `--title "my wiki"`                   | book title, used when seeding `book.toml`                                                     |
 | `--extra-page Runbooks=./runbooks.md` | copy a hand-written page in and link it, repeatable                                           |
 | `--extra-link Termux=termux.md`       | SUMMARY entry for a page another tool writes, repeatable                                      |
-| `--no-svg`                            | write `.dot` only, skip graphviz                                                              |
-| `--theme light`                       | `light` or `dark`, default `dark`                                                             |
+| `--no-svg`                            | write `.d2` only, skip d2                                                                     |
+| `--theme light`                       | `light` or `dark`, default `dark`; wiki diagrams carry both                                   |
 | `--background "#ffffff"`              | diagram canvas fill, default transparent                                                      |
 | `--color public=#ff5555`              | palette override, repeatable, see [styling](./build.md#diagram-styling)                       |
 
-SVG rendering needs graphviz `dot` on `PATH`; the packaged binary wraps it in.
+SVG rendering needs `d2` on `PATH`; the packaged binary wraps it in.
 
 ```sh
 nix run github:kucendro/nixdiag#audit

@@ -1,0 +1,15 @@
+...@theme
+
+"tom": "tom" {class: host}
+"hosts/tom/default.nix": "hosts/tom/default.nix" {
+  class: table
+  "tailscale": "service"
+}
+"modules/common.nix": "modules/common.nix" {class: table}
+"modules/monitoring.nix": "modules/monitoring.nix" {
+  class: table
+  "grafana": "service"
+}
+"tom" -> "hosts/tom/default.nix" {class: arrow}
+"hosts/tom/default.nix" -> "modules/common.nix" {class: arrow}
+"hosts/tom/default.nix" -> "modules/monitoring.nix" {class: arrow}

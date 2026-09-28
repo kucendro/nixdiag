@@ -1,5 +1,5 @@
 pub mod chart;
 pub mod cli;
-pub mod dot;
+pub mod d2;
 pub mod messages;
 pub mod wiki;

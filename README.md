@@ -10,7 +10,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/topology.svg"><img alt="topology" src="assets/topology-light.svg"></picture>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/modules.svg"><img alt="modules" src="assets/modules-light.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/modules-jerry.svg"><img alt="modules" src="assets/modules-jerry-light.svg"></picture>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/inputs.svg"><img alt="flake inputs" src="assets/inputs-light.svg"></picture>
 
@@ -18,7 +18,7 @@ diagrams, module trees and an mdBook wiki.</samp>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/closures.svg"><img alt="fleet closure sizes" src="assets/closures-light.svg"></picture>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/closures-sol.svg"><img alt="closure treemap" src="assets/closures-sol-light.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/closures-jerry.svg"><img alt="closure treemap" src="assets/closures-jerry-light.svg"></picture>
 
 ---
 

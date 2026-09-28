@@ -25,14 +25,6 @@ impl Out {
         self.put(rel, |p| fs::copy(from, p).map(drop))
     }
 
-    pub fn mirror(&self, from: &Out, name: &str) -> Result<()> {
-        let path = from.root.join(name);
-        if path.exists() {
-            self.copy(&path, name)?;
-        }
-        Ok(())
-    }
-
     pub fn put(
         &self,
         rel: impl AsRef<Path>,

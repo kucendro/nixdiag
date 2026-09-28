@@ -1,19 +1,17 @@
-use super::dot::{id, Diagram, Dot, Graph, Paint};
+use super::d2::{Class, Diagram, Doc};
 use crate::conf::files::diagram;
-use crate::conf::palette::diagram as p;
 use crate::source::flakelock::Lock;
-use crate::text::dot::inputs as t;
-use dot_writer::{Attributes, Style};
+use crate::text::d2::inputs as t;
 use std::collections::BTreeSet;
 
 pub struct Inputs<'a>(pub &'a Lock);
 
 impl Diagram for Inputs<'_> {
-    fn stem(&self) -> &'static str {
-        diagram::INPUTS
+    fn stem(&self) -> String {
+        diagram::INPUTS.into()
     }
 
-    fn draw(&self, g: &mut Graph, dot: &Dot) {
+    fn draw(&self, doc: &mut Doc) {
         let lock = self.0;
         let dups = lock.duplicates();
         let flagged: BTreeSet<&str> = dups
@@ -21,28 +19,22 @@ impl Diagram for Inputs<'_> {
             .filter(|d| d.is_diamond())
             .flat_map(|d| d.nodes())
             .collect();
-        g.node_named(id(&lock.root))
-            .bold(t::ROOT)
-            .fill(dot.color(&p::HOST_CLOUD))
-            .stroke(dot.color(&p::HOST_STROKE));
+        doc.shape(&lock.root, t::ROOT, Class::Root);
         for (name, locked) in lock.inputs() {
-            let mut n = g.node_named(id(name));
             if flagged.contains(name.as_str()) {
-                n.text(&[&t::flagged(name, &locked.short_rev())])
-                    .stroke(dot.color(&p::PUBLIC))
-                    .set_pen_width(2.5);
+                doc.shape(name, &t::flagged(name, &locked.short_rev()), Class::Flagged);
             } else {
-                n.text(&[name]);
+                doc.shape(name, name, Class::Node);
             }
         }
         for e in lock.edges() {
-            let mut edge = g.edge(id(&e.parent), id(&e.child)).attributes();
-            if e.input != e.child {
-                edge.text(&[&e.input]);
-            }
-            if e.follows {
-                edge.stroke(dot.color(&p::MESH)).set_style(Style::Dashed);
-            }
+            let label = (e.input != e.child).then_some(e.input.as_str());
+            let class = if e.follows {
+                Class::Follows
+            } else {
+                Class::Arrow
+            };
+            doc.edge(&[&e.parent], &[&e.child], label, class);
         }
     }
 }

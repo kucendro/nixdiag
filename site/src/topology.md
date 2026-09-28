@@ -76,7 +76,7 @@ attrset declares a unit no adapter knows.
 | `grafana` | unit, when one host has it |
 | `hs.ts.example` | unit with that fqdn in `names`, `expose` or `connections` |
 | `http://127.0.0.1:8080` | unit on the same host with that port |
-| `http://luna.ts.example:3000` | host `luna`, its unit on 3000 |
+| `http://tom.ts.example:3000` | host `tom`, its unit on 3000 |
 
 Unresolved fails the build.
 

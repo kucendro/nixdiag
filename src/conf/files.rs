@@ -1,10 +1,24 @@
 pub const BOOK: &str = "wiki/book.toml";
 pub const SRC: &str = "wiki/src";
+pub const CSS: &str = "d2.css";
+pub const WIKI_CSS: &str = "wiki/d2.css";
+pub const THEME: &str = "theme.d2";
 
 pub mod diagram {
     pub const TOPOLOGY: &str = "topology";
-    pub const MODULES: &str = "modules";
     pub const INPUTS: &str = "inputs";
+
+    pub fn modules(host: &str) -> String {
+        format!("modules-{host}")
+    }
+
+    pub fn topology(host: &str) -> String {
+        format!("{TOPOLOGY}-{host}")
+    }
+
+    pub fn themed(stem: &str, theme: &str) -> String {
+        format!("{stem}-{theme}.svg")
+    }
 }
 
 pub mod page {
@@ -16,6 +30,14 @@ pub mod page {
     pub const ENDPOINTS: &str = "endpoints.md";
     pub const INPUTS: &str = "inputs.md";
     pub const CLOSURES: &str = "closures.md";
+
+    pub fn anchor(host: &str) -> String {
+        format!("host-{host}")
+    }
+
+    pub fn host(host: &str) -> String {
+        format!("./{}.html#{}", HOSTS.trim_end_matches(".md"), anchor(host))
+    }
 }
 
 pub mod chart {

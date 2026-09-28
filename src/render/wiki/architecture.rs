@@ -1,4 +1,4 @@
-use super::{Page, Wiki};
+use super::{diagram as inline, Page, Wiki};
 use crate::conf::files::{diagram, page};
 use crate::text::wiki::architecture as t;
 use anyhow::Result;
@@ -15,9 +15,7 @@ impl Page for Architecture {
     }
 
     fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
-        for stem in [diagram::TOPOLOGY, diagram::MODULES] {
-            w.src.mirror(w.out, &format!("{stem}.svg"))?;
-        }
-        Ok(Some(vec![t::BODY.into()]))
+        let body = [t::TOPOLOGY.into()].into_iter();
+        Ok(Some(body.chain(inline(w, diagram::TOPOLOGY)).collect()))
     }
 }
