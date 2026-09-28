@@ -52,6 +52,10 @@ pub mod hosts {
     pub const CLOSURE: &str = "Closure";
     pub const TCP: &str = "Open TCP ports";
     pub const UDP: &str = "Open UDP ports";
+    pub const GATEWAY: &str = "Default gateway";
+    pub const INTERFACES: &str = "**Interfaces:**";
+    pub const INTERFACES_HEAD: [&str; 4] = ["Interface", "Kind", "Addresses", "Over"];
+    pub const DHCP: &str = "dhcp";
     pub const SERVICES_COUNT: &str = "Repo-configured services";
     pub const DAEMONS: &str = "LaunchDaemons";
     pub const AGENTS: &str = "User agents";
@@ -65,6 +69,21 @@ pub mod hosts {
 
     pub fn darwin(host: &str, anchor: &str) -> String {
         format!("## 🍏 {host} {{#{anchor}}}")
+    }
+
+    pub fn via(address: &str, interface: &str) -> String {
+        format!("{address} via {interface}")
+    }
+
+    pub fn kind(kind: &str, detail: Option<String>) -> String {
+        match detail {
+            Some(d) => format!("{kind} {d}"),
+            None => kind.into(),
+        }
+    }
+
+    pub fn listen(port: u32) -> String {
+        format!("{port}/udp")
     }
 
     pub fn services(rows: &str) -> String {

@@ -1,4 +1,9 @@
-{ config, options, ... }:
+{
+  config,
+  options,
+  lib,
+  ...
+}:
 let
   str' = v: if v == null then "" else builtins.toString v;
 
@@ -54,6 +59,7 @@ let
       builtins.attrNames (config.users.users or { })
     );
     pkgCount = builtins.length (config.environment.systemPackages or [ ]);
+    network = import ./network.nix { inherit config lib; };
   };
 in
 {

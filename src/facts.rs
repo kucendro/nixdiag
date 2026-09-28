@@ -62,8 +62,63 @@ pub struct NixosHost {
     pub udp: Vec<u32>,
     pub users: Vec<String>,
     pub pkg_count: u64,
+    pub network: Network,
     #[serde(flatten)]
     pub base: HostBase,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Network {
+    pub interfaces: IndexMap<String, Interface>,
+    pub gateways: Vec<Gateway>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Interface {
+    pub kind: IfKind,
+    pub addresses: Vec<String>,
+    pub dhcp: bool,
+    pub over: Vec<String>,
+    pub vlan: Option<u32>,
+    pub port: Option<u32>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IfKind {
+    #[default]
+    Physical,
+    Virtual,
+    Tun,
+    Tap,
+    Vlan,
+    Bridge,
+    Bond,
+    Wireguard,
+}
+
+impl IfKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            IfKind::Physical => "physical",
+            IfKind::Virtual => "virtual",
+            IfKind::Tun => "tun",
+            IfKind::Tap => "tap",
+            IfKind::Vlan => "vlan",
+            IfKind::Bridge => "bridge",
+            IfKind::Bond => "bond",
+            IfKind::Wireguard => "wireguard",
+        }
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Gateway {
+    pub address: String,
+    pub interface: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

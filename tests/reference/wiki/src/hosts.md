@@ -2,15 +2,23 @@
 
 ## 🖥️ jerry {#host-jerry}
 
-|                          |                |
-|--------------------------|----------------|
-| Platform                 | `x86_64-linux` |
-| State version            | `24.05`        |
-| Users                    | admin          |
-| System packages          | 124            |
-| Open TCP ports           | 22, 443        |
-| Open UDP ports           | —              |
-| Repo-configured services | 2              |
+|                          |                          |
+|--------------------------|--------------------------|
+| Platform                 | `x86_64-linux`           |
+| State version            | `24.05`                  |
+| Users                    | admin                    |
+| System packages          | 124                      |
+| Open TCP ports           | 22, 443                  |
+| Open UDP ports           | —                        |
+| Default gateway          | `192.168.1.1` via `eth0` |
+| Repo-configured services | 2                        |
+
+**Interfaces:**
+
+| Interface | Kind     | Addresses         | Over   |
+|-----------|----------|-------------------|--------|
+| `eth0`    | physical | `192.168.1.10/24` | —      |
+| `iot`     | vlan 20  | `192.168.20.1/24` | `eth0` |
 
 **Services:**
 
@@ -29,15 +37,22 @@
 
 ## 🖥️ tom {#host-tom}
 
-|                          |                |
-|--------------------------|----------------|
-| Platform                 | `x86_64-linux` |
-| State version            | `24.05`        |
-| Users                    | admin          |
-| System packages          | 124            |
-| Open TCP ports           | 22, 443        |
-| Open UDP ports           | —              |
-| Repo-configured services | 2              |
+|                          |                          |
+|--------------------------|--------------------------|
+| Platform                 | `x86_64-linux`           |
+| State version            | `24.05`                  |
+| Users                    | admin                    |
+| System packages          | 124                      |
+| Open TCP ports           | 22, 443                  |
+| Open UDP ports           | —                        |
+| Default gateway          | `192.168.1.1` via `eth0` |
+| Repo-configured services | 2                        |
+
+**Interfaces:**
+
+| Interface | Kind     | Addresses         | Over |
+|-----------|----------|-------------------|------|
+| `eth0`    | physical | `192.168.1.20/24` | —    |
 
 **Services:**
 

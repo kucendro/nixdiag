@@ -4,6 +4,13 @@
     ../../modules/monitoring.nix
   ];
 
+  networking.interfaces.eth0.ipv4.addresses = [
+    {
+      address = "192.168.1.20";
+      prefixLength = 24;
+    }
+  ];
+
   services.tailscale = {
     enable = true;
     extraUpFlags = [ "--login-server=https://hs.ts.example" ];

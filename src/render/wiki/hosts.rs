@@ -2,7 +2,7 @@ use super::{code, codes, diagram, repo_services, size_paths, table, Page, Wiki};
 use crate::closures::Closures;
 use crate::conf::files::diagram::{modules, topology};
 use crate::conf::files::page;
-use crate::facts::{DarwinHost, Host, NixosHost};
+use crate::facts::{DarwinHost, Gateway, Host, Interface, Network, NixosHost};
 use crate::source::repo::Repo;
 use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
 use anyhow::Result;
@@ -73,8 +73,17 @@ fn host_nixos(
     }
     rows.push([t::TCP.into(), join_or_dash(&f.tcp)]);
     rows.push([t::UDP.into(), join_or_dash(&f.udp)]);
+    rows.push([t::GATEWAY.into(), gateways(&f.network)]);
     rows.push([t::SERVICES_COUNT.into(), svcs.len().to_string()]);
     o.push(table(KV, rows));
+
+    if !f.network.interfaces.is_empty() {
+        o.push(t::INTERFACES.into());
+        o.push(table(
+            t::INTERFACES_HEAD,
+            f.network.interfaces.iter().map(interface),
+        ));
+    }
 
     if !svcs.is_empty() {
         let mut rows = svcs
@@ -82,6 +91,30 @@ fn host_nixos(
             .map(|(name, files)| t::service(name, &codes(files, " ")));
         o.push(t::services(&rows.join("\n")));
     }
+}
+
+fn gateways(n: &Network) -> String {
+    let via = |g: &Gateway| match &g.interface {
+        Some(i) => t::via(&code(&g.address), &code(i)),
+        None => code(&g.address),
+    };
+    join_or_dash(&n.gateways.iter().map(via).collect_vec())
+}
+
+fn interface((name, i): (&String, &Interface)) -> [String; 4] {
+    let detail = i.vlan.map(|v| v.to_string()).or(i.port.map(t::listen));
+    let addresses = i
+        .dhcp
+        .then_some(t::DHCP.to_string())
+        .into_iter()
+        .chain(i.addresses.iter().map(code))
+        .collect_vec();
+    [
+        code(name),
+        t::kind(i.kind.label(), detail),
+        join_or_dash(&addresses),
+        join_or_dash(&i.over.iter().map(code).collect_vec()),
+    ]
 }
 
 fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
