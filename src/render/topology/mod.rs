@@ -2,6 +2,7 @@ mod cloud;
 mod host;
 mod networks;
 mod overview;
+mod place;
 
 pub use host::HostBoard;
 pub use networks::Networks;
@@ -103,6 +104,7 @@ pub struct View<'a> {
     pub hosts: IndexMap<&'a str, IndexMap<&'a str, Unit<'a>>>,
     pub ingress: Vec<Ingress<'a>>,
     pub networks: &'a [Network],
+    locations: &'a IndexMap<String, String>,
     connections: &'a [Connection],
 }
 
@@ -176,6 +178,7 @@ impl<'a> View<'a> {
             hosts,
             ingress: exposed.chain(named).collect(),
             networks: &model.networks,
+            locations: &model.locations,
             connections: &model.connections,
         }
     }

@@ -95,11 +95,11 @@ impl<'a> Cloud<'a> {
         self.net().edge()
     }
 
-    pub fn draw(&self, doc: &mut Doc) {
+    pub fn draw(&self, doc: &mut Doc, parent: Option<&str>) {
         let label = match self {
             Cloud::Net(net) => net.label().into(),
             Cloud::Network(nw) => n::network(nw.name.as_deref(), &nw.cidrs.iter().join("\n")),
         };
-        doc.shape(&self.key(), &label, self.net().cloud());
+        doc.place(parent, &self.key(), &label, self.net().cloud());
     }
 }

@@ -39,6 +39,7 @@ let
         expose
         units
         networks
+        location
         ;
     };
   };

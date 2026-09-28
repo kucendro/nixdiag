@@ -12,6 +12,7 @@
   ];
 
   nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" ];
+  nixdiag.location = "home";
 
   services.tailscale = {
     enable = true;

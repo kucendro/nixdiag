@@ -31,9 +31,10 @@ impl Page for Hosts {
     fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
         let mut o = Vec::new();
         for (host, f) in &w.facts.hosts {
+            let location = w.model.locations.get(host).map_or(NONE, String::as_str);
             match f {
-                Host::Nixos(n) => host_nixos(&mut o, host, n, w.repo, w.closures),
-                Host::Darwin(d) => host_darwin(&mut o, host, d),
+                Host::Nixos(n) => host_nixos(&mut o, host, n, location, w.repo, w.closures),
+                Host::Darwin(d) => host_darwin(&mut o, host, d, location),
             }
             for (title, stem) in [(t::TOPOLOGY, topology(host)), (t::MODULES, modules(host))] {
                 if let Some(board) = diagram(w, &stem) {
@@ -49,6 +50,7 @@ fn host_nixos(
     o: &mut Vec<String>,
     host: &str,
     f: &NixosHost,
+    location: &str,
     repo: &Repo,
     closures: Option<&Closures>,
 ) {
@@ -61,7 +63,10 @@ fn host_nixos(
     } else {
         &f.platform
     };
-    let mut rows = vec![[t::PLATFORM.into(), code(platform)]];
+    let mut rows = vec![
+        [t::LOCATION.into(), location.into()],
+        [t::PLATFORM.into(), code(platform)],
+    ];
     if !f.state_version.is_empty() {
         rows.push([t::STATE.into(), code(&f.state_version)]);
     }
@@ -117,7 +122,7 @@ fn interface((name, i): (&String, &Interface)) -> [String; 4] {
     ]
 }
 
-fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
+fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost, location: &str) {
     o.push(t::darwin(host, &page::anchor(host)));
     o.push(
         f.base
@@ -125,6 +130,7 @@ fn host_darwin(o: &mut Vec<String>, host: &str, f: &DarwinHost) {
             .clone()
             .unwrap_or_else(|| t::DARWIN_INTRO.into()),
     );
+    o.push(t::list(t::LOCATION, location));
     for (title, items) in [
         (t::DAEMONS, &f.daemons),
         (t::AGENTS, &f.user_agents),

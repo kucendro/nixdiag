@@ -79,7 +79,7 @@ impl Diagram for HostBoard<'_, '_> {
         }
 
         for c in clouds.values() {
-            c.draw(doc);
+            c.draw(doc, None);
         }
         for (key, (text, link)) in &ghosts {
             doc.shape(key, text, Class::Ghost).link(link);

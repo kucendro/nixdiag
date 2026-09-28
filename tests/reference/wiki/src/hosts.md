@@ -4,6 +4,7 @@
 
 |                          |                          |
 |--------------------------|--------------------------|
+| Location                 | home                     |
 | Platform                 | `x86_64-linux`           |
 | State version            | `24.05`                  |
 | Users                    | admin                    |
@@ -41,6 +42,7 @@
 
 |                          |                          |
 |--------------------------|--------------------------|
+| Location                 | home                     |
 | Platform                 | `x86_64-linux`           |
 | State version            | `24.05`                  |
 | Users                    | admin                    |

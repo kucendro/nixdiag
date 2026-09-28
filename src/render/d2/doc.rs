@@ -21,6 +21,7 @@ pub enum Class {
     Mesh,
     Flow,
     Local,
+    Location,
 }
 
 impl Class {
@@ -45,6 +46,7 @@ impl Class {
             Class::Mesh => "mesh",
             Class::Flow => "flow",
             Class::Local => "local",
+            Class::Location => "location",
         }
     }
 }
@@ -156,6 +158,19 @@ impl Doc {
     pub fn shape(&mut self, key: &str, label: &str, class: Class) -> &mut Shape {
         self.shapes.push(Shape::new(key, label, class));
         self.shapes.last_mut().expect("just pushed")
+    }
+
+    pub fn place(
+        &mut self,
+        parent: Option<&str>,
+        key: &str,
+        label: &str,
+        class: Class,
+    ) -> &mut Shape {
+        match parent.and_then(|p| self.shapes.iter().position(|s| s.key == p)) {
+            Some(i) => self.shapes[i].child(key, label, class),
+            None => self.shape(key, label, class),
+        }
     }
 
     pub fn edge(
@@ -320,6 +335,7 @@ mod tests {
             Class::Mesh,
             Class::Flow,
             Class::Local,
+            Class::Location,
         ];
         for c in all {
             assert!(

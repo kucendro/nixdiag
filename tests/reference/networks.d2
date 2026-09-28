@@ -1,23 +1,26 @@
 ...@theme
 
 direction: down
+"location home": "📍 home" {
+  class: location
+  "net lan": "lan\n192.168.1.0/24" {class: net-lan}
+  "gateway 192.168.1.1": "gateway 192.168.1.1" {class: ghost}
+  "net 192.168.20.0/24": "192.168.20.0/24" {class: net-lan}
+  "jerry": "🖥️ jerry" {
+    class: machine
+    link: "./hosts.html#host-jerry"
+  }
+  "tom": "🖥️ tom" {
+    class: machine
+    link: "./hosts.html#host-tom"
+  }
+}
 ":internet": "🌐 Internet" {class: net-public}
 "net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
-"net lan": "lan\n192.168.1.0/24" {class: net-lan}
-"gateway 192.168.1.1": "gateway 192.168.1.1" {class: ghost}
-"net 192.168.20.0/24": "192.168.20.0/24" {class: net-lan}
-"jerry": "🖥️ jerry" {
-  class: machine
-  link: "./hosts.html#host-jerry"
-}
-"tom": "🖥️ tom" {
-  class: machine
-  link: "./hosts.html#host-tom"
-}
-"net hs.ts.example" -- "jerry": "tailscale0" {class: mesh}
-"net hs.ts.example" -- "tom": "tailscale0" {class: mesh}
-"gateway 192.168.1.1" -- "net lan" {class: lan}
-":internet" -- "gateway 192.168.1.1" {class: public}
-"net lan" -- "jerry": "eth0 192.168.1.10" {class: lan}
-"net lan" -- "tom": "eth0 192.168.1.20" {class: lan}
-"net 192.168.20.0/24" -- "jerry": "iot 192.168.20.1" {class: lan}
+"net hs.ts.example" -- "location home"."jerry": "tailscale0" {class: mesh}
+"net hs.ts.example" -- "location home"."tom": "tailscale0" {class: mesh}
+"location home"."gateway 192.168.1.1" -- "location home"."net lan" {class: lan}
+":internet" -- "location home"."gateway 192.168.1.1" {class: public}
+"location home"."net lan" -- "location home"."jerry": "eth0 192.168.1.10" {class: lan}
+"location home"."net lan" -- "location home"."tom": "eth0 192.168.1.20" {class: lan}
+"location home"."net 192.168.20.0/24" -- "location home"."jerry": "iot 192.168.20.1" {class: lan}

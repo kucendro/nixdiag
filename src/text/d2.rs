@@ -43,6 +43,10 @@ pub mod topology {
         format!("{host} / {unit}")
     }
 
+    pub fn location(name: &str) -> String {
+        format!("📍 {name}")
+    }
+
     pub fn flows(count: usize) -> String {
         format!("{count} flows")
     }

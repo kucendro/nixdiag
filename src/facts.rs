@@ -157,6 +157,7 @@ pub struct Topology {
     pub expose: Vec<Expose>,
     pub units: IndexMap<String, Unit>,
     pub networks: IndexMap<String, Declared>,
+    pub location: Option<String>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

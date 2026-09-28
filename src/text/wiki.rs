@@ -45,6 +45,7 @@ pub mod summary {
 pub mod hosts {
     pub const TITLE: &str = "Hosts";
     pub const DARWIN_INTRO: &str = "_nix-darwin host._";
+    pub const LOCATION: &str = "Location";
     pub const PLATFORM: &str = "Platform";
     pub const UNKNOWN_PLATFORM: &str = "?";
     pub const STATE: &str = "State version";

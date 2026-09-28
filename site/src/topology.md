@@ -66,6 +66,18 @@ nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" "fd00:1::/64" ];
 The same name declared differently on two hosts, or two declared networks
 that overlap, fails the build.
 
+## Locations
+
+```nix
+nixdiag.location = "home";
+```
+
+Hosts sharing a `lan` or `public` network share a location: name it on one
+host and the rest follow. A host's own `nixdiag.location` wins; two names in
+one group leave its unnamed hosts out. The overview and the networks board
+draw each location as a box around its hosts and the networks inside it;
+mesh networks and the internet stay outside.
+
 ## Overriding
 
 ```nix

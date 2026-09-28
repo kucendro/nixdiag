@@ -90,6 +90,7 @@ in
 {
   options.nixdiag = {
     description = optional types.lines;
+    location = optional types.str;
     role = optional types.str;
     inherit scope;
     names = list types.str;

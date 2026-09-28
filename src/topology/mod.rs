@@ -1,3 +1,4 @@
+mod locations;
 mod model;
 mod networks;
 mod resolve;
@@ -49,6 +50,7 @@ pub fn build(facts: &Facts) -> Result<Model> {
             }
         }
     }
+    model.locations = locations::build(facts, &nets);
     model.networks = nets;
     Ok(model)
 }

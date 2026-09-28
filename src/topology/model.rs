@@ -1,5 +1,6 @@
 use super::networks::Network;
 use crate::facts::Scope;
+use indexmap::IndexMap;
 
 pub const INTERNET: &str = "internet";
 pub const LAN: &str = "lan";
@@ -62,4 +63,5 @@ pub struct Model {
     pub connections: Vec<Connection>,
     pub named: Vec<NamedEndpoint>,
     pub networks: Vec<Network>,
+    pub locations: IndexMap<String, String>,
 }

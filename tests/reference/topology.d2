@@ -1,26 +1,29 @@
 ...@theme
 
 direction: down
+"location home": "📍 home" {
+  class: location
+  "net lan": "lan\n192.168.1.0/24" {class: net-lan}
+  "jerry": "🖥️ jerry" {
+    class: table
+    link: "./hosts.html#host-jerry"
+    "headscale": "8080/tcp" {constraint: "mesh control"}
+    "nginx": "80/tcp, 443/tcp" {constraint: "proxy"}
+    "tailscale": "—" {constraint: "mesh node"}
+  }
+  "tom": "🖥️ tom" {
+    class: table
+    link: "./hosts.html#host-tom"
+    "exporter": "—"
+    "grafana": "3000/tcp" {constraint: "monitor"}
+    "tailscale": "—" {constraint: "mesh node"}
+  }
+}
 "net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}
 ":internet": "🌐 Internet" {class: net-public}
-"net lan": "lan\n192.168.1.0/24" {class: net-lan}
-"jerry": "🖥️ jerry" {
-  class: table
-  link: "./hosts.html#host-jerry"
-  "headscale": "8080/tcp" {constraint: "mesh control"}
-  "nginx": "80/tcp, 443/tcp" {constraint: "proxy"}
-  "tailscale": "—" {constraint: "mesh node"}
-}
-"tom": "🖥️ tom" {
-  class: table
-  link: "./hosts.html#host-tom"
-  "exporter": "—"
-  "grafana": "3000/tcp" {constraint: "monitor"}
-  "tailscale": "—" {constraint: "mesh node"}
-}
-"net hs.ts.example" -> "tom"."grafana": "grafana.ts.example :3000" {class: mesh}
-"net hs.ts.example" -> "jerry"."nginx": "grafana.ts.example :443" {class: mesh}
-":internet" -> "jerry"."nginx": "hs.ts.example :443" {class: public}
-"tom"."tailscale" -> "net lan": "advertise" {class: lan}
-"jerry"."nginx" -> "tom"."grafana": "grafana :3000" {class: flow}
-"tom"."tailscale" -> "jerry"."nginx": "mesh" {class: flow}
+"net hs.ts.example" -> "location home"."tom"."grafana": "grafana.ts.example :3000" {class: mesh}
+"net hs.ts.example" -> "location home"."jerry"."nginx": "grafana.ts.example :443" {class: mesh}
+":internet" -> "location home"."jerry"."nginx": "hs.ts.example :443" {class: public}
+"location home"."tom"."tailscale" -> "location home"."net lan": "advertise" {class: lan}
+"location home"."jerry"."nginx" -> "location home"."tom"."grafana": "grafana :3000" {class: flow}
+"location home"."tom"."tailscale" -> "location home"."jerry"."nginx": "mesh" {class: flow}
