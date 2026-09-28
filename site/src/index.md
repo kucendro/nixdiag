@@ -30,9 +30,10 @@ Both are the two-host fixture, the [live demo](./demo.md).
 | `wiki/book.toml`, `wiki/d2.css`, `wiki/d2.js` | the book: diagrams fit the page, ⤢ opens one to pan and zoom |
 | `wiki/src/index.md` | a stub for your own overview, replaced by `indexPage` |
 | `wiki/src/architecture.md` | topology diagram, networks board |
-| `wiki/src/hosts.md` | per host: platform, users, ports, default gateway, interfaces, services and their files, topology, module tree |
+| `wiki/src/hosts.md` | per host: location, platform, users, firewall link, default gateway, interfaces, services and their files, topology, module tree |
 | `wiki/src/services.md` | every service, the hosts running it, the file defining it |
 | `wiki/src/endpoints.md` | fqdn, port, scope, host, service |
+| `wiki/src/firewall.md` | per host: open ports on every interface and on each one, trusted interfaces |
 | `wiki/src/inputs.md`, `inputs-timeline.svg` | every input with its rev and lock date, how many days each trails the newest, plus duplicate detection |
 | `wiki/src/closures.md`, `closures.svg` | opt-in: per-host closure size, largest paths, fleet sharing, stacked bar chart |
 

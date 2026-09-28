@@ -13,7 +13,8 @@ impl Overview<'_, '_> {
         let Some(n) = self.0.facts.hosts.get(host).and_then(|h| h.as_nixos()) else {
             return Vec::new();
         };
-        [(t::TCP, &n.tcp), (t::UDP, &n.udp)]
+        let open = &n.network.firewall.rules;
+        [(t::TCP, &open.tcp), (t::UDP, &open.udp)]
             .into_iter()
             .filter(|(_, ports)| !ports.is_empty())
             .map(|(proto, ports)| (proto, ports.iter().join(t::PORTS_SEP)))

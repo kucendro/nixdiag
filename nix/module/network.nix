@@ -64,6 +64,26 @@ let
   };
 in
 {
+  firewall =
+    let
+      fw = net.firewall;
+      ranges = map (r: [
+        r.from
+        r.to
+      ]);
+      rules = r: {
+        tcp = r.allowedTCPPorts;
+        udp = r.allowedUDPPorts;
+        tcpRanges = ranges r.allowedTCPPortRanges;
+        udpRanges = ranges r.allowedUDPPortRanges;
+      };
+    in
+    rules fw
+    // {
+      inherit (fw) enable;
+      trusted = fw.trustedInterfaces;
+      interfaces = lib.mapAttrs (_: rules) fw.interfaces;
+    };
   interfaces = lib.mapAttrs (_: i: i // { addresses = map address i.addresses; }) (
     derived // lib.mapAttrs merge config.nixdiag.interfaces
   );

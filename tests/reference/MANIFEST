@@ -9,6 +9,7 @@ docs      theme.d2
 
 docs      wiki/src/hosts.md
 docs      wiki/src/endpoints.md
+docs      wiki/src/firewall.md
 docs      wiki/src/inputs.md
 docs      wiki/src/inputs-timeline.svg
 

@@ -58,8 +58,6 @@ pub struct HostBase {
 pub struct NixosHost {
     pub platform: String,
     pub state_version: String,
-    pub tcp: Vec<u32>,
-    pub udp: Vec<u32>,
     pub users: Vec<String>,
     pub pkg_count: u64,
     pub network: Network,
@@ -72,6 +70,26 @@ pub struct NixosHost {
 pub struct Network {
     pub interfaces: IndexMap<String, Interface>,
     pub gateways: Vec<Gateway>,
+    pub firewall: Firewall,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Firewall {
+    pub enable: bool,
+    #[serde(flatten)]
+    pub rules: Rules,
+    pub interfaces: IndexMap<String, Rules>,
+    pub trusted: Vec<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Rules {
+    pub tcp: Vec<u32>,
+    pub udp: Vec<u32>,
+    pub tcp_ranges: Vec<(u32, u32)>,
+    pub udp_ranges: Vec<(u32, u32)>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

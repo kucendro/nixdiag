@@ -8,6 +8,10 @@ pub fn code(s: impl Display) -> String {
     format!("`{s}`")
 }
 
+pub fn link(text: &str, url: &str) -> String {
+    format!("[{text}]({url})")
+}
+
 pub fn size_paths(size: impl Display, paths: impl Display) -> String {
     format!("{size} ({paths} paths)")
 }
@@ -52,8 +56,8 @@ pub mod hosts {
     pub const USERS: &str = "Users";
     pub const PACKAGES: &str = "System packages";
     pub const CLOSURE: &str = "Closure";
-    pub const TCP: &str = "Open TCP ports";
-    pub const UDP: &str = "Open UDP ports";
+    pub const FIREWALL: &str = "Firewall";
+    pub const RULES: &str = "rules";
     pub const GATEWAY: &str = "Default gateway";
     pub const INTERFACES: &str = "**Interfaces:**";
     pub const INTERFACES_HEAD: [&str; 4] = ["Interface", "Kind", "Addresses", "Over"];
@@ -98,6 +102,26 @@ pub mod hosts {
 
     pub fn list(title: &str, items: &str) -> String {
         format!("**{title}:** {items}")
+    }
+}
+
+pub mod firewall {
+    pub const TITLE: &str = "Firewall";
+    pub const HEAD: [&str; 3] = ["Interface", "TCP", "UDP"];
+    pub const ALL: &str = "every interface";
+    pub const EVERY: &str = "every port";
+    pub const OFF: &str = "**Off:** every port is open on every interface.";
+
+    pub fn host(host: &str, anchor: &str) -> String {
+        format!("## {host} {{#{anchor}}}")
+    }
+
+    pub fn trusted(interface: &str) -> String {
+        format!("`{interface}` (trusted)")
+    }
+
+    pub fn range(from: u32, to: u32) -> String {
+        format!("{from}–{to}")
     }
 }
 

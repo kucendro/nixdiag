@@ -4,7 +4,7 @@ use crate::conf::files::diagram::{modules, topology};
 use crate::conf::files::page;
 use crate::facts::{DarwinHost, Gateway, Host, Interface, Network, NixosHost};
 use crate::source::repo::Repo;
-use crate::text::wiki::{hosts as t, KV, NONE, NOT_MEASURED};
+use crate::text::wiki::{hosts as t, link, KV, NONE, NOT_MEASURED};
 use anyhow::Result;
 use itertools::Itertools;
 use std::fmt::Display;
@@ -76,8 +76,7 @@ fn host_nixos(
         let closure = cs.hosts.get(host).map(|c| size_paths(&c.total()));
         rows.push([t::CLOSURE.into(), closure.unwrap_or(NOT_MEASURED.into())]);
     }
-    rows.push([t::TCP.into(), join_or_dash(&f.tcp)]);
-    rows.push([t::UDP.into(), join_or_dash(&f.udp)]);
+    rows.push([t::FIREWALL.into(), link(t::RULES, &page::firewall(host))]);
     rows.push([t::GATEWAY.into(), gateways(&f.network)]);
     rows.push([t::SERVICES_COUNT.into(), svcs.len().to_string()]);
     o.push(table(KV, rows));
