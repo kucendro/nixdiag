@@ -21,7 +21,6 @@ the same for the current directory without touching the flake.
 | `title` | `"Infrastructure wiki"` | book title |
 | `hosts` | all | list of host names to restrict to |
 | `indexPage` | seeded stub | your own `wiki/src/index.md` |
-| `bookToml` | seeded default | your own `wiki/book.toml`; keep `additional-css = ["d2.css"]` so each diagram shows once |
 | `extraPages` | `{ }` | `{ Runbooks = ./runbooks.md; }`, copied in and linked |
 | `extraLinks` | `{ }` | `{ Termux = "termux.md"; }`, SUMMARY entry for a page another tool writes |
 | `extraAssets` | `{ }` | `{ "img/rack.png" = ./rack.png; }`, copied into `wiki/src` before mdbook |
