@@ -1,8 +1,7 @@
 use crate::facts::Scope;
 use crate::render::d2::{Class, Doc};
 use crate::text::d2::{networks as n, topology as t};
-use crate::topology::{longest, Network};
-use ipnet::IpNet;
+use crate::topology::{by_id, Network, Route};
 use itertools::Itertools;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -87,8 +86,9 @@ impl<'a> Cloud<'a> {
         clouds.unique_by(Cloud::key).collect()
     }
 
-    pub fn route(nets: &'a [Network], prefix: &IpNet) -> Cloud<'a> {
-        longest(nets, prefix).map_or(Cloud::Net(Net::Internet), Cloud::Network)
+    pub fn route(nets: &'a [Network], route: &Route) -> Cloud<'a> {
+        let to = route.to.as_deref().and_then(|id| by_id(nets, id));
+        to.map_or(Cloud::Net(Net::Internet), Cloud::Network)
     }
 
     fn net(&self) -> Net {

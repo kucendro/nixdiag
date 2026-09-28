@@ -20,6 +20,15 @@ fn eth0(cidr: &str) -> Value {
     json!({ "eth0": { "addresses": [{ "cidr": cidr, "scope": "lan" }] } })
 }
 
+fn at(mut host: Value, location: &str) -> Value {
+    host["topology"]["location"] = json!(location);
+    host
+}
+
+fn ids(nets: &[Network]) -> Vec<String> {
+    nets.iter().map(Network::id).collect()
+}
+
 fn members(n: &Network) -> Vec<(&str, &str, Option<String>)> {
     n.members
         .iter()
@@ -91,12 +100,18 @@ fn route_wider_than_a_subnet_is_its_own_network() {
     assert_eq!(ids, ["10.0.0.0/24", "10.0.0.0/8"]);
     let wide = "10.0.0.0/8".parse().unwrap();
     assert_eq!(
-        longest(&nets, &wide).map(Network::id).unwrap(),
+        find(&nets, |n| n.covers(&wide), None)
+            .unwrap()
+            .map(Network::id)
+            .unwrap(),
         "10.0.0.0/8"
     );
     let one = "10.0.0.7/32".parse().unwrap();
     assert_eq!(
-        longest(&nets, &one).map(Network::id).unwrap(),
+        find(&nets, |n| n.covers(&one), None)
+            .unwrap()
+            .map(Network::id)
+            .unwrap(),
         "10.0.0.0/24"
     );
 }
@@ -128,4 +143,98 @@ fn scopeless_addresses_are_skipped_and_bad_ones_fail() {
         .is_empty());
     let bad = eth0("192.168.1.300/24");
     assert!(build(&facts(json!({ "a": host(bad, json!({})) }))).is_err());
+}
+
+#[test]
+fn one_subnet_at_two_locations_is_two_networks() {
+    let f = facts(json!({
+        "a": at(host(eth0("192.168.1.10/24"), json!({})), "home"),
+        "b": at(host(eth0("192.168.1.20/24"), json!({})), "lab"),
+        "c": at(host(eth0("192.168.2.30/24"), json!({})), "lab"),
+    }));
+    let nets = build(&f).unwrap();
+    assert_eq!(
+        ids(&nets),
+        [
+            "192.168.1.0/24 @ home",
+            "192.168.1.0/24 @ lab",
+            "192.168.2.0/24 @ lab"
+        ]
+    );
+    assert_eq!(
+        members(&nets[1]),
+        [("b", "eth0", Some("192.168.1.20".into()))]
+    );
+    assert_eq!(nets[1].gateways.len(), 1);
+}
+
+#[test]
+fn an_unlocated_host_joins_the_only_copy_else_fails() {
+    let f = facts(json!({
+        "c": host(eth0("192.168.1.30/24"), json!({})),
+        "a": at(host(eth0("192.168.1.10/24"), json!({})), "home"),
+    }));
+    let nets = build(&f).unwrap();
+    assert_eq!(ids(&nets), ["192.168.1.0/24 @ home"]);
+    assert_eq!(nets[0].members.len(), 2);
+
+    let f = facts(json!({
+        "a": at(host(eth0("192.168.1.10/24"), json!({})), "home"),
+        "b": at(host(eth0("192.168.1.20/24"), json!({})), "lab"),
+        "c": host(eth0("192.168.1.30/24"), json!({})),
+    }));
+    let err = build(&f).unwrap_err().to_string();
+    assert!(
+        err.contains("c: `192.168.1.30` is on networks at several locations"),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_name_splits_per_location_and_a_mesh_never_does() {
+    let lan = json!({
+        "lan": { "cidrs": ["192.168.1.0/24"] },
+        "tailnet": { "cidrs": ["100.64.0.0/10"], "kind": "mesh" }
+    });
+    let f = facts(json!({
+        "a": at(host(eth0("192.168.1.10/24"), lan.clone()), "home"),
+        "b": at(host(eth0("192.168.1.20/24"), lan.clone()), "lab"),
+    }));
+    let nets = build(&f).unwrap();
+    assert_eq!(ids(&nets), ["lan @ home", "tailnet", "lan @ lab"]);
+    assert_eq!(
+        members(&nets[2]),
+        [("b", "eth0", Some("192.168.1.20".into()))]
+    );
+
+    let f = facts(json!({
+        "a": at(host(json!({}), lan.clone()), "home"),
+        "b": host(json!({}), lan),
+    }));
+    let err = build(&f).unwrap_err().to_string();
+    assert!(err.contains("`lan @ home` and `lan` overlap"), "{err}");
+}
+
+#[test]
+fn routes_lead_into_their_own_location() {
+    let mut router = eth0("192.168.1.10/24");
+    router["eth0"]["routes"] = json!(["192.168.1.0/24", "10.9.0.0/16", "0.0.0.0/0"]);
+    let f = facts(json!({
+        "a": at(host(router, json!({})), "home"),
+        "b": at(host(eth0("192.168.1.20/24"), json!({})), "lab"),
+    }));
+    let nets = build(&f).unwrap();
+    let to: Vec<_> = nets[0].members[0]
+        .routes
+        .iter()
+        .map(|r| r.to.as_deref())
+        .collect();
+    assert_eq!(
+        to,
+        [
+            Some("192.168.1.0/24 @ home"),
+            Some("10.9.0.0/16 @ home"),
+            None
+        ]
+    );
 }

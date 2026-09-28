@@ -26,7 +26,7 @@ impl Diagram for Networks<'_, '_> {
             .iter()
             .flat_map(|n| &n.members)
             .flat_map(|m| m.routes.iter().map(move |r| (m, r)));
-        let exits = routes.clone().any(|(_, r)| r.prefix_len() == 0);
+        let exits = routes.clone().any(|(_, r)| r.to.is_none());
         if exits || v.networks.iter().any(|n| !n.gateways.is_empty()) {
             internet.draw(doc, None);
         }

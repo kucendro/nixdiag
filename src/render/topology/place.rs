@@ -14,7 +14,10 @@ impl<'a> View<'a> {
         self.locations.get(host).map(String::as_str)
     }
 
-    fn settled(&self, n: &Network) -> Option<&'a str> {
+    fn settled(&self, n: &'a Network) -> Option<&'a str> {
+        if n.location.is_some() {
+            return n.location.as_deref();
+        }
         if !matches!(n.kind, Some(Scope::Lan | Scope::Public)) {
             return None;
         }

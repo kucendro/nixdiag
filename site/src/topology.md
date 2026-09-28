@@ -68,8 +68,14 @@ nixdiag.networks.lan.cidrs = [ "192.168.1.0/24" "fd00:1::/64" ];
 | `nixdiag.networks.<name>.server` | host | control server; a `mesh` interface with it joins |
 | `nixdiag.interfaces.<name>` | `{ kind, addresses, routes, server }` | an interface NixOS does not configure; `routes` are prefixes it carries, `0.0.0.0/0` makes an exit node |
 
-The same name declared differently on two hosts, or two declared networks
-that overlap, fails the build.
+A network belongs to the `nixdiag.location` of the hosts on it, so the same
+range at two locations is two networks, `192.168.1.0/24 @ home` and
+`192.168.1.0/24 @ lab`. A declared name splits the same way into `lan @ home`
+and `lan @ lab`; a `mesh` network never splits. A host without a location
+joins the only copy of its range, and fails the build when there are several.
+
+The same name declared differently at one location, or two declared networks
+that overlap without sitting at two different locations, fails the build.
 
 The overlay board draws every `mesh` network: its members by interface, the
 routes they carry, and the control server their `control` connections reach.
@@ -139,6 +145,9 @@ attrset declares a unit no adapter knows.
 | `lan` | network with that name, after hosts and units |
 | `192.168.1.0/24` | network holding it, a new one if none |
 | `http://192.168.1.20:3000` | host with that address, its unit on 3000; else its network |
+
+A network, CIDR or address found at several locations resolves at the
+source host's location; from a host with no location it fails the build.
 
 Unresolved fails the build. `lan` is no longer built in: declare
 `nixdiag.networks.lan.cidrs` and `to = "lan"` keeps working.

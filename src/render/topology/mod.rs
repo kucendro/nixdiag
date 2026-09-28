@@ -15,7 +15,7 @@ pub use cloud::{Cloud, Net};
 use super::d2::Class;
 use crate::facts::{Facts, Host, Kind, Plane};
 use crate::text::d2::topology as t;
-use crate::topology::{Connection, Endpoint, Model, Network};
+use crate::topology::{by_id, Connection, Endpoint, Model, Network};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use std::collections::BTreeSet;
@@ -31,11 +31,9 @@ impl<'a> Target<'a> {
             Endpoint::Unit(h, u) => Target::Node(h, Some(u)),
             Endpoint::Host(h) => Target::Node(h, None),
             Endpoint::Internet => Target::Net(Cloud::Net(Net::Internet)),
-            Endpoint::Network(id) => Target::Net(
-                nets.iter()
-                    .find(|n| n.id() == *id)
-                    .map_or(Cloud::Net(Net::Lan), Cloud::Network),
-            ),
+            Endpoint::Network(id) => {
+                Target::Net(by_id(nets, id).map_or(Cloud::Net(Net::Lan), Cloud::Network))
+            }
         }
     }
 

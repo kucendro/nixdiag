@@ -7,7 +7,7 @@ pub mod target;
 
 pub use firewall::Finding;
 pub use model::{Connection, Endpoint, Exposure, Model, NamedEndpoint, INTERNET, LAN};
-pub use networks::{longest, Network};
+pub use networks::{by_id, Network, Route};
 
 use crate::facts::Facts;
 use crate::text::messages::Fail;
@@ -16,6 +16,7 @@ use std::iter::once;
 
 pub fn build(facts: &Facts) -> Result<Model> {
     let nets = networks::build(facts)?;
+    let locations = locations::build(facts, &nets);
     let mut model = Model {
         exposed: exposed(facts),
         ..Model::default()
@@ -30,15 +31,17 @@ pub fn build(facts: &Facts) -> Result<Model> {
         for (unit, u) in &topo.units {
             let node = Endpoint::Unit(host.clone(), unit.clone());
             for c in &u.connections {
-                let to = resolve::target(facts, &nets, &book, host, &c.to).map_err(|reason| {
-                    let (host, unit, target) = (host.clone(), unit.clone(), c.to.clone());
-                    Fail::Connection {
-                        host,
-                        unit,
-                        target,
-                        reason,
-                    }
-                })?;
+                let here = locations.get(host).map(String::as_str);
+                let to =
+                    resolve::target(facts, &nets, &book, host, here, &c.to).map_err(|reason| {
+                        let (host, unit, target) = (host.clone(), unit.clone(), c.to.clone());
+                        Fail::Connection {
+                            host,
+                            unit,
+                            target,
+                            reason,
+                        }
+                    })?;
                 if let Some(name) = &c.name {
                     model.named.push(NamedEndpoint {
                         name: name.clone(),
@@ -72,7 +75,7 @@ pub fn build(facts: &Facts) -> Result<Model> {
         .map(|h| (h.clone(), audit.of(h)))
         .collect();
     model.findings = findings;
-    model.locations = locations::build(facts, &nets);
+    model.locations = locations;
     model.networks = nets;
     Ok(model)
 }

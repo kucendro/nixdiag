@@ -72,3 +72,44 @@ fn hosts_win_over_networks_and_bare_lan_says_what_to_do() {
     let err = format!("{:#}", to("lan", json!({})).unwrap_err());
     assert!(err.contains("declare nixdiag.networks.lan.cidrs"), "{err}");
 }
+
+#[test]
+fn addresses_and_names_resolve_at_the_source_location_first() {
+    let web = json!({ "web": { "ports": [3000] } });
+    let lan = json!({ "lan": { "cidrs": ["192.168.1.0/24"] } });
+    let placed = |cidr: &str, units: Value, location: Option<&str>| {
+        let networks = if location.is_some() {
+            lan.clone()
+        } else {
+            json!({})
+        };
+        let mut h = host(eth0(cidr), units, networks);
+        h["topology"]["location"] = json!(location);
+        h
+    };
+    let resolve = |target: &str, location: Option<&str>| {
+        let client = json!({ "app": { "connections": [{ "to": target }] } });
+        let facts: Facts = serde_json::from_value(json!({
+            "schema": 4,
+            "hosts": {
+                "a": placed("10.0.0.5/24", client, location),
+                "b": placed("192.168.1.20/24", web.clone(), Some("home")),
+                "c": placed("192.168.1.20/24", web.clone(), Some("lab"))
+            }
+        }))
+        .unwrap();
+        build(&facts).map(|m| m.connections[0].to.clone())
+    };
+    let b = Endpoint::Unit("b".into(), "web".into());
+    assert_eq!(
+        resolve("http://192.168.1.20:3000", Some("home")).unwrap(),
+        b
+    );
+    assert_eq!(
+        resolve("192.168.1.0/24", Some("lab")).unwrap(),
+        net("lan @ lab")
+    );
+    assert_eq!(resolve("lan", Some("home")).unwrap(), net("lan @ home"));
+    let err = format!("{:#}", resolve("lan", None).unwrap_err());
+    assert!(err.contains("several locations"), "{err}");
+}

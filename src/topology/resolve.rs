@@ -1,4 +1,4 @@
-use super::networks::{longest, owner, Network};
+use super::networks::{find, owner, Network};
 use super::target::Target;
 use super::{Endpoint, Exposure, INTERNET, LAN};
 use crate::facts::Facts;
@@ -70,13 +70,14 @@ pub fn target(
     nets: &[Network],
     book: &Book,
     from: &str,
+    here: Option<&str>,
     target: &str,
 ) -> Result<Endpoint, Unresolved> {
     if target == INTERNET {
         return Ok(Endpoint::Internet);
     }
     if let Ok(cidr) = target.parse::<IpNet>() {
-        return network(nets, &cidr).ok_or(Unresolved::Unknown);
+        return network(nets, &cidr, here)?.ok_or(Unresolved::Unknown);
     }
     if !target.contains("://") {
         if let Some((h, u)) = target.split_once('/') {
@@ -89,7 +90,8 @@ pub fn target(
     if let Some(e) = unique_unit(facts, target)? {
         return Ok(e);
     }
-    if let Some(n) = nets.iter().find(|n| n.name.as_deref() == Some(target)) {
+    let named = |n: &Network| (n.name.as_deref() == Some(target)).then_some(0);
+    if let Some(n) = find(nets, named, here)? {
         return Ok(Endpoint::Network(n.id()));
     }
     if target == LAN {
@@ -108,9 +110,9 @@ pub fn target(
         Host::Domain(_) => None,
     };
     if let Some(ip) = ip {
-        return match owner(nets, &ip) {
+        return match owner(nets, &ip, here)? {
             Some(m) => Ok(on_host(facts, &m.host, t.port)),
-            None => network(nets, &ip.into()).ok_or(Unresolved::Unknown),
+            None => network(nets, &ip.into(), here)?.ok_or(Unresolved::Unknown),
         };
     }
     let name = t.host.to_string();
@@ -124,8 +126,13 @@ pub fn target(
     Err(Unresolved::Unknown)
 }
 
-fn network(nets: &[Network], prefix: &IpNet) -> Option<Endpoint> {
-    longest(nets, prefix).map(|n| Endpoint::Network(n.id()))
+fn network(
+    nets: &[Network],
+    prefix: &IpNet,
+    here: Option<&str>,
+) -> Result<Option<Endpoint>, Unresolved> {
+    let n = find(nets, |n| n.covers(prefix), here)?;
+    Ok(n.map(|n| Endpoint::Network(n.id())))
 }
 
 fn on_host(facts: &Facts, host: &str, port: Option<u32>) -> Endpoint {

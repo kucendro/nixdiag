@@ -88,6 +88,10 @@ pub mod networks {
         format!("{label}\n{SERVER}")
     }
 
+    pub fn located(id: &str, location: &str) -> String {
+        format!("{id} @ {location}")
+    }
+
     pub fn gateway(address: impl Display) -> String {
         format!("gateway {address}")
     }

@@ -42,11 +42,24 @@ fn public_subnets_group_and_mesh_does_not() {
 }
 
 #[test]
-fn conflicting_names_leave_the_unnamed_out() {
+fn one_subnet_at_two_named_locations_stays_apart() {
     let got = locations(json!({
         "a": host("192.168.1.10/24", "lan", Some("home")),
         "b": host("192.168.1.20/24", "lan", Some("lab")),
-        "c": host("192.168.1.30/24", "lan", None),
+    }));
+    assert_eq!(got, [pair("a", "home"), pair("b", "lab")]);
+}
+
+#[test]
+fn a_host_between_two_named_locations_gets_none() {
+    let lan = |cidr: &str| json!({ "addresses": [{ "cidr": cidr, "scope": "lan" }] });
+    let got = locations(json!({
+        "a": host("192.168.2.10/24", "lan", Some("home")),
+        "b": host("192.168.3.20/24", "lan", Some("lab")),
+        "c": {
+            "kind": "nixos",
+            "network": { "interfaces": { "eth0": lan("192.168.2.30/24"), "eth1": lan("192.168.3.30/24") } }
+        },
     }));
     assert_eq!(got, [pair("a", "home"), pair("b", "lab")]);
 }
