@@ -69,7 +69,7 @@ in
     vm = [ "web" ];
 
     # Minimum setup for successful bootstrap
-    minimum.services.caddy.virtualHosts."http://plain.test".extraConfig = "respond ok";
+    minimum.services.caddy.virtualHosts."http://plain.test".serverAliases = [ ];
 
     # Values for reads the defaults leave idle
     probe = {
