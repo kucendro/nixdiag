@@ -10,7 +10,6 @@
 
 **Findings:**
 
-- `22/tcp` is open on every interface, but nothing here uses it
 - `443/tcp` is open on every interface, but nothing here uses it
 
 ## jerry {#firewall-jerry}
@@ -20,6 +19,4 @@
 | every interface | `22`, `443` | —          |
 | `lo` (trusted)  | every port  | every port |
 
-**Findings:**
-
-- `22/tcp` is open on every interface, but nothing here uses it
+No findings.

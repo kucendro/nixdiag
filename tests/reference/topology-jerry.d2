@@ -5,6 +5,7 @@ direction: down
   class: machine
   "headscale": "headscale\nmesh control\n8080/tcp" {class: infra}
   "nginx": "nginx\nproxy\n80/tcp, 443/tcp" {class: infra}
+  "openssh": "openssh\nremote access\n22/tcp" {class: infra}
   "tailscale": "tailscale\nmesh node" {class: infra}
 }
 "net hs.ts.example": "hs.ts.example\n100.64.0.0/10\nfd7a:115c:a1e0::/48" {class: net-mesh}

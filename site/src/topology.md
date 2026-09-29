@@ -26,6 +26,7 @@ on 443 to the internet, and the connection between them. Override with
 | `headscale` | `port`, `settings.server_url`, `settings.prefixes` | port; name and tailnet from a non-loopback `server_url`, the tailnet named after it |
 | `tailscale` | `extraUpFlags`, `extraSetFlags`, `interfaceName` | `--login-server` is a control connection to it, else `internet`; the interface on that server's tailnet, routing `--advertise-routes` and, with `--advertise-exit-node`, the internet |
 | `grafana` | `settings.server.http_port`, `settings.server.domain` | port, name |
+| `openssh` | `ports`, `listenAddresses` | ports |
 
 Scope from listen addresses: `100.64.0.0/10` is `mesh`, RFC 1918 is `lan`,
 anything else `public` when the firewall opens the port.
