@@ -1,12 +1,51 @@
 { lib, helpers }:
 let
   vhost = leaf: [ "services.caddy.virtualHosts.<name>.${leaf}" ];
+  words = s: builtins.filter (w: builtins.isString w && w != "") (builtins.split "[ ,\t]+" s);
+  site =
+    address:
+    let
+      plain = lib.hasPrefix "http://" address;
+      u = helpers.url (if lib.hasInfix "://" address then address else "https://${address}");
+    in
+    {
+      inherit (u) host port;
+      redirect = !plain && u.host != "" && u.port != 80;
+    };
+  upstreams =
+    text:
+    let
+      lines = builtins.filter builtins.isList (builtins.split "reverse_proxy([^\n{]*)" text);
+      tokens = lib.concatMap (m: words (builtins.head m)) lines;
+      upstream =
+        t:
+        !(
+          lib.hasSuffix ":" t
+          || lib.any (p: lib.hasPrefix p t) [
+            "/"
+            "@"
+            "*"
+          ]
+        );
+      url =
+        t:
+        if lib.hasInfix "://" t then
+          t
+        else if lib.hasPrefix ":" t then
+          "http://localhost${t}"
+        else
+          "http://${t}";
+    in
+    map url (builtins.filter upstream tokens);
 in
 {
   role = "proxy";
   kind = "infra";
   maintainers = [ "kucendro" ];
   reads = {
+    hostName = vhost "hostName";
+    aliases = vhost "serverAliases";
+    listen = vhost "listenAddresses";
     extraConfig = vhost "extraConfig";
     firewall = [ "networking.firewall.enable" ];
     tcp = [ "networking.firewall.allowedTCPPorts" ];
@@ -14,67 +53,60 @@ in
 
   topology =
     {
+      hostName,
+      aliases,
+      listen,
       extraConfig,
       firewall,
       tcp,
     }:
     let
-      configs = if extraConfig == null then { } else extraConfig;
-      names = builtins.attrNames configs;
-      plain = name: lib.hasPrefix "http://" name;
-      portsOf =
-        name:
-        if plain name then
-          [ 80 ]
-        else
-          [
-            80
-            443
-          ];
-      entry = name: if plain name then 80 else 443;
+      vhosts = builtins.attrNames (if hostName == null then { } else hostName);
+      sites = v: map site (words hostName.${v} ++ aliases.${v});
+      primary = v: builtins.head (sites v);
+      named = s: s.host != "" && !helpers.loopback s.host;
+      name = v: if named (primary v) then (primary v).host else null;
+      entry = v: (primary v).port;
       open = port: firewall == false || builtins.elem port (if tcp == null then [ ] else tcp);
-      scope = name: helpers.scopeOf (open (entry name)) [ "0.0.0.0" ];
-      targets = name: builtins.split "reverse_proxy[ \t]+([^ \t\n{]+)" configs.${name};
-      upstreams =
-        name:
-        lib.concatMap (
-          m: lib.optional (builtins.isList m && !lib.hasInfix "{" (builtins.head m)) (builtins.head m)
-        ) (targets name);
-      label = name: builtins.head (lib.splitString "." (lib.removePrefix "http://" name));
+      addrs = v: if listen.${v} == [ ] then [ "0.0.0.0" ] else listen.${v};
+      scope = v: helpers.scopeOf (open (entry v)) (addrs v);
+      listens = s: [ s.port ] ++ lib.optional s.redirect 80;
+      label =
+        v: to:
+        let
+          prefix =
+            if name v == null then toString (entry v) else builtins.head (lib.splitString "." (name v));
+        in
+        "${prefix} :${toString (helpers.url to).port}";
       connectionsOf =
-        name:
+        v:
         map (to: {
-          inherit to name;
-          label = "${label name} :${toString (helpers.url to).port}";
-          port = entry name;
-          scope = scope name;
-        }) (upstreams name);
+          inherit to;
+          name = name v;
+          label = label v to;
+          port = entry v;
+          scope = scope v;
+        }) (upstreams extraConfig.${v});
       exposeOf =
-        name:
-        lib.optional (upstreams name == [ ]) {
-          inherit name;
-          port = entry name;
-          scope = scope name;
+        v:
+        lib.optional (upstreams extraConfig.${v} == [ ]) {
+          name = name v;
+          port = entry v;
+          scope = scope v;
         };
     in
     {
-      inherit names;
-      ports = lib.unique (lib.concatMap portsOf names);
-      connections = lib.concatMap connectionsOf names;
-      expose = lib.concatMap exposeOf names;
+      names = lib.unique (map (s: s.host) (builtins.filter named (lib.concatMap sites vhosts)));
+      ports = lib.unique (lib.concatMap listens (lib.concatMap sites vhosts));
+      connections = lib.concatMap connectionsOf vhosts;
+      expose = lib.concatMap exposeOf vhosts;
     };
 
-  # Required VM tests -------------------------------------------------
   tests = {
-    vm = [ "web" ];
+    vm = [ "hub" ];
 
-    # Minimum setup for successful bootstrap
-    minimum.services.caddy.virtualHosts."http://plain.test".serverAliases = [ ];
+    minimum.services.caddy.virtualHosts."http://plain.test".useACMEHost = null;
 
-    # Values for reads the defaults leave idle
-    probe = {
-      extraConfig."http://plain.test" = "reverse_proxy mon:3000";
-      tcp = [ 80 ];
-    };
+    probe.extraConfig."http://plain.test" = "reverse_proxy http://mon:3000";
   };
 }
