@@ -8,6 +8,7 @@ direction: down
     link: "./hosts.html#host-jerry"
     "headscale": "8080/tcp" {constraint: "mesh control"}
     "nginx": "80/tcp, 443/tcp" {constraint: "proxy"}
+    "openssh": "22/tcp" {constraint: "remote access"}
     "tailscale": "—" {constraint: "mesh node"}
   }
   "tom": "🖥️ tom" {
@@ -15,6 +16,7 @@ direction: down
     link: "./hosts.html#host-tom"
     "exporter": "—"
     "grafana": "3000/tcp" {constraint: "monitor"}
+    "openssh": "22/tcp" {constraint: "remote access"}
     "tailscale": "—" {constraint: "mesh node"}
   }
 }
