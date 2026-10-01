@@ -9,6 +9,9 @@ pub const DEFAULT_TITLE: &str = "Nixdiag wiki";
 pub const EXTRA_PAGE: &str = "Extra hand-written wiki page as TITLE=FILE;";
 pub const EXTRA_LINK: &str =
     "SUMMARY entry as TITLE=NAME.md for a page written into wiki/src by another tool; repeatable";
+pub const GENERATED: &str =
+    "Unix time the documented configuration is from, shown under every page title";
+pub const REVISION: &str = "Revision the documented configuration is from, shown with --generated";
 pub const NO_SVG: &str = "Skip SVG rendering (d2)";
 pub const THEME: &str = "Color theme";
 pub const BACKGROUND: &str = "Diagram canvas fill";

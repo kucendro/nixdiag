@@ -20,6 +20,13 @@ pub fn heading(title: &str) -> String {
     format!("# {title}")
 }
 
+pub fn generated(at: impl Display, revision: Option<&str>) -> String {
+    match revision {
+        Some(r) => format!("_Generated from the configuration as of {at}, `{r}`._"),
+        None => format!("_Generated from the configuration as of {at}._"),
+    }
+}
+
 pub fn diagram(light: &str, dark: &str) -> String {
     format!(
         "<div class=\"d2 d2-light\">{{{{#include {light}}}}}</div>\n<div class=\"d2 d2-dark\">{{{{#include {dark}}}}}</div>"
@@ -182,6 +189,16 @@ pub mod endpoints {
 
     pub fn unnamed(host: &str, port: u32) -> String {
         format!("{host}:{port}")
+    }
+
+    pub const LOCK: &str = "🔒";
+
+    pub fn locked(cell: &str) -> String {
+        format!("{LOCK} {cell}")
+    }
+
+    pub fn hint() -> String {
+        format!("{LOCK} reachable only over the VPN (mesh), not from the LAN or the internet.")
     }
 }
 

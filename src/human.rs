@@ -8,6 +8,7 @@ pub const DAY: i64 = 86_400;
 pub struct Bytes(pub u64);
 pub struct Count(pub usize);
 pub struct Date(pub i64);
+pub struct Moment(pub i64);
 
 impl Display for Bytes {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -21,11 +22,21 @@ impl Display for Count {
     }
 }
 
+fn stamp(f: &mut Formatter, seconds: i64, format: &str) -> fmt::Result {
+    match Timestamp::from_second(seconds) {
+        Ok(t) => t.strftime(format).fmt(f),
+        Err(_) => seconds.fmt(f),
+    }
+}
+
 impl Display for Date {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match Timestamp::from_second(self.0) {
-            Ok(t) => t.strftime("%F").fmt(f),
-            Err(_) => self.0.fmt(f),
-        }
+        stamp(f, self.0, "%F")
+    }
+}
+
+impl Display for Moment {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        stamp(f, self.0, "%F %H:%M UTC")
     }
 }

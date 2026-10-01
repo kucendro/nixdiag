@@ -38,6 +38,8 @@ rec {
       colors ? { },
       closures ? false,
       closuresExclude ? [ ],
+      generated ? flake.lastModified or null,
+      revision ? flake.shortRev or flake.dirtyShortRev or null,
     }:
     let
       facts = mkFacts { inherit flake hosts; };
@@ -107,6 +109,10 @@ rec {
         ++ lib.optional (background != null) "--background ${lib.escapeShellArg background}"
         ++ lib.mapAttrsToList (n: v: "--color ${lib.escapeShellArg "${n}=${v}"}") colors
         ++ lib.optional (closureFile != null) "--closures ${closureFile}";
+      stampFlags = lib.optionals (generated != null) (
+        [ "--generated ${toString generated}" ]
+        ++ lib.optional (revision != null) "--revision ${lib.escapeShellArg revision}"
+      );
     in
     pkgs.runCommand "nixdiag-docs"
       {
@@ -115,7 +121,7 @@ rec {
       ''
         nixdiag --facts ${factsJson} --repo ${flake} --out $out \
           --title ${lib.escapeShellArg title} \
-          ${lib.concatStringsSep " " (pageFlags ++ linkFlags ++ styleFlags)}
+          ${lib.concatStringsSep " " (pageFlags ++ linkFlags ++ styleFlags ++ stampFlags)}
         ${lib.optionalString (indexPage != null) ''
           install -m 644 ${indexPage} $out/wiki/src/index.md
         ''}

@@ -37,6 +37,8 @@ pub fn run() -> Result<()> {
                 title: r.title,
                 extra_pages: r.extra_pages,
                 extra_links: r.extra_links,
+                generated: r.generated,
+                revision: r.revision,
             },
             svg: !r.no_svg,
             style: Style {

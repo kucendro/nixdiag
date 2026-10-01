@@ -30,6 +30,8 @@ the same for the current directory without touching the flake.
 | `colors` | `{ }` | palette overrides, see below |
 | `closures` | `false` | per-host closure sizes: `true`, or a list of hosts; **builds those systems** |
 | `closuresExclude` | `[ ]` | hosts to leave out of `closures = true` |
+| `generated` | `flake.lastModified` | unix time shown under every page title; `null` hides the line |
+| `revision` | `flake.shortRev`, else `dirtyShortRev` | revision shown with `generated` |
 
 ### Closure metrics
 

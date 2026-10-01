@@ -4,6 +4,7 @@ use crate::facts::Scope;
 use crate::text::wiki::{endpoints as t, NONE};
 use crate::topology::{Endpoint, INTERNET};
 use anyhow::Result;
+use std::iter::once;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Row {
@@ -14,10 +15,20 @@ struct Row {
     host: String,
     service: String,
     named: bool,
+    locked: bool,
 }
 
 impl Row {
     fn cell(&self) -> String {
+        let name = self.name();
+        if self.locked {
+            t::locked(&name)
+        } else {
+            name
+        }
+    }
+
+    fn name(&self) -> String {
         if !self.named || self.udp {
             return code(&self.endpoint);
         }
@@ -40,6 +51,10 @@ fn scope(s: Option<Scope>) -> String {
     s.map_or(NONE, Scope::label).into()
 }
 
+fn locked(s: Option<Scope>) -> bool {
+    s == Some(Scope::Mesh)
+}
+
 pub(super) struct Endpoints;
 
 impl Page for Endpoints {
@@ -52,10 +67,10 @@ impl Page for Endpoints {
     }
 
     fn body(&self, w: &Wiki) -> Result<Option<Vec<String>>> {
-        Ok(Some(vec![table(
-            t::HEAD,
-            rows(w).into_iter().map(Row::cells),
-        )]))
+        let rows = rows(w);
+        let hint = rows.iter().any(|r| r.locked).then(t::hint);
+        let table = table(t::HEAD, rows.into_iter().map(Row::cells));
+        Ok(Some(hint.into_iter().chain(once(table)).collect()))
     }
 }
 
@@ -71,6 +86,7 @@ fn rows(w: &Wiki) -> Vec<Row> {
         host: x.host.clone(),
         service: x.unit.as_deref().unwrap_or(NONE).into(),
         named: x.name.is_some(),
+        locked: locked(x.scope),
     });
     let named = w.model.named.iter().filter_map(|ne| {
         Some(Row {
@@ -84,6 +100,7 @@ fn rows(w: &Wiki) -> Vec<Row> {
                 Endpoint::Internet => INTERNET.into(),
             },
             named: true,
+            locked: locked(ne.scope),
         })
     });
     let mut rows: Vec<Row> = exposed.chain(named).collect();
