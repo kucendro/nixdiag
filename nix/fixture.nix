@@ -28,6 +28,8 @@ in
       fixture-docs = self.lib.mkDocs {
         inherit pkgs flake;
         buildWiki = false;
+        generated = 1790000000;
+        revision = "0123abc";
       };
 
       fixture-facts = pkgs.writeText "facts.json" (builtins.toJSON (self.lib.mkFacts { inherit flake; }));

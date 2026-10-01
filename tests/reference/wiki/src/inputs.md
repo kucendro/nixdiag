@@ -1,5 +1,7 @@
 # Inputs
 
+_Generated from the configuration as of 2026-09-21 14:13 UTC, `0123abc`._
+
 Dashed edges are `follows`, which *removes* a duplicate.
 
 <div class="d2 d2-light">{{#include inputs-light.svg}}</div>

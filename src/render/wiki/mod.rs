@@ -21,7 +21,7 @@ use super::style::{Style, Theme};
 use crate::closures::{Closures, Total};
 use crate::conf::files::diagram::themed;
 use crate::facts::{Facts, HostBase};
-use crate::human::{Bytes, Count};
+use crate::human::{Bytes, Count, Moment};
 use crate::source::flakelock::Lock;
 use crate::source::repo::Repo;
 use crate::text::wiki::{self as text, code, NONE};
@@ -49,6 +49,8 @@ pub struct WikiOpts {
     pub title: String,
     pub extra_pages: Vec<(String, PathBuf)>,
     pub extra_links: Vec<(String, String)>,
+    pub generated: Option<i64>,
+    pub revision: Option<String>,
 }
 
 pub trait Page {
@@ -100,10 +102,14 @@ pub fn generate(w: &Wiki, opts: &WikiOpts) -> Result<()> {
         &Inputs,
         &ClosuresPage,
     ];
+    let stamp = opts
+        .generated
+        .map(|at| text::generated(Moment(at), opts.revision.as_deref()));
     let mut listed = Vec::new();
     for p in pages {
         let Some(body) = p.body(w)? else { continue };
-        let page = once(text::heading(p.title())).chain(body).join("\n\n");
+        let head = once(text::heading(p.title())).chain(stamp.clone());
+        let page = head.chain(body).join("\n\n");
         w.src.write(p.file(), &page)?;
         listed.push((p.title().to_string(), p.file().to_string()));
     }

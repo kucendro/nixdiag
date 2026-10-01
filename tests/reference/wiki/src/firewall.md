@@ -1,5 +1,7 @@
 # Firewall
 
+_Generated from the configuration as of 2026-09-21 14:13 UTC, `0123abc`._
+
 ## tom {#firewall-tom}
 
 | Interface       | TCP         | UDP        |

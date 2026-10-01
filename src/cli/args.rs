@@ -22,6 +22,10 @@ pub struct Cli {
     pub extra_pages: Vec<(String, PathBuf)>,
     #[arg(long = "extra-link", value_name = "TITLE=NAME.md", value_parser = pair::<String>, help = t::EXTRA_LINK)]
     pub extra_links: Vec<(String, String)>,
+    #[arg(long, value_name = "UNIX_SECONDS", help = t::GENERATED)]
+    pub generated: Option<i64>,
+    #[arg(long, requires = "generated", help = t::REVISION)]
+    pub revision: Option<String>,
     #[arg(long, help = t::NO_SVG)]
     pub no_svg: bool,
     #[arg(long, value_enum, default_value_t, help = t::THEME)]
