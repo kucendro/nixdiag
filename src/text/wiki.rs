@@ -190,6 +190,16 @@ pub mod endpoints {
     pub fn unnamed(host: &str, port: u32) -> String {
         format!("{host}:{port}")
     }
+
+    pub const LOCK: &str = "🔒";
+
+    pub fn locked(cell: &str) -> String {
+        format!("{LOCK} {cell}")
+    }
+
+    pub fn hint() -> String {
+        format!("{LOCK} reachable only over the VPN (mesh), not from the LAN or the internet.")
+    }
 }
 
 pub mod inputs {
