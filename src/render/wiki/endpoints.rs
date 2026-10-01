@@ -19,15 +19,6 @@ struct Row {
 }
 
 impl Row {
-    fn cell(&self) -> String {
-        let name = self.name();
-        if self.locked {
-            t::locked(&name)
-        } else {
-            name
-        }
-    }
-
     fn name(&self) -> String {
         if !self.named || self.udp {
             return code(&self.endpoint);
@@ -40,10 +31,12 @@ impl Row {
         t::link(&self.endpoint, scheme, &port)
     }
 
-    fn cells(self) -> [String; 5] {
+    fn cells(self) -> [String; 6] {
+        let lock = if self.locked { t::LOCK } else { "" }.into();
+        let name = self.name();
         let port = self.port.map_or(NONE.into(), |p| p.to_string());
         let port = port + if self.udp { t::UDP } else { "" };
-        [self.cell(), port, self.scope, self.host, self.service]
+        [lock, name, port, self.scope, self.host, self.service]
     }
 }
 

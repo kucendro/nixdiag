@@ -178,7 +178,8 @@ pub mod services {
 
 pub mod endpoints {
     pub const TITLE: &str = "Endpoints";
-    pub const HEAD: [&str; 5] = ["Endpoint", "Port", "Scope", "Host", "Service"];
+    pub const LOCK: &str = "🔒";
+    pub const HEAD: [&str; 6] = [LOCK, "Endpoint", "Port", "Scope", "Host", "Service"];
     pub const HTTP: &str = "http";
     pub const HTTPS: &str = "https";
     pub const UDP: &str = "/udp";
@@ -189,12 +190,6 @@ pub mod endpoints {
 
     pub fn unnamed(host: &str, port: u32) -> String {
         format!("{host}:{port}")
-    }
-
-    pub const LOCK: &str = "🔒";
-
-    pub fn locked(cell: &str) -> String {
-        format!("{LOCK} {cell}")
     }
 
     pub fn hint() -> String {
