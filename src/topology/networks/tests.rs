@@ -48,7 +48,7 @@ fn shared_subnet_is_one_derived_network_with_its_gateway() {
         "a": host(eth0("192.168.1.10/24"), json!({})),
         "b": host(eth0("192.168.1.20/24"), json!({})),
     }));
-    let nets = build(&f).unwrap();
+    let (nets, _) = build(&f).unwrap();
     assert_eq!(nets.len(), 1);
     assert_eq!(nets[0].id(), "192.168.1.0/24");
     assert_eq!(nets[0].kind, Some(Scope::Lan));
@@ -77,7 +77,7 @@ fn declaration_names_the_subnet_and_host_prefixes_join_only_declared() {
         "a": host(eth0("192.168.1.10/24"), lan),
         "b": host(wg, json!({})),
     }));
-    let nets = build(&f).unwrap();
+    let (nets, _) = build(&f).unwrap();
     assert_eq!(nets.len(), 1);
     assert_eq!(nets[0].id(), "lan");
 }
@@ -87,7 +87,7 @@ fn mesh_interface_joins_by_control_server() {
     let tailnet = json!({ "hs.example": { "cidrs": ["100.64.0.0/10"], "kind": "mesh", "server": "hs.example" } });
     let ts = json!({ "tailscale0": { "kind": "mesh", "server": "hs.example" } });
     let f = facts(json!({ "a": host(ts, tailnet) }));
-    let nets = build(&f).unwrap();
+    let (nets, _) = build(&f).unwrap();
     assert_eq!(members(&nets[0]), [("a", "tailscale0", None)]);
 }
 
@@ -95,7 +95,7 @@ fn mesh_interface_joins_by_control_server() {
 fn route_wider_than_a_subnet_is_its_own_network() {
     let mut ifaces = eth0("10.0.0.5/24");
     ifaces["eth0"]["routes"] = json!(["10.0.0.0/8"]);
-    let nets = build(&facts(json!({ "a": host(ifaces, json!({})) }))).unwrap();
+    let (nets, _) = build(&facts(json!({ "a": host(ifaces, json!({})) }))).unwrap();
     let ids: Vec<_> = nets.iter().map(Network::id).collect();
     assert_eq!(ids, ["10.0.0.0/24", "10.0.0.0/8"]);
     let wide = "10.0.0.0/8".parse().unwrap();
@@ -140,6 +140,7 @@ fn scopeless_addresses_are_skipped_and_bad_ones_fail() {
     let lo = json!({ "lo": { "addresses": [{ "cidr": "127.0.0.1/8" }] } });
     assert!(build(&facts(json!({ "a": host(lo, json!({})) })))
         .unwrap()
+        .0
         .is_empty());
     let bad = eth0("192.168.1.300/24");
     assert!(build(&facts(json!({ "a": host(bad, json!({})) }))).is_err());
@@ -152,7 +153,7 @@ fn one_subnet_at_two_locations_is_two_networks() {
         "b": at(host(eth0("192.168.1.20/24"), json!({})), "lab"),
         "c": at(host(eth0("192.168.2.30/24"), json!({})), "lab"),
     }));
-    let nets = build(&f).unwrap();
+    let (nets, _) = build(&f).unwrap();
     assert_eq!(
         ids(&nets),
         [
@@ -174,7 +175,7 @@ fn an_unlocated_host_joins_the_only_copy_else_fails() {
         "c": host(eth0("192.168.1.30/24"), json!({})),
         "a": at(host(eth0("192.168.1.10/24"), json!({})), "home"),
     }));
-    let nets = build(&f).unwrap();
+    let (nets, _) = build(&f).unwrap();
     assert_eq!(ids(&nets), ["192.168.1.0/24 @ home"]);
     assert_eq!(nets[0].members.len(), 2);
 
@@ -200,7 +201,7 @@ fn a_name_splits_per_location_and_a_mesh_never_does() {
         "a": at(host(eth0("192.168.1.10/24"), lan.clone()), "home"),
         "b": at(host(eth0("192.168.1.20/24"), lan.clone()), "lab"),
     }));
-    let nets = build(&f).unwrap();
+    let (nets, _) = build(&f).unwrap();
     assert_eq!(ids(&nets), ["lan @ home", "tailnet", "lan @ lab"]);
     assert_eq!(
         members(&nets[2]),
@@ -223,12 +224,8 @@ fn routes_lead_into_their_own_location() {
         "a": at(host(router, json!({})), "home"),
         "b": at(host(eth0("192.168.1.20/24"), json!({})), "lab"),
     }));
-    let nets = build(&f).unwrap();
-    let to: Vec<_> = nets[0].members[0]
-        .routes
-        .iter()
-        .map(|r| r.to.as_deref())
-        .collect();
+    let (_, routes) = build(&f).unwrap();
+    let to: Vec<_> = routes.iter().map(|r| r.to.as_deref()).collect();
     assert_eq!(
         to,
         [
@@ -236,5 +233,28 @@ fn routes_lead_into_their_own_location() {
             Some("10.9.0.0/16 @ home"),
             None
         ]
+    );
+}
+
+#[test]
+fn routes_belong_to_the_interface_not_to_each_address() {
+    let ifaces = json!({
+        "eth0": {
+            "addresses": [
+                { "cidr": "192.168.1.10/24", "scope": "lan" },
+                { "cidr": "fd00::10/64", "scope": "lan" }
+            ],
+            "routes": ["10.0.0.0/8"]
+        },
+        "wg0": { "routes": ["172.16.0.0/12"] }
+    });
+    let (_, routes) = build(&facts(json!({ "a": host(ifaces, json!({})) }))).unwrap();
+    let via: Vec<_> = routes
+        .iter()
+        .map(|r| (r.interface.as_str(), r.to.as_deref()))
+        .collect();
+    assert_eq!(
+        via,
+        [("eth0", Some("10.0.0.0/8")), ("wg0", Some("172.16.0.0/12"))]
     );
 }

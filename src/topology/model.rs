@@ -1,5 +1,5 @@
 use super::firewall::Finding;
-use super::networks::Network;
+use super::networks::{Network, Route};
 use crate::facts::{Plane, Scope};
 use indexmap::IndexMap;
 
@@ -67,6 +67,7 @@ pub struct Model {
     pub connections: Vec<Connection>,
     pub named: Vec<NamedEndpoint>,
     pub networks: Vec<Network>,
+    pub routes: Vec<Route>,
     pub locations: IndexMap<String, String>,
     pub findings: IndexMap<String, Vec<Finding>>,
 }

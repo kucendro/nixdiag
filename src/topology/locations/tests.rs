@@ -12,7 +12,7 @@ fn host(cidr: &str, scope: &str, location: Option<&str>) -> Value {
 
 fn locations(hosts: Value) -> Vec<(String, String)> {
     let facts: Facts = serde_json::from_value(json!({ "schema": 4, "hosts": hosts })).unwrap();
-    let nets = networks::build(&facts).unwrap();
+    let (nets, _) = networks::build(&facts).unwrap();
     build(&facts, &nets).into_iter().collect()
 }
 

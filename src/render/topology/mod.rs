@@ -15,7 +15,7 @@ pub use cloud::{Cloud, Net};
 use super::d2::Class;
 use crate::facts::{Facts, Host, Kind, Plane};
 use crate::text::d2::topology as t;
-use crate::topology::{by_id, Connection, Endpoint, Model, Network};
+use crate::topology::{by_id, Connection, Endpoint, Model, Network, Route};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use std::collections::BTreeSet;
@@ -105,6 +105,7 @@ pub struct View<'a> {
     pub hosts: IndexMap<&'a str, IndexMap<&'a str, Unit<'a>>>,
     pub ingress: Vec<Ingress<'a>>,
     pub networks: &'a [Network],
+    pub routes: &'a [Route],
     locations: &'a IndexMap<String, String>,
     connections: &'a [Connection],
 }
@@ -181,6 +182,7 @@ impl<'a> View<'a> {
             hosts,
             ingress: exposed.chain(named).collect(),
             networks: &model.networks,
+            routes: &model.routes,
             locations: &model.locations,
             connections: &model.connections,
         }

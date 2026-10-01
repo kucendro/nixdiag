@@ -15,7 +15,7 @@ use anyhow::Result;
 use std::iter::once;
 
 pub fn build(facts: &Facts) -> Result<Model> {
-    let nets = networks::build(facts)?;
+    let (nets, routes) = networks::build(facts)?;
     let locations = locations::build(facts, &nets);
     let mut model = Model {
         exposed: exposed(facts),
@@ -77,6 +77,7 @@ pub fn build(facts: &Facts) -> Result<Model> {
     model.findings = findings;
     model.locations = locations;
     model.networks = nets;
+    model.routes = routes;
     Ok(model)
 }
 

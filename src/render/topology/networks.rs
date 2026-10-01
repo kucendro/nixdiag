@@ -18,25 +18,21 @@ impl Diagram for Networks<'_, '_> {
             .networks
             .iter()
             .flat_map(|n| n.members.iter().map(|m| m.host.as_str()))
+            .chain(v.routes.iter().map(|r| r.host.as_str()))
             .collect();
         v.boxes(doc, hosts.iter().copied());
         let internet = Cloud::Net(Net::Internet);
-        let routes = v
-            .networks
-            .iter()
-            .flat_map(|n| &n.members)
-            .flat_map(|m| m.routes.iter().map(move |r| (m, r)));
-        let exits = routes.clone().any(|(_, r)| r.to.is_none());
+        let exits = v.routes.iter().any(|r| r.to.is_none());
         if exits || v.networks.iter().any(|n| !n.gateways.is_empty()) {
             internet.draw(doc, None);
         }
-        for (m, r) in routes {
+        for r in v.routes {
             let via = Target::Net(Cloud::route(v.networks, r));
-            let host = v.placed(&Target::Node(&m.host, None));
+            let host = v.placed(&Target::Node(&r.host, None));
             doc.line(
                 &host,
                 &v.placed(&via),
-                Some(&t::route(&m.interface)),
+                Some(&t::route(&r.interface)),
                 Class::Route,
             );
         }

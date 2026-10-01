@@ -10,6 +10,8 @@ use std::net::IpAddr;
 
 #[derive(Debug, Clone)]
 pub struct Route {
+    pub host: String,
+    pub interface: String,
     pub prefix: IpNet,
     pub to: Option<String>,
 }
@@ -19,7 +21,6 @@ pub struct Member {
     pub host: String,
     pub interface: String,
     pub address: Option<IpAddr>,
-    pub routes: Vec<Route>,
 }
 
 #[derive(Debug)]
@@ -228,20 +229,10 @@ fn join(facts: &Facts, nets: &mut Vec<Network>, host: &str) -> Result<()> {
     let location = place(facts, host);
     let location = location.as_deref();
     for (name, i) in &n.network.interfaces {
-        let routes = i.routes.iter().map(|r| {
-            r.parse::<IpNet>()
-                .map(|prefix| Route {
-                    prefix: prefix.trunc(),
-                    to: None,
-                })
-                .map_err(|_| address(host, r))
-        });
-        let routes: Vec<Route> = routes.collect::<Result<_>>()?;
         let member = |address| Member {
             host: host.into(),
             interface: name.clone(),
             address,
-            routes: routes.clone(),
         };
         for a in &i.addresses {
             let Some(scope) = a.scope else { continue };
@@ -276,26 +267,39 @@ fn join(facts: &Facts, nets: &mut Vec<Network>, host: &str) -> Result<()> {
     Ok(())
 }
 
-fn route(nets: &mut Vec<Network>, places: &IndexMap<String, String>) -> Result<()> {
-    let pending: Vec<_> = nets
-        .iter()
-        .enumerate()
-        .flat_map(|(n, net)| {
-            net.members.iter().enumerate().flat_map(move |(m, member)| {
-                let routes = member.routes.iter().enumerate();
-                routes.map(move |(r, route)| (n, m, r, route.prefix, member.host.clone()))
-            })
-        })
-        .filter(|(.., prefix, _)| prefix.prefix_len() > 0)
-        .collect();
-    for (n, m, r, prefix, host) in pending {
-        let location = places.get(&host).map(String::as_str);
-        let found = local(nets, &prefix, location).map_err(|_| unlocated(&host, prefix))?;
+fn routes(facts: &Facts) -> Result<Vec<Route>> {
+    let mut out = Vec::new();
+    for (host, h) in &facts.hosts {
+        let Some(n) = h.as_nixos() else { continue };
+        for (interface, i) in &n.network.interfaces {
+            for r in &i.routes {
+                let prefix: IpNet = r.parse().map_err(|_| address(host, r))?;
+                out.push(Route {
+                    host: host.clone(),
+                    interface: interface.clone(),
+                    prefix: prefix.trunc(),
+                    to: None,
+                });
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn route(
+    nets: &mut Vec<Network>,
+    routes: &mut [Route],
+    places: &IndexMap<String, String>,
+) -> Result<()> {
+    for r in routes.iter_mut().filter(|r| r.prefix.prefix_len() > 0) {
+        let location = places.get(&r.host).map(String::as_str);
+        let found = local(nets, &r.prefix, location);
+        let found = found.map_err(|_| unlocated(&r.host, r.prefix))?;
         let slot = found.unwrap_or_else(|| {
-            nets.push(Network::new(None, vec![prefix], None).at(location));
+            nets.push(Network::new(None, vec![r.prefix], None).at(location));
             nets.len() - 1
         });
-        nets[n].members[m].routes[r].to = Some(nets[slot].id());
+        r.to = Some(nets[slot].id());
     }
     Ok(())
 }
@@ -316,7 +320,7 @@ fn targets(facts: &Facts, nets: &mut Vec<Network>, places: &IndexMap<String, Str
     }
 }
 
-pub fn build(facts: &Facts) -> Result<Vec<Network>> {
+pub fn build(facts: &Facts) -> Result<(Vec<Network>, Vec<Route>)> {
     let mut nets = declared(facts)?;
     let (located, unplaced): (Vec<&String>, Vec<&String>) =
         facts.hosts.keys().partition(|h| place(facts, h).is_some());
@@ -327,9 +331,10 @@ pub fn build(facts: &Facts) -> Result<Vec<Network>> {
         n.members.sort_by_key(|m| facts.hosts.get_index_of(&m.host));
     }
     let places = locations::build(facts, &nets);
-    route(&mut nets, &places)?;
+    let mut routes = routes(facts)?;
+    route(&mut nets, &mut routes, &places)?;
     targets(facts, &mut nets, &places);
-    Ok(nets)
+    Ok((nets, routes))
 }
 
 #[cfg(test)]
