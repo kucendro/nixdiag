@@ -70,3 +70,21 @@ fn overlay_draws_members_routes_exits_and_the_control_server() {
         assert!(overlay.contains(line), "{line}\n{overlay}");
     }
 }
+
+#[test]
+fn a_dual_stack_route_is_drawn_once() {
+    let facts: Facts = serde_json::from_value(json!({
+        "schema": 4,
+        "hosts": { "a": { "kind": "nixos", "network": { "interfaces": { "eth0": {
+            "addresses": [
+                { "cidr": "192.168.1.10/24", "scope": "lan" },
+                { "cidr": "fd00::10/64", "scope": "lan" }
+            ],
+            "routes": ["10.0.0.0/8"]
+        } } } } }
+    }))
+    .unwrap();
+    let model = crate::topology::build(&facts).unwrap();
+    let board = draw(&Networks(&View::new(&facts, &model))).to_string();
+    assert_eq!(board.matches("routes via eth0").count(), 1, "{board}");
+}

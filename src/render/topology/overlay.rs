@@ -27,23 +27,26 @@ impl Diagram for Overlay<'_, '_> {
         let meshes = v.networks.iter().filter(|n| n.kind == Some(Scope::Mesh));
         let mut clouds: IndexMap<String, Cloud> = IndexMap::new();
         let mut hosts: IndexSet<&str> = IndexSet::new();
+        let mut attached: IndexSet<(&str, &str)> = IndexSet::new();
         for n in meshes.filter(|n| !n.members.is_empty()) {
             let mesh = Cloud::Network(n);
             clouds.insert(mesh.key(), mesh);
             for m in &n.members {
                 hosts.insert(&m.host);
+                attached.insert((&m.host, &m.interface));
                 doc.line(&[mesh.key()], &[&m.host], Some(&m.interface), mesh.edge());
-                for r in &m.routes {
-                    let via = Cloud::route(v.networks, r);
-                    clouds.insert(via.key(), via);
-                    doc.line(
-                        &[&m.host],
-                        &[via.key()],
-                        Some(&t::route(&m.interface)),
-                        Class::Route,
-                    );
-                }
             }
+        }
+        let routed = v.routes.iter();
+        for r in routed.filter(|r| attached.contains(&(r.host.as_str(), r.interface.as_str()))) {
+            let via = Cloud::route(v.networks, r);
+            clouds.insert(via.key(), via);
+            doc.line(
+                &[&r.host],
+                &[via.key()],
+                Some(&t::route(&r.interface)),
+                Class::Route,
+            );
         }
         let mut servers = IndexSet::new();
         for f in v.flows().filter(|f| f.plane == Plane::Control) {
