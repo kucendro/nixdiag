@@ -1,5 +1,6 @@
 { lib, helpers }:
 let
+  known = up: set: up != null || set != null;
   flags = up: set: (if up == null then [ ] else up) ++ (if set == null then [ ] else set);
   login = up: set: helpers.flagValue "--login-server" (flags up set);
   exit =
@@ -23,18 +24,16 @@ in
       server = login up set;
     in
     {
-      connections = [
-        {
-          to = if server == null then "internet" else server;
-          label = "mesh";
-          plane = "control";
-        }
-      ];
+      connections = lib.optional (known up set) {
+        to = if server == null then "internet" else server;
+        label = "mesh";
+        plane = "control";
+      };
     };
 
   networks =
     { up, set, ... }:
-    lib.optionalAttrs (login up set == null) {
+    lib.optionalAttrs (known up set && login up set == null) {
       tailnet = {
         cidrs = [
           "100.64.0.0/10"
